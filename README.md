@@ -24,10 +24,12 @@ Claude powered web game
 | `js/spawn.js` | 案件進線 spawn() |
 | `js/radio.js` | 無線電通聯文字，以及文字與現場狀態的對照規則 |
 | `js/dispatch.js` | 派遣：編組比對、水源、出動、停車、到場 |
-| `js/sim.js` | 每幀模擬更新 step() |
+| `js/sim.js` | 每幀模擬更新 step()：時間、進線、車輛移動與狀態、公務勤務 |
+| `js/sim-incident.js` | 每幀模擬更新：單一案件的水源、外部單位、器材關卡、進度與結案 |
 | `js/map.js` | 大地圖繪製 |
 | `js/scene-kit.js` | 現場畫面：畫布、人員與擔架圖元、車組動畫、通用特效 |
 | `js/scene.js` | 現場畫面主流程 drawScene()：算出共用變數後依序呼叫各 scene-*.js 的繪製函式 |
+| `js/scene-site.js` | 現場畫面：建物窗光、災點建物與景物、火焰與濃煙 |
 | `js/scene-surroundings.js` | 現場畫面：圍觀民眾、傷患、警戒、停車位、照明、抬頭資訊 |
 | `js/scene-water.js` | 現場畫面：供水水帶、水花、水源標示、中繼水帶、分水器 |
 | `js/scene-vehicles.js` | 現場畫面：車輛、警示燈光暈、雲梯、救護車裝載 |
@@ -37,6 +39,7 @@ Claude powered web game
 | `js/scene-special.js` | 現場畫面：大量傷病患與化災的專屬佈置 |
 | `js/panels.js` | 車輛動態、進線案件、通聯紀錄、車輛資料、採購等面板 HTML |
 | `js/panel-detail.js` | 右下案件詳情面板 detailHTML() |
+| `js/panel-detail-parts.js` | 案件詳情面板的各區塊；每個函式回傳該區塊的 HTML 字串 |
 | `js/main.js` | 面板更新、事件處理、主迴圈 |
 
 各 JS 檔是一般 script（不是 ES module），共用同一個全域範圍：
@@ -44,3 +47,5 @@ Claude powered web game
 - `index.html` 裡的載入順序不可更動（表格即為載入順序）。
 - 新增的頂層名稱不能與其他檔案重複。
 - `scene-*.js` 裡的 `sc…()` 函式由 `scene.js` 的 `drawScene()` 依序呼叫，繪製順序就是圖層順序。
+- `panel-detail-parts.js` 裡的 `d…()` 函式由 `panel-detail.js` 依序呼叫，各自回傳一個區塊的 HTML。
+- `sim.js` 的 `step()` 每幀依序處理車輛、公務勤務，再對每個案件呼叫 `sim-incident.js` 的 `stepIncident()`。
