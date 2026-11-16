@@ -2646,9 +2646,9 @@ function clamp(){
  const c=cell(),mx=c*N-cw,my=c*N-ch;
  cam.x=mx<0?mx/2:Math.max(0,Math.min(mx,cam.x));
  cam.y=my<0?my/2:Math.max(0,Math.min(my,cam.y))}
-function fit(){zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
+function fit(){zoomT=performance.now();zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
-let bgScale=0;
+let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
 function gridLines(c,x0,x1,y0,y1){
  if(c>8){ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
@@ -2690,8 +2690,8 @@ function draw(){
  ctx.save();ctx.translate(-cam.x,-cam.y);
  const x0=Math.max(0,Math.floor(cam.x/c)),x1=Math.min(N-1,Math.ceil((cam.x+cw)/c));
  const y0=Math.max(0,Math.floor(cam.y/c)),y1=Math.min(N-1,Math.ceil((cam.y+ch)/c));
- if(bgScale!==c&&!bakeBG())bgScale=0;
- if(bgScale===c)ctx.drawImage(bgc,0,0,N*c,N*c);
+ if(bgScale!==c&&(!bgScale||performance.now()-zoomT>140)&&!bakeBG())bgScale=0;
+ if(bgScale)ctx.drawImage(bgc,0,0,N*c,N*c);
  else{drawTerrain(c,x0,x1,y0,y1);gridLines(c,x0,x1,y0,y1)}
  ctx.fillStyle=C.hyd;
  for(const h of S.hyd){
@@ -4451,6 +4451,32 @@ function shopHTML(){
   SPOT[S.nst].n+'分隊 · $12000（附編 11 三輛、91 一輛、41 一輛）</button>';
  return h}
 const $=id=>document.getElementById(id);
+// 就地更新 DOM：只改動有變化的節點，避免整塊 innerHTML 重建造成的重排與點擊落空
+const _tpl=document.createElement('template');
+function sameKey(a,b){ // data-* 不同視為不同元件，整個換掉，避免點擊落到別的按鈕
+ const x=a.dataset,y=b.dataset;
+ for(const k in y)if(x[k]!==y[k])return false;
+ for(const k in x)if(!(k in y))return false;
+ return true}
+function patchEl(a,b){
+ const an=a.attributes,bn=b.attributes;
+ for(let i=an.length-1;i>=0;i--)if(!b.hasAttribute(an[i].name))a.removeAttribute(an[i].name);
+ for(let i=0;i<bn.length;i++){const t=bn[i];if(a.getAttribute(t.name)!==t.value)a.setAttribute(t.name,t.value)}
+ if(a.tagName==='INPUT'){const v=b.getAttribute('value')||'';if(a.value!==v)a.value=v}
+ patchKids(a,b)}
+function patchKids(a,b){
+ let x=a.firstChild,y=b.firstChild;
+ while(y){
+  const ny=y.nextSibling;
+  if(!x)a.appendChild(y);
+  else{const nx=x.nextSibling;
+   if(x.nodeType!==y.nodeType||x.nodeName!==y.nodeName||(x.nodeType===1&&!sameKey(x,y)))a.replaceChild(y,x);
+   else if(x.nodeType===1)patchEl(x,y);
+   else if(x.nodeValue!==y.nodeValue)x.nodeValue=y.nodeValue;
+   x=nx}
+  y=ny}
+ while(x){const nx=x.nextSibling;a.removeChild(x);x=nx}}
+function morph(el,html){_tpl.innerHTML=html;patchKids(el,_tpl.content)}
 let lh='',rh='',dh='',sh='',hud='';
 let leftOpen=true;
 function ui(){
@@ -4462,20 +4488,18 @@ function ui(){
   $('hScore').textContent=S.score;
   let fr=0;for(let i=0;i<S.nst;i++)fr+=S.ix.idle[i];
   $('hIdle').textContent=fr+'/'+S.units.length}
- const a=leftHTML();if(a!==lh){lh=a;$('left').innerHTML=a}
- const b=callsHTML();if(b!==rh){rh=b;$('calls').innerHTML=b}
+ const a=leftHTML();if(a!==lh){lh=a;morph($('left'),a)}
+ const b=callsHTML();if(b!==rh){rh=b;morph($('calls'),b)}
  if(!(document.activeElement&&document.activeElement.id==='note')){
   const c=detailHTML();
   if(c!==dh){
    const lb=$('logbox');
    const follow=!lb||lb.scrollTop+lb.clientHeight>=lb.scrollHeight-6;
-   const prev=lb?lb.scrollTop:0,dsc=$('detail').scrollTop;
-   dh=c;$('detail').innerHTML=c;
+   dh=c;morph($('detail'),c);
    const nb=$('logbox');
-   if(nb)nb.scrollTop=follow?nb.scrollHeight:prev;
-   $('detail').scrollTop=dsc}}
+   if(nb&&follow)nb.scrollTop=nb.scrollHeight}}
  const sp=$('shop');
- if(shopOn){const e=shopHTML();if(e!==sh){sh=e;sp.innerHTML=e}sp.classList.add('open')}
+ if(shopOn){const e=shopHTML();if(e!==sh){sh=e;morph(sp,e)}sp.classList.add('open')}
  else if(sh){sp.classList.remove('open');sh=''}}
 function center(o){cam.x=(o.x+.5)*cell()-cw/2;cam.y=(o.y+.5)*cell()-ch/2;clamp()}
 function dirty(){lh=rh=dh=sh=''}
@@ -4593,7 +4617,7 @@ $('btnFs').onclick=()=>{
  else document.documentElement.requestFullscreen().catch(()=>{})};
 function setZoom(z){
  const mx=cam.x+cw/2,my=cam.y+ch/2,old=cell();
- zoom=Math.max(.45,Math.min(6,z));
+ zoom=Math.max(.45,Math.min(6,z));zoomT=performance.now();
  cam.x=mx/old*cell()-cw/2;cam.y=my/old*cell()-ch/2;clamp()}
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);
