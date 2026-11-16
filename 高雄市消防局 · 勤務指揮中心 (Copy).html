@@ -1227,7 +1227,7 @@ const EV={
   {t:'note',s:'已建立靜脈輸液，持續監測生命徵象。'}],
  '搬運上車':[{t:'need',c:'11',s:'樓梯狹窄搬運困難，請求人力支援。'},
   {t:'note',s:'病患體重過重，改以搬運椅下樓。'}],
- '車內照護':[{t:'note',s:'目標醫院滿載，改送次近醫院。'}],
+ '車內照護':[{t:'note',s:'途中持續監測，已預告醫院準備接收。'}],
  '尋找定位':[{t:'call',s:'到路口沒看到事故車輛，請回電報案人確認方向。'}],
  '接觸傷患':[{t:'need',c:'91',als:1,s:'傷患大量出血，請求 ALS 救護車。'}],
  '研擬計畫':[{t:'need',c:'41',s:'需要統一指揮與交通管制，請求指揮車。'}],
@@ -1615,10 +1615,12 @@ function calmPass(L,d,inc){
   out.push(body[i]);
   if(body[i].w==='民'&&!out.some(x=>x.calm)&&d.cls!=='公務'&&!d.police&&!d.gps&&Math.random()<.45)out.push({w:'台',s:pick(CALM.open),calm:1});}
  const V=key==='fire'?'消防車':key==='ems'?'救護車':key==='rescue'?'救援車隊':'車輛';
- if(tense&&!d.hoax){out.push({w:'民',s:pick(CALM.urgent)});out.push({w:'台',s:pick(CALM.reply).replace('{V}',V)})}
+ const person=key==='ems'||inc.pm.trap>0||inc.pm.cc!==undefined; // 「他」指的是傷病患，沒有人受困受傷時不用
+ if(tense&&!d.hoax){out.push({w:'民',s:pick(CALM.urgent.filter(x=>person||x.indexOf('他')<0))});out.push({w:'台',s:pick(CALM.reply).replace('{V}',V)})}
  out.push(last);
  const n2=(d.police||d.cls==='公務')?1:(inc.pm.ohca?1:2);
  let pool=CALM[key].slice();
+ if(key==='fire'&&d.wild)pool=['請不要靠近火場，往上風處移動。','請留在安全的地方，幫我們注意火勢往哪個方向燒。','不要自己上山滅火，等消防隊到場。'];
  if(key==='fire'&&!(inc.pm.trap>0))pool=pool.filter(x=>x.indexOf('電梯')<0&&x.indexOf('低姿勢')<0).concat(['請所有人保持距離，不要再靠近火場。']);
  for(let i=0;i<n2&&pool.length;i++){const j=Math.floor(Math.random()*pool.length);out.push({w:'台',s:pool.splice(j,1)[0]})}
  // 重新排定時間軸
@@ -1638,13 +1640,15 @@ function mkLog(k,d,inc){
     '神明廳的香爐倒了，桌布整個燒起來','冷氣室外機在冒火，牆壁都燻黑了',
     '倉庫堆的紙箱燒起來，火一直往上跑','電動車在騎樓充電，突然爆一聲就燒了']));
   add('台','地址在哪裡？');
-  add('民',inc.addr+'，大門在'+pick(['大馬路邊','巷子裡面','後面的小路'])+'。');
-  add('台','裡面還有沒有人？');
-  add('民',p.trap>=3?'裡面應該還有好幾個人沒出來，我聽到有人在喊':p.trap===2?'好像還有兩個人在裡面':
+  add('民',d.wild?inc.addr+'附近，從路邊就看得到。':inc.addr+'，大門在'+pick(['大馬路邊','巷子裡面','後面的小路'])+'。');
+  add('台',d.wild?'附近還有沒有人？':'裡面還有沒有人？');
+  add('民',d.wild?(p.trap>=1?'有一個人還在上面沒下來，電話打不通':'沒看到人，附近的人都離開了'):
+   p.trap>=3?'裡面應該還有好幾個人沒出來，我聽到有人在喊':p.trap===2?'好像還有兩個人在裡面':
    p.trap===1?'有一個人還沒看到出來，不確定':'人都跑出來了，都在外面等');
   add('台','火燒多大、燒到哪裡了？');
-  add('民',p.area<80?'看起來一個房間在燒':p.area<180?'整層都是火，窗戶都破了':'一整棟都在燒，隔壁也快燒到了');
-  if(p.stab!=='高')add('民','剛剛有東西掉下來，'+(p.stab==='低'?'牆壁看起來快垮了':'感覺結構有點怪'));
+  add('民',d.wild?(p.area<80?'一小片在燒，煙很濃':p.area<180?'燒了一大片，一直往上坡燒':'整面山坡都在燒，風一吹又更大'):
+   p.area<80?'看起來一個房間在燒':p.area<180?'整層都是火，窗戶都破了':'一整棟都在燒，隔壁也快燒到了');
+  if(p.stab!=='高'&&!d.wild)add('民','剛剛有東西掉下來，'+(p.stab==='低'?'牆壁看起來快垮了':'感覺結構有點怪'));
   add('台','車已經出勤，請退到安全距離等候。')}
  else if(d.med){
   const M=MED[p.cc]||MED[0];
@@ -1893,8 +1897,9 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
  inc.max=inc.left;
  inc.log=mkLog(k,d,inc);
  if(inc.calls>=3){
-  const extra=[['另一位民眾','我也要報案，'+inc.addr+'那邊'+(d.fire?'在冒煙，火很大':'出事了，很多人圍觀')],
-   ['第三位民眾',(d.fire?'我看到火從屋頂竄出來，隔壁鄰居都跑出來了':'現場有人躺著，已經有人在幫忙了')],
+  const extra=[['另一位民眾','我也要報案，'+inc.addr+'那邊'+(d.fire?(o.pm.area>=120?'在冒煙，火很大':'在冒煙，看得到火'):'出事了，很多人圍觀')],
+   ['第三位民眾',(d.fire?(d.wild?'我看到山上火光很大，煙一直往這邊飄':'我看到火從屋頂竄出來，隔壁鄰居都跑出來了'):
+    (d.med||d.trap||d.carry||inc.pm.cc!==undefined||inc.pm.trap>0)?'現場有人躺著，已經有人在幫忙了':'現場還沒有人來處理，你們派人了嗎')],
    ['路過民眾','我在對面，剛剛聽到很大的聲音，你們快一點']];
   const m=Math.min(extra.length,inc.calls>=6?3:inc.calls>=4?2:1);
   for(let i2=0;i2<m;i2++)
@@ -1912,8 +1917,8 @@ const SC={
   '{u} 回報室內溫度偏高，改採間接攻擊。'],
  '火勢控制':['{u} 回報火勢已受控制，未再向外延燒。','{s}分隊完成內部殘火壓制，準備開始排煙。'],
  '殘火處理':['{u} 殘火處理中，翻搜夾層與天花板。','{u} 現場交由警方保全火場，起火原因待調查。'],
- '水線佈設':['{u} 佔水成功，已接消防栓出水。','{u} 完成二線佈設，水壓正常。'],
- '射水控制':['{u} 兩線出水，火勢往下壓制中。'],
+ '水線佈設':['{u} 佔水成功，已接消防栓出水。','{u} 完成 {L} 線佈設，水壓正常。'],
+ '射水控制':['{u} {L} 線出水，火勢往下壓制中。'],
  '接觸患者':['{u} 已接觸患者，開始初步印象評估。','{u} 現場安全確認完畢，接觸患者中。',
   '{u} 與家屬確認病史與用藥，患者配合度良好。','{u} 已建立初步對話，情緒逐漸穩定。',
   '{s}分隊抵達，警方已完成現場管制，可安全接觸。'],
@@ -2142,7 +2147,49 @@ const AMB={
  其他:['現場已警戒，民眾請退到安全距離。','狀況回報指揮中心，持續處理中。',
   '現場照片已上傳救災群組。','已通知相關單位到場處理。',
   '人員清點完成，無人失聯。']};
-const say=(t,u)=>t.replace(/\{u\}/g,u.cs).replace(/\{s\}/g,SPOT[u.si].n);
+const say=(t,u,inc)=>t.replace(/\{u\}/g,u.cs).replace(/\{s\}/g,SPOT[u.si].n).replace(/\{L\}/g,inc?effLines(inc):1);
+// 通聯文字與現場狀態對照：句子提到的事實在遊戲狀態中不成立時，就不播這一句
+const OUTK={carfire:1,truckfire:1,grassfire:1,tentfire:1,ship:1,aircraft:1,airlanding:1,elec:1,forest:1,cargo:1,evfire:1,wastefire:1,tunnel:1};
+const BEHAVK={psych:1,crisis:1,selfharm:1,suicall:1,hypervent:1};
+const FITS=[
+ [/警方已|由警方|警力|警方全程|警方陪同|警方會合|警方掩護/,s=>s.pol],
+ [/已通報台電|已聯繫台電|已請電力公司/,s=>s.inc.pow>=1],
+ [/斷電完成|到場確認斷電/,s=>s.inc.pow===2],
+ [/佔水成功|已接消防栓|水源接妥|消防栓水壓下降/,s=>!!s.d.w&&!!s.inc.hooked&&!s.inc.tender&&!s.inc.dry],
+ [/水庫車接力/,s=>!!s.inc.tender],
+ [/\{L\}/,s=>s.eff>=1],
+ [/第三線/,s=>s.eff>=3],
+ [/第二線/,s=>!s.d.w||(s.inc.lines||0)<2],
+ [/靜脈|給藥|線上醫囑|十二導程|線上醫療指導|高級處置/,s=>s.als],
+ [/現場無 EMT-P|請求 ALS|ALS 救護車/,s=>!s.als],
+ [/指揮車/,s=>!s.cmd],
+ [/急產|分娩|產婦/,s=>s.inc.k==='birth'],
+ [/約束|情緒/,s=>s.restr],
+ [/未發現受困者|無人失聯/,s=>!s.trap],
+ [/發現一名受困者|發現一名長輩/,s=>s.trap],
+ [/透天/,s=>s.inc.k==='mfire'],
+ [/窗戶|鄰棟|隔棟|這一棟|屋主|屋內|入室|住戶|巷口|二樓|三樓|四樓|室內|鐵門/,s=>!s.out],
+ [/拒絕送醫|婉拒送醫/,s=>!s.tx],
+ [/數值穩定|生命徵象穩定|意識清楚|意識無惡化|配合度良好|呼吸道通暢|無立即致命/,s=>!s.inc.pm.ohca&&!s.inc.pm.dead],
+ [/醫院|到院|後送|急診/,s=>!s.inc.pm.dead],
+ [/車輛穩固|拖吊/,s=>!!(s.d.trap||s.d.road||s.inc.z==='hiway')],
+ [/救護車備便/,s=>s.amb],
+ [/編成搶救、水源/,s=>!!s.d.w]];
+function fitState(inc){
+ const d=KIND[inc.k];let als=false,amb=false,cmd=false;
+ for(const u of onScene(inc)){
+  if(u.code==='41')cmd=true;
+  if(u.code==='91'){if(u.st==='work')amb=true;if(u.tp&&(u.st==='work'||u.st==='tx'))als=true}}
+ return{inc,d,als,amb,cmd,pol:inc.pol===2||!!d.police||!!d.tac,trap:inc.pm.trap>0,eff:effLines(inc),
+  out:!!(OUTK[inc.k]||d.wild||inc.z==='hiway'||inc.z==='forest'),
+  tx:inc.phs.some(p=>/車內照護|到院交接|後送|送醫/.test(p)),
+  restr:!!BEHAVK[inc.k]||inc.need.some(g=>g.item==='約束器材')}}
+function pickFit(list,inc,txt){
+ const s=fitState(inc);
+ const ok=list.filter(e=>{const t=txt?txt(e):e;
+  for(const r of FITS)if(r[0].test(t)&&!r[1](s))return false;
+  return true});
+ return ok.length?pick(ok):null}
 function spawnDuty(){
  const t=pick(DUTY),cand=[];
  for(let x=2;x<N-2;x++)for(let y=2;y<N-2;y++){const k=K(x,y);
@@ -2200,6 +2247,12 @@ function hydShare(inc){
  let n=1;
  for(const o of S.inc)if(o!==inc&&o.hy&&o.hy[0]===inc.hy[0]&&o.hy[1]===inc.hy[1]&&o.hooked)n++;
  return 1/n}
+// 實際供水量（L/s）：模擬與面板共用同一個算式
+function inflowOf(inc){
+ if(!inc.hooked)return 0;
+ let tend=0;for(const u of onScene(inc))if(u.st==='work'&&u.code==='61')tend++;
+ const share=inc.tender?1:hydShare(inc),loss=inc.tender?1:Math.max(.55,1-(inc.hd||0)*.018);
+ return Math.round((inc.hin||INFLOW)*share*loss+Math.min(300,tend*150))}
 function waterOK(inc){
  if(!KIND[inc.k].w)return true;
  if(inc.hooked)return true;
@@ -2223,7 +2276,7 @@ function reveal(inc,u){
  radio(inc,u.cs,'到達現場，'+(d.fire?
   '回報'+['','一級','二級','三級','四級'][inc.pm.lvl]+'火警，火載量 '+inc.pm.load+'、燃燒面積約 '+inc.pm.area+' ㎡、受困 '+inc.pm.trap+
   ' 人、結構穩定度 '+inc.pm.stab:
-  d.med?'病患'+(inc.pm.als?'意識不清、呼吸窘迫，需高級救護處置':'意識清楚、生命徵象穩定'):'現場為'+(inc.nm||d.n))+
+  d.med?'病患'+(inc.pm.ohca?'無呼吸心跳，立即開始急救':inc.pm.als?'意識不清、呼吸窘迫，需高級救護處置':'意識清楚、生命徵象穩定'):'現場為'+(inc.nm||d.n))+
   '，需求 '+inc.need.slice(0,4).map(g=>g.l+' '+g.n).join('、')+(inc.need.length>4?' 等 '+inc.need.length+' 項器材':'')+'。');
  if(d.fire&&inc.pm.lvl<3&&Math.random()<.3){
   inc.pm.lvl++;inc.pm.area+=60;
@@ -2237,7 +2290,7 @@ function reveal(inc,u){
 function fireEvent(inc,u){
  const list=EV[inc.phs[inc.ph]];
  if(!list||inc.req)return;
- const e=pick(list);
+ const e=pickFit(list,inc,x=>x.s);if(!e)return;
  inc.req={t:e.t,s:e.s,c:e.c,als:e.als||0,cs:u?u.cs:'現場'};
  inc.reqT=22;
  radio(inc,u?u.cs:'現場',e.s)}
@@ -2265,9 +2318,9 @@ function answer(inc,yes,timeout){
    else{g=G(codes,1,LB[r.c],r.als);inc.need.push(g)}}
   inc.pay=Math.round(inc.pay*1.08);
   const u2=nearest(inc,codes,r.als);
-  if(u2)send(inc,u2,r.c==='91'?(r.als?'ALS':'BLS'):null);
-  else msg='無可調度的'+LB[r.c]+'，請自行指派';
-  radio(inc,'受理','同意增派'+LB[r.c]+'，已下達出動。')}
+  const sent=u2&&send(inc,u2,r.c==='91'?(r.als?'ALS':'BLS'):null);
+  if(!sent&&!u2)msg='無可調度的'+LB[r.c]+'，請自行指派';
+  radio(inc,'受理',sent?'同意增派'+LB[r.c]+'，已下達出動。':'同意增派'+LB[r.c]+'，但目前無車可派，待調度後補派。')}
  else if(r.gate){radio(inc,r.cs,'了解，現場先行處置，持續等待器材到場。')}
  else{inc.slow=Math.max(.62,(inc.slow||1)*.85);
   radio(inc,r.cs,'了解，現場以現有人力續行，進度會慢一些。')}}
@@ -2340,6 +2393,14 @@ function auto(inc){
   const g=inc.need[idx],u=nearest(inc,g.c,g.als);
   if(!u)break;
   send(inc,u,g.c.indexOf('91')>=0?(g.als?'ALS':'BLS'):null)}}
+// 後送醫院：取車程最短者；面板顯示與實際後送共用
+function hospFor(x,y){
+ let b=null,bd=INF;
+ for(const h of HOSP){const dd=baseF(h,0).D[K(x,y)];if(dd<bd){bd=dd;b=h}}
+ return{h:b,d:bd}}
+function toHosp(u){
+ const r=hospFor(Math.round(u.x),Math.round(u.y));
+ return{h:r.h,p:r.h?chase(baseF(r.h,0),u):null}}
 function home(u){
  unpark(u);u.lead=false;
  const p=chase(baseF(SPOT[u.si],modeOf(u.code)),u);
@@ -2349,9 +2410,7 @@ function release(inc,ok){
   if(u.st==='tx'||u.st==='give'||u.st==='clean'){u.inc=null;return}
   u.inc=null;unpark(u);
   if(ok&&u.code==='91'&&KIND[inc.k].carry&&!inc.pm.dead){
-   let bp=null;
-   for(const h of HOSP){const p=chase(baseF(h,0),u);if(p&&(!bp||p.length<bp.length))bp=p}
-   u.path=bp||[];u.st='hosp';u.turn=0}
+   u.path=toHosp(u).p||[];u.st='hosp';u.turn=0}
   else home(u)})}
 function parkArms(inc){
  if(inc.pk)return inc.pk;
@@ -2411,7 +2470,8 @@ function arrive(u){
   const needALS=inc.need.some(g=>g.als);
   if(u.mode==='ALS')radio(inc,u.cs,'三人編組，高級救護技術員在車，可執行高級處置。');
   else if(u.tp)radio(inc,u.cs,'二人編組，車上剛好有高級救護技術員。');
-  else radio(inc,u.cs,'二人編組，無高級救護技術員'+(needALS?'，無法執行高級處置，請求 ALS 支援。':'。'))}}
+  else{const alsOn=onScene(inc).some(v=>v!==u&&v.code==='91'&&v.tp&&(v.st==='work'||v.st==='tx'));
+   radio(inc,u.cs,'二人編組，無高級救護技術員'+(!needALS?'。':alsOn?'，高級處置由現場 ALS 組負責。':'，無法執行高級處置，請求 ALS 支援。'))}}}
  function step(dt){
  if(S.over)return;
  reindex();
@@ -2502,8 +2562,7 @@ function arrive(u){
       radio(inc,first.cs,'已完成佔水，水線加壓完成，正常出水。')}}}
    if(!ready&&!inc.hooked)inc.hook=0;
    const share=inc.tender?1:hydShare(inc);
-   const loss=inc.tender?1:Math.max(.55,1-(inc.hd||0)*.018);
-   const inflow=inc.hooked?Math.round(((inc.hin||INFLOW)*share*loss)+Math.min(300,tend*150)):0;
+   const inflow=inflowOf(inc);
    if(share<1&&!inc.fl.shr){inc.fl.shr=1;
     if(first)radio(inc,first.cs,'同一消防栓另有案件使用，水量分流，出水壓力下降。')}
    if(first){
@@ -2591,7 +2650,7 @@ function arrive(u){
    if(np>inc.ph){inc.ph=np;
     const nm=inc.phs[np];
     radio(inc,first?first.cs:'現場','進入「'+nm+'」階段。');
-    if(first&&SC[nm])inc.log.push({w:'場',s:say(pick(SC[nm]),first),t:S.t-inc.t0});
+    if(first&&SC[nm]){const tx=pickFit(SC[nm],inc);if(tx)inc.log.push({w:'場',s:say(tx,first,inc),t:S.t-inc.t0})}
     if(inc.pm&&inc.pm.cc!==undefined&&first){
      const M=MED[inc.pm.cc];
      if(nm==='初步評估'&&!inc.pm.vs1){
@@ -2609,8 +2668,7 @@ function arrive(u){
        '、SpO2 '+(inc.pm.vs2.sp||'—')+'%，途中持續監測。');
       for(const u of onScene(inc).slice()){
        if(u.code!=='91'||u.st!=='work')continue;
-       let bp2=null,hb2=null;
-       for(const h of HOSP){const pth=chase(baseF(h,0),u);if(pth&&(!bp2||pth.length<bp2.length)){bp2=pth;hb2=h}}
+       const th=toHosp(u),bp2=th.p,hb2=th.h;
        if(bp2){u.path=bp2;u.st='tx';u.txT=0;unpark(u);
         radio(inc,u.cs,'病患已上車，離開現場前往'+(hb2?hb2.n:'醫院')+'。')}}}}
     if(Math.random()<.22)fireEvent(inc,first)}}
@@ -2619,8 +2677,8 @@ function arrive(u){
     const crew=onScene(inc).filter(u=>u.st==='work'||u.st==='tx');
     if(crew.length&&Math.random()<.82){
      const boss=crew.filter(u=>u.code==='41');
-     if(boss.length&&Math.random()<.4){const u2=pick(boss);radio(inc,u2.cs,say(pick(CMD),u2))}
-     else{const u2=pick(crew),pool=AMB[Kd.cls]||AMB['其他'];radio(inc,u2.cs,say(pick(pool),u2))}}}}
+     if(boss.length&&Math.random()<.4){const u2=pick(boss),tx=pickFit(CMD,inc);if(tx)radio(inc,u2.cs,say(tx,u2,inc))}
+     else{const u2=pick(crew),tx=pickFit(AMB[Kd.cls]||AMB['其他'],inc);if(tx)radio(inc,u2.cs,say(tx,u2,inc))}}}}
   const blsGo=got===0&&inc.pm.cc!==undefined&&onScene(inc).some(u=>u.code==='91'&&(u.st==='work'||u.st==='tx'));
   if(!((got>0||blsGo)&&wo&&!held&&flow>0))inc.left-=dt*(first?(gm?.35:held?.75:.5):1);
   if(inc.work>=inc.dur&&!inc.wrap&&first&&inc.phs[inc.phs.length-1]!=='到院交接'){
@@ -2628,12 +2686,13 @@ function arrive(u){
    radio(inc,first.cs,'任務目標達成，開始收整裝備與人員清點，預計 '+Math.round(inc.wrap)+' 秒。')}
   if(inc.wrap>0){inc.wrap-=dt;if(inc.wrap>0)continue}
   if(inc.work>=inc.dur){
+   let bonus=0,tail='';
    if(inc.pm.ohca){
-    if(inc.dai==='cpr'){S.money+=500;S.score+=80;S.rep=Math.min(100,S.rep+2)}
-    else{S.rep-=3;msg='OHCA 未實施 DA-CPR，預後不佳（評鑑 -3）'}}
-   if(Kd.hoax&&inc.pm.mal&&inc.pol===2){S.money+=600;S.score+=60}
+    if(inc.dai==='cpr'){bonus+=500;S.money+=500;S.score+=80;S.rep=Math.min(100,S.rep+2)}
+    else{S.rep-=3;tail='；OHCA 未實施 DA-CPR，預後不佳（評鑑 -3）'}}
+   if(Kd.hoax&&inc.pm.mal&&inc.pol===2){bonus+=600;S.money+=600;S.score+=60}
    S.money+=inc.pay;S.score+=Math.round(inc.pay/10);S.solved++;S.rep=Math.min(100,S.rep+1);
-   msg='結案：'+(inc.nm||Kd.n)+' '+inc.addr+'（+$'+inc.pay+'）';
+   msg='結案：'+(inc.nm||Kd.n)+' '+inc.addr+'（+$'+(inc.pay+bonus)+'）'+tail;
    release(inc,1);S.inc.splice(i,1);if(sel===inc.id)sel=null;continue}
   if(inc.left<=0){
    S.rep-=inc.pen;msg='逾時：'+(inc.nm||Kd.n)+' '+inc.addr+'（評鑑 -'+inc.pen+'）';
@@ -2646,9 +2705,9 @@ function clamp(){
  const c=cell(),mx=c*N-cw,my=c*N-ch;
  cam.x=mx<0?mx/2:Math.max(0,Math.min(mx,cam.x));
  cam.y=my<0?my/2:Math.max(0,Math.min(my,cam.y))}
-function fit(){zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
+function fit(){zoomT=performance.now();zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
-let bgScale=0;
+let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
 function gridLines(c,x0,x1,y0,y1){
  if(c>8){ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
@@ -2690,8 +2749,8 @@ function draw(){
  ctx.save();ctx.translate(-cam.x,-cam.y);
  const x0=Math.max(0,Math.floor(cam.x/c)),x1=Math.min(N-1,Math.ceil((cam.x+cw)/c));
  const y0=Math.max(0,Math.floor(cam.y/c)),y1=Math.min(N-1,Math.ceil((cam.y+ch)/c));
- if(bgScale!==c&&!bakeBG())bgScale=0;
- if(bgScale===c)ctx.drawImage(bgc,0,0,N*c,N*c);
+ if(bgScale!==c&&(!bgScale||performance.now()-zoomT>140)&&!bakeBG())bgScale=0;
+ if(bgScale)ctx.drawImage(bgc,0,0,N*c,N*c);
  else{drawTerrain(c,x0,x1,y0,y1);gridLines(c,x0,x1,y0,y1)}
  ctx.fillStyle=C.hyd;
  for(const h of S.hyd){
@@ -3177,7 +3236,7 @@ function drawScene(){
   if(cd==='91')ambV.push(u);
   if(cd==='71'||cd==='搜')rescV.push(u);
   if(cd==='41')cmdV.push(u)}
- const safeNow=emsSafe(inc),effNow=d.w?effLines(inc):0,wOK=waterOK(inc);
+ const safeNow=emsSafe(inc),effNow=d.w?Math.max(0,effLines(inc)-(inc.burst>0?1:0)):0,wOK=waterOK(inc);
  const ct=Math.max(12,(isSwapped?46:Math.min(scW/11,scH/7))*scZoom);
  const HW=Math.max(2,Math.ceil(scW/ct/2)),HH=Math.max(1,Math.ceil(scH/ct/2));
  const txU=crew.filter(u=>u.st==='tx'||u.st==='give'||u.st==='clean')[0];
@@ -4260,8 +4319,8 @@ function detailHTML(){
   const pt=pmText(inc);
   if(pt.length){h+='<div class="kv">';pt.forEach(t=>{h+='<div><b>'+t[0]+'</b>'+t[1]+'</div>'});h+='</div>'}
   if(d.w){
-   const wo=waterOK(inc),eff=effLines(inc),tp=tankPool(inc);
-   const use=eff*LPS,inflow=wo?INFLOW:0,net=inflow-use;
+   const wo=waterOK(inc),eff=Math.max(0,effLines(inc)-(inc.burst>0?1:0)),tp=tankPool(inc);
+   const use=eff*LPS,inflow=inflowOf(inc),net=inflow-use;
    const crew=onScene(inc).filter(u=>u.st==='work'&&CODE[u.code].cap);
    const tender=crew.filter(u=>u.code==='61'),pumps=crew.filter(u=>u.code!=='61');
    const sup=inc.tender?tender:pumps.slice(0,1+inc.relay);
@@ -4300,8 +4359,7 @@ function detailHTML(){
     const M=MED[inc.pm.cc],v1=inc.pm.vs1,v2=inc.pm.vs2;
     const als=inc.pm.als||inc.need.some(gg=>gg.als);
     const hasALS=onScene(inc).some(u=>(u.st==='work'||u.st==='tx')&&u.code==='91'&&u.tp);
-    let hb=null,hd3=1e9;
-    for(const h of HOSP){const dd=Math.abs(h.p[0]-inc.x)+Math.abs(h.p[1]-inc.y);if(dd<hd3){hd3=dd;hb=h}}
+    const hf=hospFor(inc.ax,inc.ay),hb=hf.h;
     h+=fh('vital','生命徵象',1);
     const row=(v,lb)=>v?('<div class="row" style="padding:2px 0"><span class="mono" style="color:var(--fg2)">'+lb+
      '</span><span class="mono">BT '+v.bt+'　HR '+(v.hr||'—')+'　BP '+v.bp+'　SpO₂ '+(v.sp||'—')+
@@ -4311,7 +4369,7 @@ function detailHTML(){
     h+='<div class="kv" style="grid-template-columns:repeat(1,minmax(0,1fr))">'+
      '<div><b>主訴</b>'+M.n+'</div><div><b>主要發現</b>'+M.f+'</div><div><b>主懷疑</b>'+M.imp+'</div></div>';
     h+='<div class="row" style="padding:3px 0"><span class="sub">後送 '+(hb?hb.n:'—')+
-     '　預估車程 '+Math.round(hd3/1.6)+' 秒</span><span class="tag" style="background:'+
+     '　預估車程 '+(hb?Math.round(hf.d/CODE['91'].s):'—')+' 秒</span><span class="tag" style="background:'+
      (als&&!hasALS?'var(--red)':'var(--grn)')+'">'+(als?(hasALS?'ALS 已到場':'待 ALS'):'BLS 處置')+'</span></div>';
     if(inc.pm.ohca)h+='<div class="sub">DA-CPR：'+(inc.dai==='cpr'?'<span style="color:var(--grn)">線上指導中</span>':
      '<span style="color:var(--red)">未實施</span>')+'</div>';h+='</div>'}
@@ -4320,7 +4378,7 @@ function detailHTML(){
     const ritOK=onScene(inc).some(u=>u.st==='work'&&(u.code==='71'||u.code==='搜'));
     h+='<div class="hd mt">救助作業</div>';
     h+='<div class="kv"><div><b>受困</b>'+trap0+' 人</div><div><b>已救出</b>'+saved+' 人</div>'+
-     '<div><b>現場人力</b>'+onScene(inc).filter(u=>u.st==='work').length*2+' 人</div>'+
+     '<div><b>現場人力</b>'+onScene(inc).reduce((a,u)=>a+(u.st==='work'?(u.crew||2):0),0)+' 人</div>'+
      '<div><b>備援組</b>'+(ritOK?'已編成':'未編成')+'</div></div>'}}
   h+=fh('eqneed','現場器材需求 '+doneN+'/'+inc.need.length+' 項',1);
   const seenK={};
@@ -4451,6 +4509,32 @@ function shopHTML(){
   SPOT[S.nst].n+'分隊 · $12000（附編 11 三輛、91 一輛、41 一輛）</button>';
  return h}
 const $=id=>document.getElementById(id);
+// 就地更新 DOM：只改動有變化的節點，避免整塊 innerHTML 重建造成的重排與點擊落空
+const _tpl=document.createElement('template');
+function sameKey(a,b){ // data-* 不同視為不同元件，整個換掉，避免點擊落到別的按鈕
+ const x=a.dataset,y=b.dataset;
+ for(const k in y)if(x[k]!==y[k])return false;
+ for(const k in x)if(!(k in y))return false;
+ return true}
+function patchEl(a,b){
+ const an=a.attributes,bn=b.attributes;
+ for(let i=an.length-1;i>=0;i--)if(!b.hasAttribute(an[i].name))a.removeAttribute(an[i].name);
+ for(let i=0;i<bn.length;i++){const t=bn[i];if(a.getAttribute(t.name)!==t.value)a.setAttribute(t.name,t.value)}
+ if(a.tagName==='INPUT'){const v=b.getAttribute('value')||'';if(a.value!==v)a.value=v}
+ patchKids(a,b)}
+function patchKids(a,b){
+ let x=a.firstChild,y=b.firstChild;
+ while(y){
+  const ny=y.nextSibling;
+  if(!x)a.appendChild(y);
+  else{const nx=x.nextSibling;
+   if(x.nodeType!==y.nodeType||x.nodeName!==y.nodeName||(x.nodeType===1&&!sameKey(x,y)))a.replaceChild(y,x);
+   else if(x.nodeType===1)patchEl(x,y);
+   else if(x.nodeValue!==y.nodeValue)x.nodeValue=y.nodeValue;
+   x=nx}
+  y=ny}
+ while(x){const nx=x.nextSibling;a.removeChild(x);x=nx}}
+function morph(el,html){_tpl.innerHTML=html;patchKids(el,_tpl.content)}
 let lh='',rh='',dh='',sh='',hud='';
 let leftOpen=true;
 function ui(){
@@ -4462,20 +4546,18 @@ function ui(){
   $('hScore').textContent=S.score;
   let fr=0;for(let i=0;i<S.nst;i++)fr+=S.ix.idle[i];
   $('hIdle').textContent=fr+'/'+S.units.length}
- const a=leftHTML();if(a!==lh){lh=a;$('left').innerHTML=a}
- const b=callsHTML();if(b!==rh){rh=b;$('calls').innerHTML=b}
+ const a=leftHTML();if(a!==lh){lh=a;morph($('left'),a)}
+ const b=callsHTML();if(b!==rh){rh=b;morph($('calls'),b)}
  if(!(document.activeElement&&document.activeElement.id==='note')){
   const c=detailHTML();
   if(c!==dh){
    const lb=$('logbox');
    const follow=!lb||lb.scrollTop+lb.clientHeight>=lb.scrollHeight-6;
-   const prev=lb?lb.scrollTop:0,dsc=$('detail').scrollTop;
-   dh=c;$('detail').innerHTML=c;
+   dh=c;morph($('detail'),c);
    const nb=$('logbox');
-   if(nb)nb.scrollTop=follow?nb.scrollHeight:prev;
-   $('detail').scrollTop=dsc}}
+   if(nb&&follow)nb.scrollTop=nb.scrollHeight}}
  const sp=$('shop');
- if(shopOn){const e=shopHTML();if(e!==sh){sh=e;sp.innerHTML=e}sp.classList.add('open')}
+ if(shopOn){const e=shopHTML();if(e!==sh){sh=e;morph(sp,e)}sp.classList.add('open')}
  else if(sh){sp.classList.remove('open');sh=''}}
 function center(o){cam.x=(o.x+.5)*cell()-cw/2;cam.y=(o.y+.5)*cell()-ch/2;clamp()}
 function dirty(){lh=rh=dh=sh=''}
@@ -4593,7 +4675,7 @@ $('btnFs').onclick=()=>{
  else document.documentElement.requestFullscreen().catch(()=>{})};
 function setZoom(z){
  const mx=cam.x+cw/2,my=cam.y+ch/2,old=cell();
- zoom=Math.max(.45,Math.min(6,z));
+ zoom=Math.max(.45,Math.min(6,z));zoomT=performance.now();
  cam.x=mx/old*cell()-cw/2;cam.y=my/old*cell()-ch/2;clamp()}
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);
