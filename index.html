@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>高雄市消防局 · 勤務指揮中心 (Copy)</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+<header>
+ <span class="brand">高雄市消防局<span>勤務指揮中心 CAD</span></span>
+ <span class="chip"><i>日</i><b id="hDay">1</b><i>時</i><b id="hClock">00:00</b></span>
+ <span class="chip"><i>經費</i><b id="hMoney">$0</b></span>
+ <span class="chip"><i>評鑑</i><b id="hRep">100</b></span>
+ <span class="chip"><i>分數</i><b id="hScore">0</b></span>
+ <span class="chip"><i>待命</i><b id="hIdle">0</b></span>
+ <span class="sp"></span>
+ <button id="btnPause">暫停</button>
+ <button id="btnShop">採購</button>
+ <button id="btnFs">全螢幕</button>
+</header>
+<main>
+ <aside id="left"></aside>
+ <section id="mapwrap">
+  <canvas id="cv"></canvas>
+  <div id="zc"><button id="zIn" aria-label="放大">＋</button><button id="zOut" aria-label="縮小">－</button><button id="zFit" aria-label="全圖" style="font-size:11px">全圖</button><button id="zSwap" aria-label="與現場畫面交換位置" title="與現場畫面交換位置（大地圖縮到右側，現場畫面放到中央）">⇄</button></div>
+  <div id="legend">
+   <div><i style="background:#e2564f"></i>火警　<i style="background:#5dcaa5"></i>救護　<i style="background:#e9a13b"></i>救助　<i style="background:#8d8a81"></i>未到場</div>
+   <div><i style="background:#7db3e8"></i>消防栓　<i style="background:#a8431f"></i>分隊　<i style="background:#1a6bb8"></i>醫院</div>
+   <div><i style="background:#0e2436"></i>水域（艇可航行）　<i style="background:#202836"></i>港區　<i style="background:#212327"></i>機場　<i style="background:#514c43"></i>國道　<i style="background:#31322a"></i>山區產業道路，大型車禁入</div>
+  </div>
+  <div id="shop"></div>
+ </section>
+ <div id="right">
+  <div id="calls"></div>
+  <div id="scenewrap" style="display:none"><canvas id="sc"></canvas><div id="szc"><button id="sOut" aria-label="縮小現場">－</button><button id="sFit" aria-label="還原現場大小" title="還原預設大小" style="font-size:11px">1:1</button><button id="sIn" aria-label="放大現場">＋</button></div></div>
+  <div id="detail"></div>
+ </div>
+</main>
+</div>
+<!-- 一般 script（非 module），雙擊 index.html 即可執行；各檔共用全域範圍，載入順序不可更動 -->
+<script src="js/config.js"></script>
+<script src="js/kinds.js"></script>
+<script src="js/protocols.js"></script>
+<script src="js/world.js"></script>
+<script src="js/incidents.js"></script>
+<script src="js/radio.js"></script>
+<script src="js/dispatch.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/map.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
