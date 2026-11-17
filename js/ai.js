@@ -1,41 +1,78 @@
-// AI 通話：由 Claude 扮演報案人即時回答受理員；連不上或出錯時退回 incidents.js 的腳本對話（備援）
+// AI 通話：由 AI（Anthropic Claude 或 Google Gemini）扮演報案人即時回答受理員；連不上或出錯時退回 incidents.js 的腳本對話（備援）
 'use strict';
 const AI_STORE='kcfd.ai';
 const AI_SLOW=2.5; // AI 模式下案件進線間隔的倍率：受理員要打字問話，案件來得慢一些
 const AI_MODELS=[['claude-opus-5-5','Claude Opus 5.5（預設）'],['claude-sonnet-5-5','Claude Sonnet 5.5'],
  ['claude-haiku-5-5','Claude Haiku 5.5（最快、最省）'],['claude-fable-5-2','Claude Fable 5.2']];
-const AI={on:false,key:'',model:AI_MODELS[0][0],fails:0,status:'',testing:false,open:false};
+// 供應商：各自的金鑰、模型與 API 主機
+const AI_PROV={anthropic:{n:'Anthropic Claude',host:'api.anthropic.com',ph:'sk-ant-…',def:AI_MODELS[0][0]},
+ gemini:{n:'Google Gemini',host:'generativelanguage.googleapis.com',ph:'AIza…',def:'gemini-2.5-flash'}};
+const AI={on:false,provider:'anthropic',keys:{anthropic:'',gemini:''},models:{anthropic:AI_PROV.anthropic.def,gemini:AI_PROV.gemini.def},
+ gmodels:[],fails:0,status:'',testing:false,open:false};
 (function(){
  try{const o=JSON.parse(localStorage.getItem(AI_STORE)||'{}');
-  if(typeof o.key==='string')AI.key=o.key;
-  if(AI_MODELS.some(m=>m[0]===o.model))AI.model=o.model;
-  AI.on=!!(o.on&&AI.key)}catch(e){}})();
-function aiSave(){try{localStorage.setItem(AI_STORE,JSON.stringify({on:AI.on,key:AI.key,model:AI.model}))}catch(e){}}
-const aiActive=()=>AI.on&&!!AI.key;
+  if(typeof o.key==='string')AI.keys.anthropic=o.key; // 舊版只有單一金鑰
+  if(AI_MODELS.some(m=>m[0]===o.model))AI.models.anthropic=o.model;
+  if(o.keys)for(const k in AI.keys)if(typeof o.keys[k]==='string')AI.keys[k]=o.keys[k];
+  if(o.models){if(AI_MODELS.some(m=>m[0]===o.models.anthropic))AI.models.anthropic=o.models.anthropic;
+   if(typeof o.models.gemini==='string'&&o.models.gemini)AI.models.gemini=o.models.gemini}
+  if(AI_PROV[o.provider])AI.provider=o.provider;
+  AI.on=!!(o.on&&AI.keys[AI.provider])}catch(e){}})();
+function aiSave(){try{localStorage.setItem(AI_STORE,JSON.stringify({on:AI.on,provider:AI.provider,keys:AI.keys,models:AI.models}))}catch(e){}}
+const aiKey=()=>AI.keys[AI.provider];
+const aiActive=()=>AI.on&&!!aiKey();
 // 這通電話還能不能繼續問：尚未轉備援、未結束、消防人員還沒到場
 const aiLive=inc=>!!inc.ai&&!inc.ai.fb&&!inc.ai.done&&!inc.rev;
 
-// 直接從瀏覽器呼叫 Messages API。不載入任何第三方程式庫，金鑰只會送到 api.anthropic.com。
-async function aiRequest(system,messages){
- const headers={'content-type':'application/json','x-api-key':AI.key,'anthropic-version':'2026-10-21',
-  'anthropic-dangerous-direct-browser-access':'true'};
- const body={model:AI.model,max_tokens:2048,system,messages,output_config:{effort:'low'}};
- // 安全分類器拒答時由伺服器改用其他模型重跑（Haiku 不支援此參數）
- if(AI.model!=='claude-haiku-5-5'){headers['anthropic-beta']='server-side-fallback-2026-07-01';body.fallbacks='default'}
+// 直接從瀏覽器呼叫供應商的 API。不載入任何第三方程式庫，金鑰只會送到該供應商的主機。
+async function aiFetch(url,opt){
  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),30000);
- let res;
- try{res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal})}
+ try{return await fetch(url,Object.assign({signal:ctl.signal},opt))}
  catch(e){throw new Error(e&&e.name==='AbortError'?'連線逾時':'無法連線到 API')}
- finally{clearTimeout(timer)}
- if(!res.ok){
-  let m='';try{m=(await res.json()).error.message}catch(e){}
-  const err=new Error(res.status===401?'API 金鑰無效':res.status===429?'已達用量或頻率上限':res.status>=500?'API 暫時無法服務':(m||'HTTP '+res.status));
-  err.status=res.status;throw err}
+ finally{clearTimeout(timer)}}
+async function aiHttpError(res){
+ let m='';try{m=(await res.json()).error.message||''}catch(e){}
+ const badKey=res.status===401||/API key/i.test(m);
+ const err=new Error(badKey?'API 金鑰無效':res.status===403?'金鑰沒有使用權限':res.status===404?'找不到這個模型':
+  res.status===429?'已達用量或頻率上限':res.status>=500?'API 暫時無法服務':(m||'HTTP '+res.status));
+ err.status=badKey?401:res.status;return err}
+function aiRequest(system,messages){return AI.provider==='gemini'?aiGemini(system,messages):aiClaude(system,messages)}
+async function aiClaude(system,messages){
+ const model=AI.models.anthropic;
+ const headers={'content-type':'application/json','x-api-key':AI.keys.anthropic,'anthropic-version':'2026-10-21',
+  'anthropic-dangerous-direct-browser-access':'true'};
+ const body={model,max_tokens:2048,system,messages,output_config:{effort:'low'}};
+ // 安全分類器拒答時由伺服器改用其他模型重跑（Haiku 不支援此參數）
+ if(model!=='claude-haiku-5-5'){headers['anthropic-beta']='server-side-fallback-2026-07-01';body.fallbacks='default'}
+ const res=await aiFetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify(body)});
+ if(!res.ok)throw await aiHttpError(res);
  const data=await res.json();
  if(data.stop_reason==='refusal')throw new Error('模型拒絕回應這段對話');
  const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
  if(!text)throw new Error('模型沒有回應內容');
  return text}
+const AI_GURL='https://generativelanguage.googleapis.com/v1beta/';
+async function aiGemini(system,messages){
+ const body={systemInstruction:{parts:[{text:system}]},
+  contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+  generationConfig:{maxOutputTokens:2048}};
+ const res=await aiFetch(AI_GURL+'models/'+encodeURIComponent(AI.models.gemini)+':generateContent',{method:'POST',
+  headers:{'content-type':'application/json','x-goog-api-key':AI.keys.gemini},body:JSON.stringify(body)});
+ if(!res.ok)throw await aiHttpError(res);
+ const data=await res.json(),c=(data.candidates||[])[0];
+ // 內部思考段落（thought）不算報案人說的話
+ const text=c&&c.content&&c.content.parts?c.content.parts.filter(x=>x.text&&!x.thought).map(x=>x.text).join('').trim():'';
+ if(!text){
+  if((data.promptFeedback&&data.promptFeedback.blockReason)||(c&&/SAFETY|PROHIBITED|BLOCKLIST|RECITATION|SPII/.test(c.finishReason||'')))throw new Error('模型拒絕回應這段對話');
+  throw new Error('模型沒有回應內容')}
+ return text}
+// 向 Gemini 查詢這把金鑰可用的對話模型，供設定面板的模型欄位提示
+async function aiGeminiModels(){
+ const res=await aiFetch(AI_GURL+'models?pageSize=200',{headers:{'x-goog-api-key':AI.keys.gemini}});
+ if(!res.ok)throw await aiHttpError(res);
+ const data=await res.json();
+ AI.gmodels=(data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).indexOf('generateContent')>=0&&/gemini/.test(m.name))
+  .map(m=>String(m.name).replace(/^models\//,'')).sort()}
 
 // 報案人只知道自己看得到的事：以案件的真實參數加上備援腳本裡報案人的台詞當作依據
 function aiSystem(inc,script){
@@ -122,21 +159,29 @@ function aiPanel(){
  if(!p)return;
  p.classList.toggle('open',AI.open);
  if(!AI.open)return;
+ const P=AI_PROV[AI.provider];
  p.innerHTML='<div class="row" style="padding:0"><span class="hd" style="margin:0">AI 通話設定</span><button data-aiclose="1">關閉</button></div>'+
   '<p>開啟後，新進線的電話由 AI 扮演報案人：你在通聯紀錄下方打字詢問，報案人依案件實況回答。'+
   '原本的腳本對話會保留作為備援，連不上或出錯時自動接手。AI 模式下案件進線間隔拉長為 '+AI_SLOW+' 倍。</p>'+
-  '<label for="aikey">Anthropic API 金鑰</label><input id="aikey" type="password" autocomplete="off" placeholder="sk-ant-…" value="'+esc(AI.key)+'">'+
-  '<label for="aimodel">模型</label><select id="aimodel">'+AI_MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===AI.model?' selected':'')+'>'+m[1]+'</option>').join('')+'</select>'+
+  '<label for="aiprov">AI 供應商</label><select id="aiprov">'+Object.keys(AI_PROV).map(k=>'<option value="'+k+'"'+(k===AI.provider?' selected':'')+'>'+AI_PROV[k].n+'</option>').join('')+'</select>'+
+  '<label for="aikey">'+P.n+' API 金鑰</label><input id="aikey" type="password" autocomplete="off" placeholder="'+P.ph+'" value="'+esc(aiKey())+'">'+
+  '<label for="aimodel">模型</label>'+(AI.provider==='gemini'?
+   '<input id="aimodel" autocomplete="off" list="aimodels" placeholder="'+P.def+'" value="'+esc(AI.models.gemini)+'">'+
+   '<datalist id="aimodels">'+AI.gmodels.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist>'+
+   '<p>可直接輸入模型代號；按「測試連線」會列出這把金鑰可用的模型供選擇。</p>':
+   '<select id="aimodel">'+AI_MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===AI.models.anthropic?' selected':'')+'>'+m[1]+'</option>').join('')+'</select>')+
   '<div class="row" style="justify-content:flex-start;gap:6px;margin-top:10px">'+
   '<button data-aitoggle="1"'+(aiActive()?' class="on"':'')+'>'+(aiActive()?'關閉 AI 通話':'啟用 AI 通話')+'</button>'+
   '<button data-aitest="1"'+(AI.testing?' disabled':'')+'>'+(AI.testing?'測試中…':'測試連線')+'</button>'+
   '<button data-aiclear="1">清除金鑰</button></div>'+
   '<div class="err" style="margin-top:6px;color:'+(AI.status==='連線正常'?'var(--grn)':'var(--red)')+'">'+esc(AI.status)+'</div>'+
-  '<p>金鑰只存在這台瀏覽器的 localStorage，只會送往 api.anthropic.com；每次問答都會依你的帳號用量計費。請勿在公用電腦上儲存金鑰。</p>'}
+  '<p>金鑰只存在這台瀏覽器的 localStorage，只會送往 '+P.host+'；每次問答都會依你在該供應商的帳號用量計費。請勿在公用電腦上儲存金鑰。</p>'}
 function aiReadForm(){
  const k=document.getElementById('aikey'),m=document.getElementById('aimodel');
- if(k)AI.key=k.value.trim();
- if(m&&AI_MODELS.some(x=>x[0]===m.value))AI.model=m.value}
+ if(k)AI.keys[AI.provider]=k.value.trim();
+ if(m){const v=m.value.trim();
+  if(AI.provider==='gemini')AI.models.gemini=v||AI_PROV.gemini.def;
+  else if(AI_MODELS.some(x=>x[0]===v))AI.models.anthropic=v}}
 document.getElementById('btnAI').onclick=()=>{AI.open=!AI.open;aiPanel()};
 document.getElementById('aipanel').addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;
@@ -144,17 +189,23 @@ document.getElementById('aipanel').addEventListener('click',e=>{
  if(D.aiclose){aiReadForm();aiSave();AI.open=false}
  else if(D.aitoggle){aiReadForm();
   if(aiActive())AI.on=false;
-  else if(!AI.key)AI.status='請先輸入 API 金鑰';
+  else if(!aiKey())AI.status='請先輸入 API 金鑰';
   else{AI.on=true;AI.fails=0;AI.status=''}
   aiSave()}
- else if(D.aiclear){AI.key='';AI.on=false;AI.status='';aiSave()}
+ else if(D.aiclear){AI.keys[AI.provider]='';AI.on=false;AI.status='';aiSave()}
  else if(D.aitest){aiReadForm();
-  if(!AI.key)AI.status='請先輸入 API 金鑰';
+  if(!aiKey())AI.status='請先輸入 API 金鑰';
   else{AI.testing=true;AI.status='';
-   aiRequest('這是連線測試。',[{role:'user',content:'請只回覆「OK」兩個字母。'}])
+   (AI.provider==='gemini'?aiGeminiModels():Promise.resolve()).then(()=>aiRequest('這是連線測試。',[{role:'user',content:'請只回覆「OK」兩個字母。'}]))
     .then(()=>{AI.status='連線正常'}).catch(err=>{AI.status='連線失敗：'+err.message})
     .then(()=>{AI.testing=false;aiSave();aiPanel()})}}
  aiPanel()});
+// 切換供應商：先存下目前欄位，再換成另一家的金鑰與模型；未填金鑰則關閉 AI 模式
+document.getElementById('aipanel').addEventListener('change',e=>{
+ if(e.target.id!=='aiprov'||!AI_PROV[e.target.value])return;
+ aiReadForm();AI.provider=e.target.value;AI.status='';AI.fails=0;
+ if(!aiKey())AI.on=false;
+ aiSave();aiPanel()});
 // ---- 通話輸入 ----
 function aiSubmit(){
  const el=document.getElementById('aiq'),inc=S.inc.find(x=>x.id===sel);

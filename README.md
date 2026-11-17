@@ -10,12 +10,13 @@ Claude powered web game
 
 ## AI 通話（選用）
 
-按右上角的「AI 通話」，輸入自己的 Anthropic API 金鑰並啟用後，新進線的電話改由 AI 扮演報案人：
+按右上角的「AI 通話」，選擇供應商（Anthropic Claude 或 Google Gemini）、輸入自己的 API 金鑰並啟用後，新進線的電話改由 AI 扮演報案人：
 在案件的通聯紀錄下方打字詢問，報案人會依該案件的實際狀況回答。
 
 - 原本的腳本對話保留為備援：沒有啟用、連不上、金鑰無效或模型拒答時自動接手。
 - AI 模式下案件進線間隔拉長為 2.5 倍，讓受理員有時間問話。
-- 金鑰只存在瀏覽器的 localStorage，只會送往 `api.anthropic.com`；每次問答依帳號用量計費。
+- 金鑰只存在瀏覽器的 localStorage，只會送往所選供應商的 API 主機（`api.anthropic.com` 或 `generativelanguage.googleapis.com`）；每次問答依該供應商的帳號用量計費。
+- Gemini 的模型代號可自行輸入；按「測試連線」會列出金鑰可用的模型。
 
 ## 檔案結構
 
@@ -32,7 +33,7 @@ Claude powered web game
 | `js/kinds-extra.js` | 追加案類、階段表修正、各區域案件池 POOL |
 | `js/spawn.js` | 案件進線 spawn() |
 | `js/radio.js` | 無線電通聯文字，以及文字與現場狀態的對照規則 |
-| `js/ai.js` | AI 通話：由 Claude 扮演報案人即時回答受理員；連不上或出錯時退回 incidents.js 的腳本對話（備援） |
+| `js/ai.js` | AI 通話：由 AI（Anthropic Claude 或 Google Gemini）扮演報案人即時回答受理員；連不上或出錯時退回 incidents.js 的腳本對話（備援） |
 | `js/dispatch.js` | 派遣：編組比對、水源、出動、停車、到場 |
 | `js/sim.js` | 每幀模擬更新 step()：時間、進線、車輛移動與狀態、公務勤務 |
 | `js/sim-incident.js` | 每幀模擬更新：單一案件的水源、外部單位、器材關卡、進度與結案 |
