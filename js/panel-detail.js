@@ -6,7 +6,8 @@ function detailHTML(){
  if(S.over)return '<div style="text-align:center;padding:32px 0"><div style="font-size:17px">評鑑歸零，指揮權移交</div>'+
   '<div class="sub" style="margin:10px 0">值勤 '+S.day+' 天 · 出勤 '+S.solved+' 件 · '+S.score+' 分</div>'+
   '<button id="rs">重新開始</button></div>';
- const mm=msg?'<div class="note">'+esc(msg)+'</div>':'';
+ // 提示列固定輸出（無訊息時隱藏），避免它出現或消失時把後面的節點整排往後擠、打斷輸入中的欄位
+ const mm='<div class="note"'+(msg?'':' hidden')+'>'+esc(msg)+'</div>';
  if(selU){const u=S.units.find(x=>x.id===selU);if(u)return mm+unitHTML(u)}
  const dy=S.duties.find(x=>x.id===sel);
  if(dy)return dutyDetailHTML(dy,mm);

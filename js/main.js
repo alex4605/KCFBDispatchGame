@@ -12,7 +12,7 @@ function patchEl(a,b){
  const an=a.attributes,bn=b.attributes;
  for(let i=an.length-1;i>=0;i--)if(!b.hasAttribute(an[i].name))a.removeAttribute(an[i].name);
  for(let i=0;i<bn.length;i++){const t=bn[i];if(a.getAttribute(t.name)!==t.value)a.setAttribute(t.name,t.value)}
- if(a.tagName==='INPUT'){const v=b.getAttribute('value')||'';if(a.value!==v)a.value=v}
+ if(a.tagName==='INPUT'&&!a.dataset.keep){const v=b.getAttribute('value')||'';if(a.value!==v)a.value=v} // data-keep：保留使用者正在輸入的內容
  patchKids(a,b)}
 function patchKids(a,b){
  let x=a.firstChild,y=b.firstChild;

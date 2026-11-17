@@ -4,7 +4,7 @@ function step(dt){
  if(S.over)return;
  reindex();
  S.t+=dt;if(S.t>200*S.day)S.day++;
- S.spawn-=dt;if(S.spawn<=0){spawn();S.spawn=Math.max(19,42-S.day*3)+Math.random()*12}
+ S.spawn-=dt;if(S.spawn<=0){spawn();S.spawn=(Math.max(19,42-S.day*3)+Math.random()*12)*(aiActive()?AI_SLOW:1)}
  S.dspawn-=dt;if(S.dspawn<=0){spawnDuty();S.dspawn=130+Math.random()*80}
  for(const u of S.units)stepUnit(u,dt);
  stepDuties(dt);
