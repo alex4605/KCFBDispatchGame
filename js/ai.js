@@ -6,7 +6,7 @@ const AI_MODELS=[['claude-opus-5-5','Claude Opus 5.5（預設）'],['claude-sonn
  ['claude-haiku-5-5','Claude Haiku 5.5（最快、最省）'],['claude-fable-5-2','Claude Fable 5.2']];
 // 供應商：各自的金鑰、模型與 API 主機
 const AI_PROV={anthropic:{n:'Anthropic Claude',host:'api.anthropic.com',ph:'sk-ant-…',def:AI_MODELS[0][0]},
- gemini:{n:'Google Gemini',host:'generativelanguage.googleapis.com',ph:'AIza…',def:'gemini-2.5-flash'}};
+ gemini:{n:'Google Gemini',host:'generativelanguage.googleapis.com',ph:'AIza…',def:'gemini-4-hydrogen'}};
 const AI={on:false,provider:'anthropic',keys:{anthropic:'',gemini:''},models:{anthropic:AI_PROV.anthropic.def,gemini:AI_PROV.gemini.def},
  gmodels:[],fails:0,status:'',testing:false,open:false};
 (function(){
@@ -15,7 +15,8 @@ const AI={on:false,provider:'anthropic',keys:{anthropic:'',gemini:''},models:{an
   if(AI_MODELS.some(m=>m[0]===o.model))AI.models.anthropic=o.model;
   if(o.keys)for(const k in AI.keys)if(typeof o.keys[k]==='string')AI.keys[k]=o.keys[k];
   if(o.models){if(AI_MODELS.some(m=>m[0]===o.models.anthropic))AI.models.anthropic=o.models.anthropic;
-   if(typeof o.models.gemini==='string'&&o.models.gemini)AI.models.gemini=o.models.gemini}
+   // 'gemini-2.5-flash' 是舊版的預設值，沒改過的人直接換成新的預設
+   if(typeof o.models.gemini==='string'&&o.models.gemini&&o.models.gemini!=='gemini-2.5-flash')AI.models.gemini=o.models.gemini}
   if(AI_PROV[o.provider])AI.provider=o.provider;
   AI.on=!!(o.on&&AI.keys[AI.provider])}catch(e){}})();
 function aiSave(){try{localStorage.setItem(AI_STORE,JSON.stringify({on:AI.on,provider:AI.provider,keys:AI.keys,models:AI.models}))}catch(e){}}
