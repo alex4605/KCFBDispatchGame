@@ -16,7 +16,7 @@ Claude powered web game
 - 原本的腳本對話保留為備援：沒有啟用、連不上、金鑰無效或模型拒答時自動接手。
 - AI 模式下案件進線間隔拉長為 2.5 倍，讓受理員有時間問話。
 - 金鑰只存在瀏覽器的 localStorage，只會送往所選供應商的 API 主機（`api.anthropic.com` 或 `generativelanguage.googleapis.com`）；每次問答依該供應商的帳號用量計費。
-- Gemini 的模型代號可自行輸入；按「測試連線」會列出金鑰可用的模型。
+- Gemini 請先按「測試連線」：會列出金鑰實際可用的模型；填的代號不存在（API 回 404）時會自動改用清單裡最接近的模型。
 
 ## 檔案結構
 

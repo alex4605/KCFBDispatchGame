@@ -8,7 +8,7 @@ const AI_MODELS=[['claude-opus-5-5','Claude Opus 5.5（預設）'],['claude-sonn
 const AI_PROV={anthropic:{n:'Anthropic Claude',host:'api.anthropic.com',ph:'sk-ant-…',def:AI_MODELS[0][0]},
  gemini:{n:'Google Gemini',host:'generativelanguage.googleapis.com',ph:'AIza…',def:'gemini-4-hydrogen'}};
 const AI={on:false,provider:'anthropic',keys:{anthropic:'',gemini:''},models:{anthropic:AI_PROV.anthropic.def,gemini:AI_PROV.gemini.def},
- gmodels:[],fails:0,status:'',testing:false,open:false};
+ gmodels:[],note:'',fails:0,status:'',testing:false,open:false};
 (function(){
  try{const o=JSON.parse(localStorage.getItem(AI_STORE)||'{}');
   if(typeof o.key==='string')AI.keys.anthropic=o.key; // 舊版只有單一金鑰
@@ -34,7 +34,7 @@ async function aiFetch(url,opt){
 async function aiHttpError(res){
  let m='';try{m=(await res.json()).error.message||''}catch(e){}
  const badKey=res.status===401||/API key/i.test(m);
- const err=new Error(badKey?'API 金鑰無效':res.status===403?'金鑰沒有使用權限':res.status===404?'找不到這個模型':
+ const err=new Error(badKey?'API 金鑰無效':res.status===403?'金鑰沒有使用權限':res.status===404?'找不到這個模型（代號可能不對）':
   res.status===429?'已達用量或頻率上限':res.status>=500?'API 暫時無法服務':(m||'HTTP '+res.status));
  err.status=badKey?401:res.status;return err}
 function aiRequest(system,messages){return AI.provider==='gemini'?aiGemini(system,messages):aiClaude(system,messages)}
@@ -53,13 +53,20 @@ async function aiClaude(system,messages){
  if(!text)throw new Error('模型沒有回應內容');
  return text}
 const AI_GURL='https://generativelanguage.googleapis.com/v1beta/';
-async function aiGemini(system,messages){
+async function aiGemini(system,messages,retried){
  const body={systemInstruction:{parts:[{text:system}]},
   contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
   generationConfig:{maxOutputTokens:2048}};
  const res=await aiFetch(AI_GURL+'models/'+encodeURIComponent(AI.models.gemini)+':generateContent',{method:'POST',
   headers:{'content-type':'application/json','x-goog-api-key':AI.keys.gemini},body:JSON.stringify(body)});
- if(!res.ok)throw await aiHttpError(res);
+ if(!res.ok){
+  const err=await aiHttpError(res);
+  // 404 代表模型代號不存在：查一次可用清單，自動換成最接近的模型後重試
+  if(err.status===404&&!retried){
+   const old=AI.models.gemini;
+   try{await aiGeminiModels()}catch(e){throw err}
+   if(aiGeminiPick()&&AI.models.gemini!==old){aiSave();aiPanel();msg=AI.note;mt=0;return aiGemini(system,messages,true)}}
+  throw err}
  const data=await res.json(),c=(data.candidates||[])[0];
  // 內部思考段落（thought）不算報案人說的話
  const text=c&&c.content&&c.content.parts?c.content.parts.filter(x=>x.text&&!x.thought).map(x=>x.text).join('').trim():'';
@@ -153,6 +160,14 @@ function aiFallback(inc){
  const rest=talked?a.backup.slice(1):a.backup;
  rest.forEach((l,i)=>inc.log.push({w:l.w,s:l.s,t:el+(i+(talked?1:0))*2.4}))}
 
+// 設定的模型不在可用清單裡時，改用最接近的：名稱含原代號者優先，其次 flash 系列，再不然取第一個
+function aiGeminiPick(){
+ const L=AI.gmodels,cur=AI.models.gemini;
+ if(!L.length||L.indexOf(cur)>=0)return false;
+ const near=L.filter(m=>m.indexOf(cur)>=0||cur.indexOf(m)>=0).sort((a,b)=>a.length-b.length);
+ AI.models.gemini=near[0]||L.find(m=>/flash/.test(m)&&!/image|tts|audio|live|embedding/.test(m))||L[0];
+ AI.note='模型「'+cur+'」不在這把金鑰可用的清單裡，已改用「'+AI.models.gemini+'」';
+ return true}
 // ---- 設定面板 ----
 function aiPanel(){
  const p=document.getElementById('aipanel'),b=document.getElementById('btnAI');
@@ -167,21 +182,24 @@ function aiPanel(){
   '<label for="aiprov">AI 供應商</label><select id="aiprov">'+Object.keys(AI_PROV).map(k=>'<option value="'+k+'"'+(k===AI.provider?' selected':'')+'>'+AI_PROV[k].n+'</option>').join('')+'</select>'+
   '<label for="aikey">'+P.n+' API 金鑰</label><input id="aikey" type="password" autocomplete="off" placeholder="'+P.ph+'" value="'+esc(aiKey())+'">'+
   '<label for="aimodel">模型</label>'+(AI.provider==='gemini'?
-   '<input id="aimodel" autocomplete="off" list="aimodels" placeholder="'+P.def+'" value="'+esc(AI.models.gemini)+'">'+
-   '<datalist id="aimodels">'+AI.gmodels.map(m=>'<option value="'+esc(m)+'">').join('')+'</datalist>'+
-   '<p>可直接輸入模型代號；按「測試連線」會列出這把金鑰可用的模型供選擇。</p>':
+   (AI.gmodels.length?
+    '<select id="aimodel">'+AI.gmodels.map(m=>'<option value="'+esc(m)+'"'+(m===AI.models.gemini?' selected':'')+'>'+esc(m)+'</option>').join('')+'</select>'+
+    '<p>以上是這把金鑰實際可用的模型。</p>':
+    '<input id="aimodel" autocomplete="off" placeholder="'+P.def+'" value="'+esc(AI.models.gemini)+'">'+
+    '<p>請先按「測試連線」：會列出這把金鑰可用的模型，代號不對時自動改選。</p>'):
    '<select id="aimodel">'+AI_MODELS.map(m=>'<option value="'+m[0]+'"'+(m[0]===AI.models.anthropic?' selected':'')+'>'+m[1]+'</option>').join('')+'</select>')+
   '<div class="row" style="justify-content:flex-start;gap:6px;margin-top:10px">'+
   '<button data-aitoggle="1"'+(aiActive()?' class="on"':'')+'>'+(aiActive()?'關閉 AI 通話':'啟用 AI 通話')+'</button>'+
   '<button data-aitest="1"'+(AI.testing?' disabled':'')+'>'+(AI.testing?'測試中…':'測試連線')+'</button>'+
   '<button data-aiclear="1">清除金鑰</button></div>'+
   '<div class="err" style="margin-top:6px;color:'+(AI.status==='連線正常'?'var(--grn)':'var(--red)')+'">'+esc(AI.status)+'</div>'+
+  (AI.note?'<p style="color:var(--amb)">'+esc(AI.note)+'</p>':'')+
   '<p>金鑰只存在這台瀏覽器的 localStorage，只會送往 '+P.host+'；每次問答都會依你在該供應商的帳號用量計費。請勿在公用電腦上儲存金鑰。</p>'}
 function aiReadForm(){
  const k=document.getElementById('aikey'),m=document.getElementById('aimodel');
  if(k)AI.keys[AI.provider]=k.value.trim();
  if(m){const v=m.value.trim();
-  if(AI.provider==='gemini')AI.models.gemini=v||AI_PROV.gemini.def;
+  if(AI.provider==='gemini')AI.models.gemini=v.replace(/^models\//,'')||AI_PROV.gemini.def;
   else if(AI_MODELS.some(x=>x[0]===v))AI.models.anthropic=v}}
 document.getElementById('btnAI').onclick=()=>{AI.open=!AI.open;aiPanel()};
 document.getElementById('aipanel').addEventListener('click',e=>{
@@ -196,8 +214,8 @@ document.getElementById('aipanel').addEventListener('click',e=>{
  else if(D.aiclear){AI.keys[AI.provider]='';AI.on=false;AI.status='';aiSave()}
  else if(D.aitest){aiReadForm();
   if(!aiKey())AI.status='請先輸入 API 金鑰';
-  else{AI.testing=true;AI.status='';
-   (AI.provider==='gemini'?aiGeminiModels():Promise.resolve()).then(()=>aiRequest('這是連線測試。',[{role:'user',content:'請只回覆「OK」兩個字母。'}]))
+  else{AI.testing=true;AI.status='';AI.note='';
+   (AI.provider==='gemini'?aiGeminiModels().then(aiGeminiPick):Promise.resolve()).then(()=>aiRequest('這是連線測試。',[{role:'user',content:'請只回覆「OK」兩個字母。'}]))
     .then(()=>{AI.status='連線正常'}).catch(err=>{AI.status='連線失敗：'+err.message})
     .then(()=>{AI.testing=false;aiSave();aiPanel()})}}
  aiPanel()});
