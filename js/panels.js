@@ -44,7 +44,15 @@ function logHTML(inc){
   out.push('<div class="ln"><span class="who" style="color:'+col+'">'+
    (l.w==='台'?'受理':l.w==='場'?'現場':l.w==='警'?'警方':'報案')+'</span><span style="color:'+col+'">'+esc(l.s)+'</span></div>')}
  if(inc.log.some(l=>l.t>el))out.push('<div class="sub" style="padding-left:47px">通話中…</div>');
- return out.join('')+'</div></div>'}
+ const a=inc.ai;
+ if(a&&a.busy)out.push('<div class="sub" style="padding-left:47px">報案人回應中…</div>');
+ let chat='';
+ if(a&&!a.fb){
+  const live=aiLive(inc);
+  chat='<div class="row" style="gap:6px;padding:6px 0 0"><input id="aiq" data-keep="'+inc.id+'" maxlength="120" autocomplete="off" placeholder="'+
+   (live?'輸入要問報案人的話，按 Enter 送出':inc.rev?'通話已結束（消防人員已到場）':'通話已結束')+'"'+(live?'':' disabled')+'>'+
+   '<button data-aisend="1" style="flex:none;white-space:nowrap"'+(live&&!a.busy?'':' disabled')+'>送出</button></div>'}
+ return out.join('')+'</div>'+chat+'</div>'}
 function unitHTML(u){
  const inc=S.inc.find(i=>i.id===u.inc),dy=S.duties.find(x=>x.id===u.duty);
  let h='<div class="hd">車輛資料</div><div class="mono" style="font-size:15px">'+u.cs+

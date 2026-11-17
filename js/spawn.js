@@ -88,7 +88,9 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
   inc.dur=Math.round(inc.dur*1.3);inc.pay=Math.round(inc.pay*2.2);inc.pen+=6}
  inc.max=inc.left;
  inc.log=mkLog(k,d,inc);
- if(inc.calls>=3){
+ // AI 模式：通話改由 AI 扮演報案人，腳本對話留作備援；系統自動報案（定位）維持腳本
+ if(aiActive()&&!d.gps)aiBegin(inc);
+ else if(inc.calls>=3){
   const extra=[['另一位民眾','我也要報案，'+inc.addr+'那邊'+(d.fire?(o.pm.area>=120?'在冒煙，火很大':'在冒煙，看得到火'):'出事了，很多人圍觀')],
    ['第三位民眾',(d.fire?(d.wild?'我看到山上火光很大，煙一直往這邊飄':'我看到火從屋頂竄出來，隔壁鄰居都跑出來了'):
     (d.med||d.trap||d.carry||inc.pm.cc!==undefined||inc.pm.trap>0)?'現場有人躺著，已經有人在幫忙了':'現場還沒有人來處理，你們派人了嗎')],
