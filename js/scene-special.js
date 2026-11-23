@@ -1,7 +1,7 @@
 // 現場畫面：大量傷病患與化災的專屬佈置
 // 由 drawScene() 依序呼叫；參數皆為 drawScene 內算好的區域變數
 'use strict';
-function scMci(inc,g,d,c,X,Y,cx,cy,sev,prog){
+function scMci(inc,g,d,c,X,Y,cx,cy){
  // ===== 大量傷病患：檢傷帆布、檢傷組、醫療指揮官 =====
  if(d.mci&&inc.rev&&inc.ph>=1&&c>=12){
   const ea=Math.atan2(Y(inc.ay)+c/2-cy,X(inc.ax)+c/2-cx)+Math.PI/2;

@@ -1,7 +1,7 @@
 // 現場畫面：車輛、警示燈光暈、雲梯、救護車裝載
 // 由 drawScene() 依序呼叫；參數皆為 drawScene 內算好的區域變數
 'use strict';
-function scVehicles(inc,g,d,crew,nf,c,X,Y,cx,cy,wx){
+function scVehicles(inc,g,d,crew,nf,c,X,Y,cx,cy){
  // 車輛
  for(const u of crew){
   if(u.st==='idle'||u.st==='oos'||u.st==='back')continue;

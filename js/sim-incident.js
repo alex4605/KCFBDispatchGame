@@ -51,7 +51,7 @@ function stepWater(inc,dt,first){
    for(const u of onScene(inc))if(u.st==='work'){
     if(u.code==='61')tend++;
     if(CODE[u.code].cap&&u.code!=='61')pmp++}
-   const ready=inc.tender?(tend>=1&&pmp>=1):(pmp>=1+inc.relay);
+   const ready=inc.shuttle?false:inc.tender?(tend>=1&&pmp>=1):(pmp>=1+inc.relay);
    if(!inc.hooked&&ready&&first){
     if(!inc.hook){inc.hook=HOOKT;
      radio(inc,first.cs,inc.tender?'水庫車就位，開始接管供水，約需 '+HOOKT+' 秒。':
@@ -73,7 +73,7 @@ function stepWater(inc,dt,first){
     const want=Math.min(recLines(inc),cap2,supCap);
     const tp0=tankPool(inc),lowW=tp0[1]&&tp0[0]/tp0[1]<.25&&inflow<inc.lines*LPS;
     if(!inc.lines){inc.lines=want;
-     radio(inc,boss.cs,'現場評估後佈設 '+inc.lines+' 線攻擊，水源由'+(inc.tender?'水庫車供應':'消防栓佔水')+'。')}
+     radio(inc,boss.cs,'現場評估後佈設 '+inc.lines+' 線攻擊，水源由'+(inc.shuttle?'幫浦車輪流往返補水':inc.tender?'水庫車供應':'消防栓佔水')+'。')}
     else{inc.lineT=(inc.lineT||10)-dt;
      if(inc.lineT<=0){inc.lineT=12;
       if((inc.dry||lowW)&&inc.lines>1){inc.lines--;
@@ -99,7 +99,8 @@ function stepWater(inc,dt,first){
    if(eff===0)flow=0;
    else if(inc.dry&&pool<=1)flow=0;
    else flow=Math.min(1.5,eff/recLines(inc));
-   if(inc.tender)for(const u of onScene(inc))
+   if(inc.shuttle)shuttleRun(inc);
+   else if(inc.tender)for(const u of onScene(inc))
     if(u.code==='61'&&u.st==='work'&&u.tank<=60&&!u.back)refillRun(u,inc);
   }
   return flow}

@@ -40,7 +40,7 @@ function dWater(inc,d){
    const use=eff*LPS,inflow=inflowOf(inc),net=inflow-use;
    const crew=onScene(inc).filter(u=>u.st==='work'&&CODE[u.code].cap);
    const tender=crew.filter(u=>u.code==='61'),pumps=crew.filter(u=>u.code!=='61');
-   const sup=inc.tender?tender:pumps.slice(0,1+inc.relay);
+   const sup=inc.shuttle?[]:inc.tender?tender:pumps.slice(0,1+inc.relay);
    const atk=inc.tender?pumps:(pumps.length>1+inc.relay?pumps.slice(1+inc.relay):pumps);
    const rows=[];
    for(let li=0;li<Math.max(1,eff);li++){
@@ -48,17 +48,17 @@ function dWater(inc,d){
     const t=sup.length?sup[li%sup.length]:null;
     const noz=!a?'—':a.code==='57'?'泡沫':a.code==='01'?'泡沫砲':a.code==='61'?'移動砲塔':
      a.code==='16'?'1.5 吋':(li%2?'1.5 吋':'2.5 吋');
-    rows.push('[栓]'+(inc.tender?'⇢':'─')+'['+(t?t.cs:(inc.tender?'水庫車?':'佔水車?'))+']─['+
+    rows.push((inc.shuttle?'[栓]⇢往返⇢':'[栓]'+(inc.tender?'⇢':'─')+'['+(t?t.cs:(inc.tender?'水庫車?':'佔水車?'))+']─')+'['+
      (a?a.cs:'幫浦車?')+']─'+noz+'→')}
    const chain=rows.join('<br>');
    h+=fh('water','水情',1);
    h+='<div class="row" style="padding:2px 0;align-items:flex-start"><span class="mono" style="font-size:12px;color:var(--blu);line-height:1.7">'+
     chain+'</span><span class="tag" style="background:'+(wo?'var(--grn)':inc.hook>0?'var(--amb)':'var(--red)')+';white-space:nowrap">'+
     (wo?'已通水':inc.hook>0?('佔水中 '+Math.ceil(inc.hook)+' 秒'):'未通水')+'</span></div>';
-   h+='<div class="sub">'+(inc.tender?'無可用消防栓，全靠水庫車載水接力':
+   h+='<div class="sub">'+(inc.shuttle?'無可用消防栓，大型車也進不去：幫浦車輪流往返補水，需 2 輛以上才能不斷水':inc.tender?'無可用消防栓，全靠水庫車載水接力':
     '消防栓距 '+inc.hd+' 格 · 需 '+(1+inc.relay)+' 輛幫浦（1 佔水'+(inc.relay?' + '+inc.relay+' 中繼':'')+'）')+'</div>';
    const pct=tp[1]?Math.round(tp[0]/tp[1]*100):0;
-   const src=(inc.tender?'無栓，水庫車載水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
+   const src=(inc.shuttle?'無栓，幫浦車往返運水':inc.tender?'無栓，水庫車載水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
     +(hydShare(inc)<1?'（共用分流）':'')+(inc.hd>8?'（管線 '+inc.hd+' 格，壓損 '+Math.round((1-Math.max(.55,1-inc.hd*.018))*100)+'%）':''))
     +(inc.hooked?'':'　※尚未佔水，目前使用車載水');
    h+='<div class="row" style="padding:4px 0"><span class="sub">出水 '+eff+' 線 · 耗水 '+use+
