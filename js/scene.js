@@ -86,7 +86,7 @@ function drawScene(){
  // 災點：火焰與濃煙
  scFireSmoke(inc,g,d,c,cx,cy,sev,prog,wx,wy);
  // 車輛
- scVehicles(inc,g,d,crew,nf,c,X,Y,cx,cy,wx);
+ scVehicles(inc,g,d,crew,nf,c,X,Y,cx,cy);
 // 車輛警示燈地面光暈
  scBeaconGlow(g,crew,nf,c,X,Y);
  // 階段專屬作業特效
@@ -132,13 +132,13 @@ function drawScene(){
  // ===== 警方人員：依案件性質分層 =====
  scPolice(inc,g,d,c,X,Y,cx,cy);
  // ===== 台電工程車與人員（斷電確認後到場） =====
- scPowerTruck(inc,g,c,X,Y,cx,cy,wx,wy);
+ scPowerTruck(inc,g,c,X,Y,cx,cy);
  // 照明燈塔
  scLightTower(g,crew,nf,c,X,Y,cx,cy);
  // 視野外車輛的邊緣指標
  scEdgePointers(inc,g,crew,x0,x1,y0,y1,c,cx,cy);
  // ===== 大量傷病患：檢傷帆布、檢傷組、醫療指揮官 =====
- scMci(inc,g,d,c,X,Y,cx,cy,sev,prog);
+ scMci(inc,g,d,c,X,Y,cx,cy);
  // ===== 化災：區劃、插旗、除污走廊、A/B/C 級防護 =====
  scHazmat(inc,g,d,crew,fx,fy,c,X,Y,cx,cy);
  // 抬頭資訊

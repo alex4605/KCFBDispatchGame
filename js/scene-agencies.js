@@ -153,7 +153,7 @@ function scPolice(inc,g,d,c,X,Y,cx,cy){
    const a4=1.9+i*1.5+Math.sin(S.t*.3+i)*.05;
    figure(g,cx+Math.cos(a4)*c*1.6,cy+Math.sin(a4)*c*1.5,r4,PAT,{ph:i*3})}
  })();}
-function scPowerTruck(inc,g,c,X,Y,cx,cy,wx,wy){
+function scPowerTruck(inc,g,c,X,Y,cx,cy){
  // ===== 台電工程車與人員（斷電確認後到場） =====
  if(inc.pow===2&&c>=12){
   const spots=(inc.pk&&inc.pk.spots)||[],used=new Set();

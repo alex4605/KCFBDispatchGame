@@ -9,10 +9,10 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;overflow:hidden;-webkit-font-smoothing:antialiased}
 #app{height:100vh;display:flex;flex-direction:column}
-header{display:flex;align-items:center;gap:9px;padding:8px 13px;border-bottom:1px solid var(--line);flex:none;background:var(--pnl)}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:8px 13px;border-bottom:1px solid var(--line);flex:none;background:var(--pnl)}
 .brand{font-size:15px;letter-spacing:.04em}
 .brand span{color:var(--fg3);font-size:12px;margin-left:8px}
-.chip{display:flex;align-items:baseline;gap:6px;background:var(--pnl2);border:1px solid var(--line);border-radius:6px;padding:3px 9px}
+.chip{white-space:nowrap;display:flex;align-items:baseline;gap:6px;background:var(--pnl2);border:1px solid var(--line);border-radius:6px;padding:3px 9px}
 .chip i{font-style:normal;font-size:11px;color:var(--fg3)}
 .chip b{font-family:var(--mono);font-size:14px;font-weight:500}
 .sp{flex:1}
@@ -25,7 +25,7 @@ main{flex:1;display:grid;grid-template-columns:176px minmax(0,1fr) 420px;gap:6px
 #zc button{width:30px;height:30px;padding:0;font-size:15px;background:rgba(20,20,18,.9)}
 #legend{position:absolute;left:10px;bottom:10px;background:rgba(12,12,11,.88);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--fg2);line-height:1.85}
 #legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-#right{display:grid;grid-template-rows:minmax(64px,12%) auto minmax(0,1fr);gap:7px;min-height:0}
+#right{display:grid;grid-template-rows:minmax(96px,20%) auto minmax(0,1fr);gap:7px;min-height:0}
 #calls,#detail{padding:10px;overflow:auto}
 #scenewrap{background:var(--pnl);border:1px solid var(--line);border-radius:10px;padding:5px;line-height:0}
 #sc{display:block;width:100%;border-radius:7px;background:#0b0b0a}
@@ -115,5 +115,9 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
  main.sw #right #mapwrap{height:50vh}
  #right{grid-template-rows:auto auto}
  body{overflow:auto}#app{height:auto;min-height:100vh}
+ header{gap:6px;padding:7px 10px}
+ header button{white-space:nowrap}
+ .brand span{display:none}
+ .chip{padding:2px 7px}
  .buy,.pkg,.kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 }

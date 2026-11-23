@@ -52,6 +52,20 @@ function refillRun(u,inc){
  unpark(u);u.path=p;u.st='fill';u.back=inc.id;
  radio(inc,u.cs,'水箱見底，返回最近水源補水，來回約需一段時間。');
  return true}
+// 運水接力（無消防栓且水庫車進不去）：現場水量低於一半、且沒有車在補水途中時，
+// 派水最少的一輛把剩水倒給其他車後去補水；只剩一輛時等水箱見底才走
+function shuttleRun(inc){
+ const ps=onScene(inc).filter(u=>u.st==='work'&&CODE[u.code].cap&&!u.back);
+ if(!ps.length)return;
+ const away=S.units.some(u=>u.back===inc.id);
+ const [pool,cap]=tankPool(inc);
+ if(ps.length>=2){
+  if(away||pool>cap*.5)return;
+  const u=ps.reduce((a,b)=>b.tank<a.tank?b:a);
+  let left=u.tank;
+  for(const v of ps){if(v===u||left<=0)continue;const add=Math.min(CODE[v.code].cap-v.tank,left);v.tank+=add;left-=add}
+  u.tank=left;refillRun(u,inc)}
+ else if(ps[0].tank<=60)refillRun(ps[0],inc)}
 function hydShare(inc){
  if(!inc.hy)return 1;
  let n=1;
@@ -202,7 +216,9 @@ function auto(inc){
   if(idx<0)break;
   const g=inc.need[idx],u=nearest(inc,g.c,g.als);
   if(!u)break;
-  send(inc,u,g.c.indexOf('91')>=0?(g.als?'ALS':'BLS'):null)}}
+  // 派出後要重建車輛索引，否則下一輪的 fill() 看不到剛派的車，會一直重複派
+  if(!send(inc,u,g.c.indexOf('91')>=0?(g.als?'ALS':'BLS'):null))break;
+  reindex()}}
 // 後送醫院：取車程最短者；面板顯示與實際後送共用
 function hospFor(x,y){
  let b=null,bd=INF;

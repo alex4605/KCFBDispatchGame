@@ -49,7 +49,9 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
    inc.relay=Math.min(4,Math.max(0,Math.ceil(hy.d/HOSE)-1));
    const g=need.find(g=>g.c.indexOf('11')>=0);if(g)g.n+=inc.relay}
   else{inc.tender=1;
-   if(!need.some(g=>g.c.indexOf('61')>=0))need.push(G(['61'],1,'水庫車'))}}
+   // 大型車進不去（山區產業道路）時，水庫車無法到場：改由幫浦車輪流往返補水，多派一輛
+   if(!bigOK){inc.shuttle=1;const g=need.find(g=>g.c.indexOf('11')>=0||g.c.indexOf('16')>=0);if(g)g.n++;else need.push(G(['11','16'],2,'幫浦車'))}
+   else if(!need.some(g=>g.c.indexOf('61')>=0))need.push(G(['61'],1,'水庫車'))}}
  const flat=[];
  for(const g of inc.need){
   if(!g.k){flat.push(g);continue}

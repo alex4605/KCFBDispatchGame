@@ -41,24 +41,24 @@ function codesFor(items){
  return out}
 const needsALS=items=>items.some(i=>EQALS.indexOf(i)>=0)?1:0;
 const EQK={
- water:{l:'水線與瞄子',codes:['11','16','57','01']},
- supply:{l:'大量供水器材',codes:['61']},
- aerial:{l:'雲梯與救生氣墊',codes:['21','31']},
- rescue:{l:'重型救助器材',codes:['71']},
- vent:{l:'排煙設備',codes:['75']},
- foam:{l:'泡沫瞄與泡沫桶',codes:['57','01']},
- hazmat:{l:'化學防護與偵檢',codes:['51','01']},
- ems:{l:'救護處置',codes:['91']},
- cmd:{l:'指揮幕僚與通信',codes:['41']},
- marine:{l:'水域救生裝備',codes:['艇']},
- robot:{l:'遙控射水機器人',codes:['履']},
- manpower:{l:'人力支援與搬運',codes:['11','16','71','41','警']},
- detect:{l:'偵檢與監測器材',codes:['51','01','75','71','11']},
- usar:{l:'都市搜救專業能量',codes:['搜']},
- insp:{l:'稽查裝備',codes:['警','41']},
- mci:{l:'大量傷患器材',codes:['41','71']},
- decon:{l:'化災區劃與除污',codes:['51']},
- rtf:{l:'RTF 戰術醫療編組',codes:['71','警','搜']}};
+ water:{l:'水線與瞄子'},
+ supply:{l:'大量供水器材'},
+ aerial:{l:'雲梯與救生氣墊'},
+ rescue:{l:'重型救助器材'},
+ vent:{l:'排煙設備'},
+ foam:{l:'泡沫瞄與泡沫桶'},
+ hazmat:{l:'化學防護與偵檢'},
+ ems:{l:'救護處置'},
+ cmd:{l:'指揮幕僚與通信'},
+ marine:{l:'水域救生裝備'},
+ robot:{l:'遙控射水機器人'},
+ manpower:{l:'人力支援與搬運'},
+ detect:{l:'偵檢與監測器材'},
+ usar:{l:'都市搜救專業能量'},
+ insp:{l:'稽查裝備'},
+ mci:{l:'大量傷患器材'},
+ decon:{l:'化災區劃與除污'},
+ rtf:{l:'RTF 戰術醫療編組'}};
 const GB=(k,n,als)=>mkGroup(k,n,als);
 const BITEM={
  water:['水線與分水器','1.5 吋瞄子'],
@@ -212,7 +212,6 @@ const KITEM={
  watch:{ems:['外傷急救包','生命徵象監視器（12 導程）']},
  cook:{water:['水線與分水器','1.5 吋瞄子'],manpower:['人力編組','手提照明燈']},
  cookodor:{water:['水線與分水器'],rescue:['破壞器材組'],manpower:['人力編組','手提照明燈']}};
-function itemsFor(k,g){return (g&&g.items&&g.items.length?g.items:null)||(KITEM[k]&&KITEM[k][g.k])||BITEM[g.k]||[]}
 const CODEQ={'搜':'usar','11':'water','16':'water','57':'foam','01':'hazmat','61':'supply','21':'aerial','31':'aerial',
  '71':'rescue','75':'vent','51':'hazmat','91':'ems','41':'cmd','艇':'marine','履':'robot'};
 function shuf(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=a[i];a[i]=a[j];a[j]=t}return a}
