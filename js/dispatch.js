@@ -29,6 +29,13 @@ function pumpsOn(inc){let n=0;
  for(const u of onScene(inc))if(u.st==='work'&&CODE[u.code].cap)n++;
  return n}
 function effLines(inc){return Math.max(0,Math.min(inc.lines||0,pumpsOn(inc)*2))}
+// 水源角色：佔水車（含中繼）與攻擊車；面板與現場畫面共用。pumps 為在場作業中的幫浦車（不含水庫車）
+function waterRoles(inc,pumps){
+ // 攻擊線由離火點最近的幫浦車負責
+ const near=l=>l.slice().sort((a,b)=>Math.hypot(a.x-inc.x,a.y-inc.y)-Math.hypot(b.x-inc.x,b.y-inc.y));
+ if(inc.tender||inc.shuttle)return{sup:[],atk:near(pumps)};
+ const n=1+inc.relay;
+ return{sup:pumps.slice(0,n),atk:near(pumps.length>n?pumps.slice(n):pumps)}}
 function tankPool(inc){let a=0,b=0;
  for(const u of onScene(inc))if(u.st==='work'&&CODE[u.code].cap){a+=u.tank;b+=CODE[u.code].cap}
  return[a,b]}

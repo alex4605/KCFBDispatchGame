@@ -35,7 +35,7 @@ function drawScene(){
  const fx=txU?txU.x:inc.x,fy=txU?txU.y:inc.y;
  let x0=Math.round(fx)-HW,x1=Math.round(fx)+HW;
  let y0=Math.round(fy)-HH,y1=Math.round(fy)+HH;
- const showHyd=d.w&&inc.hy&&inc.hy[0]>=x0&&inc.hy[0]<=x1&&inc.hy[1]>=y0&&inc.hy[1]<=y1;
+ const showHyd=d.w&&!inc.tender&&inc.hy&&inc.hy[0]>=x0&&inc.hy[0]<=x1&&inc.hy[1]>=y0&&inc.hy[1]<=y1;
  const cols=x1-x0+1,rows=y1-y0+1;
  const c=ct;
  const ox=(scW-c*cols)/2,oy=(scH-c*rows)/2;
@@ -71,11 +71,11 @@ function drawScene(){
  scPatients(inc,g,c,cx,cy);
  // 警戒圈 / 擔架動線 / 後送方向
  scCordonRing(g,d,c,cx,cy);
- // 供水水帶（流動）
- scSupplyHose(inc,g,d,wOK,showHyd,c,X,Y);
- const atk=pumpsV,eff=effNow;
- // 出水線與噴射
- scWaterJets(inc,g,wOK,c,X,Y,cx,cy,atk,eff);
+ // 水線部署：供水／中繼水帶、消防栓、攻擊水線
+ const wr=waterRoles(inc,pumpsV),eff=effNow;
+ scSupplyHose(inc,g,d,wOK,showHyd,c,X,Y,wr.sup,wr.atk);
+ scHydrant(inc,g,showHyd,c,X,Y);
+ if(d.w)scWaterJets(inc,g,wOK,c,X,Y,cx,cy,wr.atk,effLines(inc));
  // 射水衝擊處的水花與蒸汽
  scSplash(inc,g,d,effNow,wOK,c,cx,cy);
  // 火勢規模、作業進度與風向（後面多處共用）
@@ -90,7 +90,7 @@ function drawScene(){
 // 車輛警示燈地面光暈
  scBeaconGlow(g,crew,nf,c,X,Y);
  // 階段專屬作業特效
- scPhaseFx(inc,g,d,pumpsV,effNow,cols,c,X,Y,cx,cy);
+ scPhaseFx(inc,g,c,X,Y,cx,cy);
  // 雲梯架設
  scLadder(g,crew,c,X,Y,cx,cy);
  // 救護車尾門與擔架裝載
@@ -103,18 +103,12 @@ function drawScene(){
  scTxRoute(g,crew,c,X,Y);
  // 醫院與交接動畫
  scHospital(g,crew,nf,x0,x1,y0,y1,c,X,Y);
- // Rehab 人員復原區
- scRehab(inc,g,d,crew,work,cmdV,c,X,Y);
  // 火場出入口管制
  scEntryControl(inc,g,d,crew,work,c,X,Y,cx,cy);
  // 空氣瓶更換站
  scAirStation(g,crew,c,X,Y);
  // 救護待命區
  scEmsStaging(inc,g,ambV,cmdV,c,X,Y);
- // 水源區標示與流量
- scWaterSource(inc,g,showHyd,c,X,Y);
- // 中繼水帶（佔水車→攻擊車）
- scRelayHose(inc,g,d,pumpsV,c,X,Y);
  // 後送動線
  scTxPath(inc,g,ambV,c,X,Y,cx,cy);
  // 停車位標線
@@ -123,8 +117,6 @@ function drawScene(){
  scEmsCare(inc,g,ambV,safeNow,c,cx,cy);
  // 救助作業動畫
  scRescueOps(inc,g,rescV,c,cx,cy);
- // 分水器
- scManifold(g,d,pumpsV,effNow,wOK,c,X,Y,cx,cy);
  // ===== 台電：斷電確認後，工程車停靠、人員作業 =====
  scPowerCrew(inc,g,c,X,Y,cx,cy);
  // ===== 台電：斷電完成後工程車進駐 =====
@@ -141,6 +133,11 @@ function drawScene(){
  scMci(inc,g,d,c,X,Y,cx,cy);
  // ===== 化災：區劃、插旗、除污走廊、A/B/C 級防護 =====
  scHazmat(inc,g,d,crew,fx,fy,c,X,Y,cx,cy);
+ // 人員與現場氛圍（警示光、火星、心電圖、救助碎屑）
+ drawCrew(g,inc,c,X,Y,cx,cy,inc.rev&&inc.ph>=0?phMode(inc.phs[inc.ph]):'line');
+ sceneFx(g,inc,d,crew,c,cx,cy);sceneFx2(g,inc,d,crew,c,X,Y,cx,cy);
+ // 空中水柱（畫在車輛與人員之上，避免被遮住）
+ scWaterStream(inc,g,c);
  // 抬頭資訊
  scHeader(inc,g,d,crew,nf,eff);
 }

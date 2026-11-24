@@ -1,7 +1,7 @@
-// 現場畫面：各階段作業特效、復原區、出入口管制、氣瓶站、救護與救助動畫
+// 現場畫面：各階段作業特效、出入口管制、氣瓶站、救護與救助動畫
 // 由 drawScene() 依序呼叫；參數皆為 drawScene 內算好的區域變數
 'use strict';
-function scPhaseFx(inc,g,d,pumpsV,effNow,cols,c,X,Y,cx,cy){
+function scPhaseFx(inc,g,c,X,Y,cx,cy){
  // 階段專屬作業特效
  const pn=inc.rev&&inc.ph>=0?inc.phs[inc.ph]:'';
  if(/破壞|脫困|切除|開挖|支撐|開門/.test(pn)){
@@ -37,27 +37,7 @@ function scPhaseFx(inc,g,d,pumpsV,effNow,cols,c,X,Y,cx,cy){
  if(/搜索|探測/.test(pn)&&c>=14){
   const sw=(S.t*.6)%1;
   g.strokeStyle='rgba(207,176,245,.32)';g.lineWidth=Math.max(1,c*.05);
-  g.beginPath();g.arc(cx,cy,c*(.5+sw*1.4),0,TAU);g.stroke()}
- if(d.w&&effNow>0){
-  const atk0=pumpsV;
-  g.strokeStyle='rgba(150,190,230,.32)';g.lineWidth=Math.max(1.5,c*.1);g.lineCap='round';
-  for(const a2 of atk0){g.beginPath();
-   g.moveTo(X(a2.x+(a2.ox||0))+c/2,Y(a2.y+(a2.oy||0))+c/2);g.lineTo(cx,cy);g.stroke()}
-  g.lineCap='butt'}}
-function scRehab(inc,g,d,crew,work,cmdV,c,X,Y){
- // Rehab 人員復原區
- if(d.fire&&inc.rev&&crew.length){
-  const base=cmdV[0]||work[0];
-  if(base){
-   const a9=(base.hd||0)-Math.PI/2;
-   const rx2=X(base.x+(base.ox||0))+c/2+Math.cos(a9)*c*.95;
-   const ry2=Y(base.y+(base.oy||0))+c/2+Math.sin(a9)*c*.95;
-   g.fillStyle='rgba(93,202,165,.14)';scRR(g,rx2-c*.55,ry2-c*.42,c*1.1,c*.84,c*.06);g.fill();
-   g.strokeStyle='rgba(93,202,165,.45)';g.lineWidth=1;
-   g.strokeRect(rx2-c*.55,ry2-c*.42,c*1.1,c*.84);
-   g.fillStyle='rgba(143,184,208,.8)';g.fillRect(rx2+c*.34,ry2-c*.3,c*.14,c*.24);
-   if(c>=17){g.fillStyle='#5dcaa5';g.font='600 '+(c*.22)+'px '+FONT;g.textAlign='center';
-    g.fillText('Rehab 復原區',rx2,ry2-c*.5)}}}}
+  g.beginPath();g.arc(cx,cy,c*(.5+sw*1.4),0,TAU);g.stroke()}}
 function scEntryControl(inc,g,d,crew,work,c,X,Y,cx,cy){
  // 火場出入口管制
  if(d.fire&&inc.rev&&crew.length){
@@ -67,8 +47,7 @@ function scEntryControl(inc,g,d,crew,work,c,X,Y,cx,cy){
   scRR(g,ex2-c*.1,ey2-c*.1,c*.2,c*.2,c*.03);g.fill();
   g.strokeStyle='rgba(243,196,122,.6)';g.lineWidth=1;
   g.setLineDash([c*.1,c*.1]);g.beginPath();g.arc(cx,cy,c*.72,ea-.5,ea+.5);g.stroke();g.setLineDash([]);
-  if(c>=18){g.fillStyle='#f3c47a';g.font='600 '+(c*.2)+'px '+FONT;g.textAlign='center';
-   g.fillText('出入口管制',ex2,ey2-c*.2)}
+  g.textAlign='center';
   if(c>=20&&inc.ph>=0&&/入室|搜索|逐房|樓層/.test(inc.phs[inc.ph])){
    const inside=Math.min(4,work.filter(u=>u.code!=='91'&&u.code!=='41').length*2);
    g.fillStyle='rgba(20,18,14,.8)';scRR(g,ex2-c*.3,ey2+c*.12,c*.6,c*.2,c*.03);g.fill();

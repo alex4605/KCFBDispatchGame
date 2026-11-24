@@ -84,10 +84,11 @@ function draw(){
    ctx.beginPath();ctx.arc(x,y,c*.66,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  for(const inc of S.inc){
   const d=KIND[inc.k];
-  if(inc.rev&&d.w&&inc.hp&&waterOK(inc)&&!inc.tender){
+  if(inc.rev&&d.w&&inc.hp&&inc.hy&&inc.hooked&&!inc.tender){
    ctx.strokeStyle='rgba(93,202,165,.85)';ctx.lineWidth=Math.max(1.5,c*.12);
    ctx.lineCap='round';ctx.lineJoin='round';
-   ctx.beginPath();ctx.moveTo((inc.ax+.5)*c,(inc.ay+.5)*c);
+   // 由消防栓沿道路接到進場口（hp 已依序由栓往進場口排列）
+   ctx.beginPath();ctx.moveTo((inc.hy[0]+.5)*c,(inc.hy[1]+.5)*c);
    for(const p of inc.hp)ctx.lineTo((p[0]+.5)*c,(p[1]+.5)*c);
    ctx.stroke();ctx.lineCap='butt'}
   const cx=(inc.x+.5)*c,cy=(inc.y+.5)*c,pl=.5+.5*Math.sin(S.t*4.5);

@@ -40,8 +40,7 @@ function dWater(inc,d){
    const use=eff*LPS,inflow=inflowOf(inc),net=inflow-use;
    const crew=onScene(inc).filter(u=>u.st==='work'&&CODE[u.code].cap);
    const tender=crew.filter(u=>u.code==='61'),pumps=crew.filter(u=>u.code!=='61');
-   const sup=inc.shuttle?[]:inc.tender?tender:pumps.slice(0,1+inc.relay);
-   const atk=inc.tender?pumps:(pumps.length>1+inc.relay?pumps.slice(1+inc.relay):pumps);
+   const wr=waterRoles(inc,pumps),sup=inc.tender&&!inc.shuttle?tender:wr.sup,atk=wr.atk;
    const rows=[];
    for(let li=0;li<Math.max(1,eff);li++){
     const a=atk.length?atk[li%atk.length]:null;
