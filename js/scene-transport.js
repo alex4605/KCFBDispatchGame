@@ -69,7 +69,7 @@ function scEmsStaging(inc,g,ambV,cmdV,c,X,Y){
   const sx=X(cpv.x+(cpv.ox||0))+c/2,sy=Y(cpv.y+(cpv.oy||0))+c/2;
   g.strokeStyle='rgba(93,202,165,.5)';g.lineWidth=Math.max(1,c*.05);
   g.setLineDash([c*.18,c*.14]);g.strokeRect(sx-c*.8,sy-c*.5,c*1.6,c*1.0);g.setLineDash([]);
-  if(c>=17){g.fillStyle='#5dcaa5';g.font='600 '+(c*.24)+'px '+FONT;g.textAlign='center';
+  if(c>=40){g.fillStyle='#5dcaa5';g.font='600 '+(c*.24)+'px '+FONT;g.textAlign='center';
    g.fillText('救護待命區',sx,sy-c*.6)}})();}
 function scTxPath(inc,g,ambV,c,X,Y,cx,cy){
  // 後送動線

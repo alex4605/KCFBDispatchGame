@@ -177,10 +177,7 @@ function drawCrew(g,inc,c,X,Y,cx,cy,mode){
    g.fillStyle='#f3c43b';g.fillRect(c*.01,-c*.08,c*.05,c*.05);
    g.fillStyle='rgba(200,215,230,.8)';g.fillRect(-c*.07,c*.01,c*.13,c*.03);
    g.restore();
-   figure(g,px0+Math.cos(back)*c*.2,py0+Math.sin(back)*c*.2,r,'fire',{ph:9});
-   if(effLines(inc)>0&&waterOK(inc)){
-    g.strokeStyle='rgba(125,179,232,.55)';g.lineWidth=Math.max(1,c*.06);
-    g.beginPath();g.moveTo(px0,py0);g.lineTo(cx,cy);g.stroke()}}
+   figure(g,px0+Math.cos(back)*c*.2,py0+Math.sin(back)*c*.2,r,'fire',{ph:9})}
   const phFrac=inc.ph>=0?(inc.work/inc.dur*inc.phs.length-inc.ph):0;
   const curPh=inc.ph>=0?inc.phs[inc.ph]:'';
   // 交接／後送／收整才是善後；脫困、救出、吊掛屬主動救援
@@ -319,7 +316,7 @@ function sceneFx(g,inc,d,crew,c,cx,cy){
     g.beginPath();g.arc(sx,sy,Math.max(1,c*.045),0,TAU);g.fill()}
    else{g.fillStyle='rgba(120,116,110,'+((1-p)*.22*lit).toFixed(3)+')';
     g.beginPath();g.arc(sx,sy,c*(.15+p*.4),0,TAU);g.fill()}}}}
-// 現場動畫第二層：射水水柱與水霧、患者心電圖、救助碎屑
+// 現場動畫第二層：患者心電圖、救助碎屑
 // 心電圖波形（P、QRS、T），回傳 0~1 的振幅
 function ecgY(q){
  if(q<.10)return 0;
@@ -335,16 +332,6 @@ function sceneFx2(g,inc,d,crew,c,X,Y,cx,cy){
  if(c<11||!inc.rev)return;
  const T=S.t,work=crew.filter(u=>u.st==='work');
  if(!work.length)return;
- if(d.w&&inc.work<inc.dur&&waterOK(inc)){
-  g.save();g.lineCap='round';g.setLineDash([c*.14,c*.1]);g.lineDashOffset=-T*c*4;
-  g.strokeStyle='rgba(150,205,255,.6)';g.lineWidth=Math.max(1.5,c*.06);
-  for(const u of work){if(!CODE[u.code].cap||u.code==='61')continue;
-   const vx=X(u.x+(u.ox||0))+c/2,vy=Y(u.y+(u.oy||0))+c/2,sx=vx+(cx-vx)*.5,sy=vy+(cy-vy)*.5;
-   g.beginPath();g.moveTo(sx,sy);g.quadraticCurveTo((sx+cx)/2,Math.min(sy,cy)-c*.45,cx,cy);g.stroke()}
-  g.restore();
-  g.fillStyle='rgba(200,225,255,.35)';
-  for(let i=0;i<8;i++){const p=(T*.9+i/8)%1,a=i*2.4+T;
-   g.beginPath();g.arc(cx+Math.cos(a)*c*.5*p,cy+Math.sin(a)*c*.3*p-p*c*.4,c*(.04+.05*p),0,TAU);g.fill()}}
  if(d.cls==='救護'&&work.some(u=>u.code==='91')){
   const w=Math.min(scW*.3,c*3),h=c*1.1,x0=scW-w-8,y0=40+h/2,flat=inc.pm&&inc.pm.ohca,hr=+(inc.pm&&inc.pm.hr)||80;
   g.fillStyle='rgba(6,14,12,.88)';scRR(g,x0-6,y0-h/2-6,w+12,h+12,5);g.fill();

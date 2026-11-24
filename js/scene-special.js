@@ -71,6 +71,4 @@ function scHazmat(inc,g,d,crew,fx,fy,c,X,Y,cx,cy){
     figure(g,cx+Math.cos(ea2)*sx-Math.sin(ea2)*c*.14,cy+Math.sin(ea2)*sx+Math.cos(ea2)*c*.14,r3,'hzB',{ph:i*2})}
    figure(g,cx+Math.cos(ea2)*c*2.85,cy+Math.sin(ea2)*c*2.85,r3,'hzC',{ph:5});
    if(c>=18){g.fillStyle='#9fe07f';g.font='600 '+(c*.15)+'px '+FONT;g.textAlign='center';
-    g.fillText('A 級',cx,cy+c*.95)}}}
- drawCrew(g,inc,c,X,Y,cx,cy,inc.rev&&inc.ph>=0?phMode(inc.phs[inc.ph]):'line');
- sceneFx(g,inc,d,crew,c,cx,cy);sceneFx2(g,inc,d,crew,c,X,Y,cx,cy);}
+    g.fillText('A 級',cx,cy+c*.95)}}}}

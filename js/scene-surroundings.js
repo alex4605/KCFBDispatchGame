@@ -61,11 +61,9 @@ function scParkingBays(inc,g,crew,wOK,x0,x1,y0,y1,showHyd,c,X,Y,cx,cy){
   g.setLineDash([c*.2,c*.16]);g.strokeRect(sx-c*.9,sy-c*.55,c*1.8,c*1.1);g.setLineDash([]);
   if(c>=17){g.fillStyle='#e9a13b';g.font='600 '+(c*.26)+'px '+FONT;g.textAlign='center';
    g.fillText('集結區',sx,sy-c*.66)}}
- if(showHyd&&wOK&&c>=14){
-  const hx2=X(inc.hy[0])+c/2,hy2=Y(inc.hy[1])+c/2;
-  figure(g,hx2+c*.34,hy2,Math.max(1.4,c*.09),'fire',{ph:2});
-  g.strokeStyle='rgba(150,190,230,.5)';g.lineWidth=Math.max(1,c*.05);
-  g.beginPath();g.arc(hx2-c*.3,hy2+c*.2,c*.14,0,TAU);g.stroke()}
+ // 佔水接管與供水期間，消防栓旁有一名操作人員
+ if(showHyd&&(inc.hooked||inc.hook>0)&&c>=14)
+  figure(g,X(inc.hy[0])+c/2+c*.34,Y(inc.hy[1])+c/2,Math.max(1.4,c*.09),'fire',{ph:2});
  for(const u of crew){
   if(u.st!=='work'||(u.code!=='71'&&u.code!=='搜'))continue;
   const a3=(u.hd||0)+Math.PI/2;
