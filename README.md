@@ -5,7 +5,6 @@ Claude powered web game
 
 ## 試玩
 
-- 線上：啟用 GitHub Pages 後開啟 https://alex4605.github.io/KCFDDispatchCenterTheGame/
 - 本機：下載後直接用瀏覽器開啟 `index.html`，不需要安裝或建置任何東西。
 
 ## AI 通話（選用）
