@@ -149,3 +149,12 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 @media (max-width:760px){#tacMid{flex-direction:column}#tacSide{width:auto;max-height:24vh}}
 #tacSide .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tords .tgl{font-size:11px;color:var(--fg3);align-self:center;margin:0 2px 0 8px}.tords .tgl:first-child{margin-left:0}
+
+/* 全市圖收合 */
+#mapbar{display:none}
+#zMin{font-size:12px}
+main:not(.sw) #zMin{display:none}
+main.sw.mapc #right #mapwrap{height:34px}
+main.sw.mapc #cv,main.sw.mapc #zc,main.sw.mapc #legend{display:none}
+main.sw.mapc #mapbar{display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 10px;font-size:12px;color:var(--fg2)}
+main.sw.mapc #mapbar button{padding:2px 8px}
