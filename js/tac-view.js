@@ -1,11 +1,11 @@
-// 戰術畫面：建物剖面繪製、小組卡片、指令列、鍵盤與滑鼠輸入
+// 戰術畫面：樓層平面（俯視）繪製、樓層選擇列、小組卡片、指令列、鍵盤與滑鼠輸入
 'use strict';
 const tcv=document.getElementById('tcv'),tctx=tcv.getContext('2d');
 let tW=800,tH=500,tTopH='',tSideH='',tBotH='';
-const TAC_KEYS={a:'attack',s:'search',v:'vent',o:'roof',p:'ppv',l:'ladder',m:'master',r:'rit',x:'exit'};
-const TAC_ORD=[['attack','攻擊','A'],['search','搜索','S'],['vent','破窗排煙','V'],['roof','屋頂排煙','O'],['ppv','正壓送風','P'],
+const TAC_KEYS={g:'move',a:'attack',s:'search',v:'vent',o:'roof',p:'ppv',l:'ladder',m:'master',r:'rit',x:'exit'};
+const TAC_ORD=[['move','移動','G'],['attack','攻擊','A'],['search','搜索','S'],['vent','破窗排煙','V'],['roof','屋頂排煙','O'],['ppv','正壓送風','P'],
  ['ladder','雲梯救援','L'],['master','外部射水','M'],['rit','RIT','R'],['exit','撤出','X']];
-const TAC_NEEDT={attack:1,search:1,vent:1,ladder:1,master:1};
+const TAC_NEEDT={move:1,attack:1,search:1,vent:1,ladder:1,master:1};
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
@@ -17,7 +17,7 @@ function tacOpen(inc){
  if(!inc.rev){msg='首車到場回報後才能進入戰術指揮';return}
  if(inc.wrap){msg='現場已在收整，無法進入戰術指揮';return}
  if(!inc.tac)tacInit(inc);
- TAC.open=true;TAC.id=inc.id;TAC.B=inc.tac;TAC.sq=null;TAC.ord=null;stratT=0;
+ TAC.open=true;TAC.id=inc.id;TAC.B=inc.tac;TAC.vf=inc.tac.of;TAC.sq=null;TAC.ord=null;stratT=0;
  document.getElementById('tac').hidden=false;tTopH=tSideH=tBotH='';
  tacUI();sizeTac()}
 // 底部面板或視窗大小改變時，重算畫布大小
@@ -29,167 +29,220 @@ function tacClose(why){
  document.getElementById('tac').hidden=true;
  if(why)msg=why;
  size();dirty()}
-// 版面：剖面格的位置與大小
+// 版面：左側樓層選擇列、上方後巷、建物平面、下方街道
 function tacGeo(B){
- const yG=tH-62,fh=Math.max(24,Math.min(120,(yG-40)/B.F));
- const cw=Math.max(46,Math.min(170,(tW-300)/(B.R+.6))),sw=cw*.6,bw=sw+B.R*cw;
- const bx=Math.max(150,150+((tW-280)-bw)/2);
- return{yG,fh,cw,sw,bw,bx,
-  x:c=>c===0?bx:bx+sw+(c-1)*cw,w:c=>c?cw:sw,y:f=>yG-(f+1)*fh}}
+ const L=B.L,sx=8,sw=58,top=30,lane=32,street=110;
+ const px=sx+sw+24,aw=tW-px-14,ah=tH-top-lane-street-8;
+ const t=Math.max(40,Math.min(170,aw/L.GW,ah/L.GH));
+ const bw=t*L.GW,bh=t*L.GH,bx=px+(aw-bw)/2,by=top+lane+Math.max(0,(ah-bh)/2);
+ const sh=Math.max(16,Math.min(46,(tH-top-30)/(B.F+1)));
+ return{t,bx,by,bw,bh,laneY:by-lane,stY:by+bh+8,sx,sw,sh,stripTop:top+18,
+  r:c=>{const n=L.N[c];return[bx+n.gx*t,by+n.gy*t,n.gw*t,n.gh*t]},
+  ctr:c=>{const n=L.N[c];return[bx+(n.gx+n.gw/2)*t,by+(n.ty==='stair'?1.5:n.gy+n.gh/2)*t]},
+  fy:f=>top+(B.F-f)*sh}}
+// 入口在樓梯間南側（面向街道）
+const tacEnt=G=>[G.bx+G.t*.5,G.by+G.bh];
+// 小組在畫面上的位置；不在目前樓層者回傳 null
 function tacSqPos(B,G,q,i){
- const at=(f,c,k)=>{
-  if(f<0){if(q.ty==='ladder')return[tW-60-k*44,G.yG-8];return[G.bx-30-(k%4)*44,G.yG-8-Math.floor(k/4)*30]}
-  return[G.x(c)+G.w(c)*(c?.3:.5)+(k%3)*G.w(c)*.2,G.y(f)+G.fh-6]};
- const p=at(q.f,q.c,i);
- if(q.nf===q.f&&q.nc===q.c||!q.mt)return p;
- const n=at(q.nf,q.nc,i),t=Math.min(1,q.mt/tacStepTime(B,q,[q.nf,q.nc]));
- return[p[0]+(n[0]-p[0])*t,p[1]+(n[1]-p[1])*t]}
+ const vf=TAC.vf;
+ const at=(f,c)=>{
+  if(f<0){if(q.ty==='ladder')return null;const e=tacEnt(G);return[e[0]-40-(i%6)*46,G.stY+18+Math.floor(i/6)*24]}
+  if(f!==vf)return null;
+  const p=G.ctr(c),n=B.L.N[c],o=G.t*.2;
+  return[p[0]+((i%3)-1)*o,p[1]+(Math.floor(i/3)%2?o:-o*.3)+(n.ty==='stair'?-G.t*.2:0)]};
+ const p=at(q.f,q.c);
+ if(!q.mt||(q.nf===q.f&&q.nc===q.c))return p;
+ const n=at(q.nf,q.nc),k=Math.min(1,q.mt/tacStepTime(B,q,[q.nf,q.nc]));
+ if(p&&n)return[p[0]+(n[0]-p[0])*k,p[1]+(n[1]-p[1])*k];
+ return p||n}
+// 俯視人員：頭盔、空氣瓶、肩膀
+function tacMan(g,x,y,r,col,a,opt){
+ g.save();g.translate(x,y);g.rotate(a);
+ g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(1,1.5,r*1.25,r*.95,0,0,TAU);g.fill();
+ g.fillStyle=opt.coat||'#1e2c52';g.beginPath();g.ellipse(0,0,r*.85,r*1.2,0,0,TAU);g.fill();
+ if(opt.scba){g.fillStyle='#c9d0d8';scRR(g,-r*1.05,-r*.45,r*.5,r*.9,r*.15);g.fill()}
+ g.fillStyle=col;g.beginPath();g.arc(r*.1,0,r*.62,0,TAU);g.fill();
+ g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r*.35,-r*.25,r*.3,r*.5);
+ g.restore()}
 function drawTac(){
  const inc=S.inc.find(i=>i.id===TAC.id);
  if(!inc||!inc.tac){const b=TAC.B;
   tacClose(b&&b.done?(b.burnt>b.R*b.F*.5?'建物燒毀':'戰術指揮完成')+'：救出 '+b.resc+' 名'+(b.burnt?'、燒毀 '+b.burnt+' 室':'')+(b.lost?'、罹難 '+b.lost+' 名':'')+(b.lodd?'、殉職 '+b.lodd+' 組':''):'戰術指揮失敗：案件逾時，火勢未能控制');return}
- const B=inc.tac,g=tctx,G=tacGeo(B),T=S.t;
+ const B=inc.tac,g=tctx,G=tacGeo(B),T=S.t,L=B.L,t=G.t;
+ if(TAC.vf===undefined||TAC.vf>=B.F)TAC.vf=Math.min(B.F-1,B.of);
+ const vf=TAC.vf;
  TAC.hits=[];
  g.fillStyle='#0d1015';g.fillRect(0,0,tW,tH);
- // 地面與街道
- g.fillStyle='#1b1b19';g.fillRect(0,G.yG,tW,tH-G.yG);
- g.fillStyle='#3a3833';g.fillRect(0,G.yG,tW,3);
- g.strokeStyle='rgba(233,231,224,.18)';g.setLineDash([14,12]);g.beginPath();g.moveTo(0,G.yG+44);g.lineTo(tW,G.yG+44);g.stroke();g.setLineDash([]);
- // 車輛
+ // 後巷（北）與街道（南）
+ g.fillStyle='#151a14';g.fillRect(G.sx+G.sw+12,G.laneY,tW,G.by-G.laneY);
+ g.fillStyle='#1b1b19';g.fillRect(G.sx+G.sw+12,G.stY,tW,tH-G.stY);
+ g.fillStyle='#3a3833';g.fillRect(G.sx+G.sw+12,G.stY,tW,3);
+ g.strokeStyle='rgba(233,231,224,.18)';g.setLineDash([14,12]);g.beginPath();g.moveTo(G.sx+G.sw+12,tH-50);g.lineTo(tW,tH-50);g.stroke();g.setLineDash([]);
+ g.font='10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillStyle='#6b6960';
+ g.fillText('後巷（北側）',G.bx,G.laneY+3);g.fillText('街道（南側，入口）',G.bx+G.t*1.2,G.stY+4);
+ // 車輛：街道上一字排開，雲梯車停在目標房間外側
  const TP={},crew=onScene(inc).filter(u=>u.st==='work');
- const L=crew.filter(u=>!/^(21|31|71|搜|75|履)$/.test(u.code)),R=crew.filter(u=>/^(21|31|71|搜|75|履)$/.test(u.code));
- const truck=(u,x)=>{const y=G.yG+12;TP[u.id]=[x,y];
-  g.fillStyle=CODE[u.code].col;scRR(g,x,y,54,18,3);g.fill();
-  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+40,y+2,12,8);
-  g.fillStyle='#111';g.beginPath();g.arc(x+12,y+19,4,0,TAU);g.arc(x+42,y+19,4,0,TAU);g.fill();
-  if((T*3+u.id)%1<.5){g.fillStyle='#ff4a3a';g.fillRect(x+44,y-3,6,3)}else{g.fillStyle='#4a8aff';g.fillRect(x+44,y-3,6,3)}
-  g.fillStyle='#eceae3';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(u.cs,x+27,y+24)};
- L.forEach((u,i)=>truck(u,8+i*60));R.forEach((u,i)=>truck(u,tW-62-i*60));
- // 建物外框與屋頂
- g.fillStyle='#2b2925';g.fillRect(G.bx-4,G.y(B.F-1)-6,G.bw+8,B.F*G.fh+6);
- for(let f=0;f<B.F;f++)for(let c=0;c<B.W;c++){
-  const x=tacCel(B,f,c),px=G.x(c),py=G.y(f),w=G.w(c),h=G.fh;
-  TAC.hits.push({t:'cell',f,c,x:px,y:py,w,h});
-  g.fillStyle=c?(x.fu<.05?'#141210':'#24211d'):'#1a1c20';g.fillRect(px+1,py+1,w-2,h-3);
-  if(x.h>.02){g.fillStyle='rgba(255,'+(110-x.h*60|0)+',30,'+(x.h*.5).toFixed(3)+')';g.fillRect(px+1,py+1,w-2,h-3)}
-  if(!c){ // 樓梯
-   g.strokeStyle='rgba(200,200,190,.22)';g.lineWidth=1;g.beginPath();
-   for(let k=0;k<5;k++){const sx=px+4+k*(w-8)/5,sy=py+h-3-k*(h-6)/5;g.moveTo(sx,sy);g.lineTo(sx+(w-8)/5,sy);g.lineTo(sx+(w-8)/5,sy-(h-6)/5)}
-   g.stroke()}
-  else{ // 窗戶
-   const wx=px+w*.62,wy=py+h*.16,ww=w*.24,wh=h*.32;
-   if(x.v){g.fillStyle='#07080a';g.fillRect(wx,wy,ww,wh);g.strokeStyle='#8a939d';g.beginPath();
-    g.moveTo(wx,wy);g.lineTo(wx+ww*.3,wy+wh*.4);g.lineTo(wx+ww*.15,wy+wh);g.moveTo(wx+ww,wy);g.lineTo(wx+ww*.7,wy+wh*.5);g.stroke();
-    if(x.s>.05)for(let k=0;k<3;k++){const ph=(T*.6+k/3)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.6*(1-ph)).toFixed(3)+')';
-     g.beginPath();g.arc(wx+ww*.5+ph*12,wy-ph*h*.5,3+ph*7,0,TAU);g.fill()}}
-   else{g.fillStyle=x.h>.2?'rgba(255,150,60,'+(.3+x.h*.6).toFixed(2)+')':'#2f4152';g.fillRect(wx,wy,ww,wh);
-    g.strokeStyle='#4a4842';g.strokeRect(wx,wy,ww,wh)}
-   // 火焰
-   if(x.h>.2)for(let k=0;k<4;k++){
-    const fx=px+w*(.14+k*.2),fl=h*(.15+.6*x.h)*(.7+.3*Math.sin(T*9+k*2+f)),fw=w*.11;
-    g.fillStyle='#ff7a22';g.beginPath();g.moveTo(fx-fw,py+h-3);g.quadraticCurveTo(fx-fw*.3,py+h-3-fl*.6,fx,py+h-3-fl);
-    g.quadraticCurveTo(fx+fw*.3,py+h-3-fl*.6,fx+fw,py+h-3);g.fill();
-    g.fillStyle='#ffd24a';g.beginPath();g.moveTo(fx-fw*.45,py+h-3);g.quadraticCurveTo(fx,py+h-3-fl*.7,fx+fw*.45,py+h-3);g.fill()}
-   // 受困者／搜索狀態
+ const lad=B.sq.filter(q=>q.ty==='ladder');
+ let lx=G.sx+G.sw+18;
+ const truck=(u,x,y)=>{TP[u.id]=[x,y];
+  g.fillStyle=CODE[u.code].col;scRR(g,x,y,50,20,3);g.fill();
+  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+38,y+3,9,14);
+  g.fillStyle=(T*3+u.id)%1<.5?'#ff4a3a':'#4a8aff';g.fillRect(x+39,y-2,7,2);
+  g.fillStyle='#eceae3';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(u.cs,x+25,y+22)};
+ for(const u of crew){
+  const q=lad.find(x=>x.u===u.id);
+  if(q&&q.lf!==undefined&&q.task!=='idle'&&q.lf===vf){const n=L.N[q.lc];const r=G.r(q.lc);
+   truck(u,r[0]+r[2]/2-25,n.win==='n'?G.laneY+4:G.stY+12);continue}
+  if(lx>tW-60)continue;truck(u,lx,tH-40);lx+=58}
+ // 建物外牆底
+ g.fillStyle='#4a463f';g.fillRect(G.bx-5,G.by-5,G.bw+10,G.bh+10);
+ const burnt=x=>x.ty!=='stair'&&x.fu<.05;
+ for(const n of L.N){
+  const x=tacCel(B,vf,n.c),r=G.r(n.c);
+  TAC.hits.push({t:'cell',f:vf,c:n.c,x:r[0],y:r[1],w:r[2],h:r[3]});
+  g.fillStyle=burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c';g.fillRect(r[0],r[1],r[2],r[3]);
+  if(n.ty==='hall'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;for(let k=1;k<4;k++){g.beginPath();g.moveTo(r[0]+r[2]*k/4,r[1]);g.lineTo(r[0]+r[2]*k/4,r[1]+r[3]);g.stroke()}}
+  if(n.ty==='stair'){ // 樓梯踏階與上下箭頭
+   g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;
+   for(let k=1;k<10;k++){const yy=r[1]+r[3]*k/10;g.beginPath();g.moveTo(r[0]+r[2]*.12,yy);g.lineTo(r[0]+r[2]*.88,yy);g.stroke()}
+   g.fillStyle='rgba(236,234,227,.55)';g.font='600 11px '+FONT;g.textAlign='center';g.textBaseline='middle';
+   g.fillText(vf<B.F-1?'▲ '+(vf+2)+'F':(B.roof?'屋頂 開':'屋頂'),r[0]+r[2]/2,r[1]+14);
+   if(vf>0)g.fillText('▼ '+vf+'F',r[0]+r[2]/2,r[1]+r[3]-14);else g.fillText('▼ 出口',r[0]+r[2]/2,r[1]+r[3]-14)}
+  if(x.h>.02){g.fillStyle='rgba(255,'+(110-x.h*60|0)+',30,'+(x.h*.45).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3])}
+  // 火焰：俯視為閃動的火團
+  if(x.h>.15){const nF=Math.ceil(x.h*6);
+   for(let k=0;k<nF;k++){const sd=(n.c*7+k*13)%17/17,sd2=(n.c*3+k*29)%19/19;
+    const fx=r[0]+r[2]*(.15+.7*sd),fy=r[1]+r[3]*(.15+.7*sd2),fr=t*(.06+.1*x.h)*(.8+.25*Math.sin(T*9+k*2));
+    const gr=g.createRadialGradient(fx,fy,0,fx,fy,fr*1.6);gr.addColorStop(0,'rgba(255,230,120,.95)');gr.addColorStop(.45,'rgba(255,140,40,.85)');gr.addColorStop(1,'rgba(255,80,20,0)');
+    g.fillStyle=gr;g.beginPath();g.arc(fx,fy,fr*1.6,0,TAU);g.fill()}}
+  // 受困者、搜索狀態
+  if(n.ty==='room'){
    if(x.srch>=1){
-    for(let k=0;k<x.vic;k++){const vx=px+6+k*14,vy=py+h-8;
-     g.fillStyle='#7a4a9a';g.fillRect(vx,vy,11,4);g.fillStyle='#d9bfae';g.beginPath();g.arc(vx+13,vy+2,2.4,0,TAU);g.fill();
-     if((T*2)%1<.6){g.fillStyle='#ff5a4a';g.font='600 9px '+FONT;g.textAlign='left';g.textBaseline='bottom';g.fillText('受困',vx,vy-1)}}
-    if(!x.vic){g.fillStyle='rgba(93,202,165,.55)';g.font='10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText('✓',px+4,py+3)}}
+    for(let k=0;k<x.vic;k++){const vx=r[0]+r[2]*.25+k*t*.16,vy=r[1]+r[3]*.72;
+     g.fillStyle='#7a4a9a';g.beginPath();g.ellipse(vx,vy,t*.07,t*.03,0,0,TAU);g.fill();
+     g.fillStyle='#d9bfae';g.beginPath();g.arc(vx+t*.08,vy,t*.025,0,TAU);g.fill()}
+    if(x.vic&&(T*2)%1<.6){g.fillStyle='#ff5a4a';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='bottom';g.fillText('受困 '+x.vic,r[0]+r[2]*.18,r[1]+r[3]*.64)}
+    if(!x.vic){g.fillStyle='rgba(93,202,165,.6)';g.font='11px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText('✓',r[0]+5,r[1]+4)}}
    else{
-    if(x.srch>0){g.fillStyle='rgba(125,179,232,.8)';g.fillRect(px+4,py+h-6,(w-8)*x.srch,2)}
-    g.fillStyle='rgba(236,234,227,.22)';g.font='600 '+Math.max(10,h*.24|0)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
-    g.fillText('?',px+w*.32,py+h*.5)}}
-  // 煙層由天花板往下
-  if(x.s>.02){const sh=(h-3)*Math.min(1,x.s);
-   g.fillStyle='rgba(62,64,70,'+(.25+.62*x.s).toFixed(3)+')';
-   g.beginPath();g.moveTo(px+1,py+1);g.lineTo(px+w-1,py+1);
-   for(let k=8;k>=0;k--)g.lineTo(px+1+(w-2)*k/8,py+1+sh+Math.sin(T*1.5+k+f*2)*2);
-   g.closePath();g.fill()}
-  // 樓板與隔間
-  g.fillStyle='#55514a';g.fillRect(px,py+h-3,w,3);
-  g.fillStyle='#3d3a35';g.fillRect(px+w-1,py,1.5,h)}
- // 屋頂與屋頂排煙口
- const ry=G.y(B.F-1);
- g.fillStyle='#55514a';g.fillRect(G.bx-6,ry-6,G.bw+12,5);
- g.fillStyle=B.roof?'#07080a':'#6b675e';g.fillRect(G.bx+G.sw*.2,ry-10,G.sw*.6,B.roof?4:5);
- if(B.roof){const st=tacCel(B,B.F-1,0);for(let k=0;k<3;k++){const ph=(T*.5+k/3)%1;
-  g.fillStyle='rgba(120,122,128,'+(st.s*.7*(1-ph)+.05).toFixed(3)+')';g.beginPath();g.arc(G.bx+G.sw*.5+ph*6,ry-12-ph*26,4+ph*8,0,TAU);g.fill()}}
- // 樓層標示與受困通報
- g.font='11px '+FONT;g.textAlign='right';g.textBaseline='middle';
- for(let f=0;f<B.F;f++){g.fillStyle=f===B.of?'#e2564f':'#9d9a92';g.fillText((f+1)+'F',G.bx-8,G.y(f)+G.fh*.3);
-  if(f===B.hint&&B.cells.some(x=>x.f===f&&x.vic>0&&x.srch<1)){g.fillStyle='#e9a13b';g.fillText('受困通報',G.bx-8,G.y(f)+G.fh*.62)}}
- // 入口與正壓送風機
- g.fillStyle='#0b0b0a';g.fillRect(G.bx-4,G.yG-G.fh*.55,5,G.fh*.55-3);
- if(B.ppv){const fx=G.bx-26,fy=G.yG-12;g.fillStyle='#3a3d44';g.beginPath();g.arc(fx,fy,9,0,TAU);g.fill();
-  g.strokeStyle='#c9d0d8';g.lineWidth=2;g.beginPath();
-  for(let k=0;k<3;k++){const a=T*14+k*TAU/3;g.moveTo(fx,fy);g.lineTo(fx+Math.cos(a)*8,fy+Math.sin(a)*8)}g.stroke();
-  g.strokeStyle='rgba(200,230,255,.5)';g.lineWidth=1.2;
-  for(let k=0;k<3;k++){const ph=(T*1.4+k/3)%1;g.beginPath();g.moveTo(fx+10+ph*20,fy-4+k*4);g.lineTo(fx+16+ph*20,fy-4+k*4);g.stroke()}}
- // 水線：幫浦車 → 入口 → 樓梯 → 小組
+    if(x.srch>0){g.fillStyle='rgba(125,179,232,.85)';g.fillRect(r[0]+4,r[1]+r[3]-6,(r[2]-8)*x.srch,3)}
+    g.fillStyle='rgba(236,234,227,.2)';g.font='600 '+Math.max(12,t*.22|0)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
+    g.fillText('?',r[0]+r[2]/2,r[1]+r[3]/2)}
+   g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='right';g.textBaseline='top';
+   g.fillText((vf+1)*100+n.no,r[0]+r[2]-5,r[1]+4)}
+  // 煙：由淡到濃的霧，濃煙時遮住地板
+  if(x.s>.03){g.fillStyle='rgba(66,68,74,'+(.12+.68*x.s).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3]);
+   for(let k=0;k<3;k++){const ph=(T*.15+k/3+n.c*.13)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.18).toFixed(3)+')';
+    g.beginPath();g.arc(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.37+n.c*.21)%1)),t*.18,0,TAU);g.fill()}}}
+ // 牆：每個空間描邊，門處挖出缺口
+ g.strokeStyle='#8a857a';g.lineWidth=3;
+ for(const n of L.N){const r=G.r(n.c);g.strokeRect(r[0],r[1],r[2],r[3])}
+ const flr=c=>{const x=tacCel(B,vf,c),n=L.N[c];return burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c'};
+ for(const a of L.N)for(const bc of a.nb){if(bc<a.c)continue;const b=L.N[bc],ra=G.r(a.c),rb=G.r(bc);let s;
+  if(Math.abs(ra[1]+ra[3]-rb[1])<1||Math.abs(rb[1]+rb[3]-ra[1])<1){const y=Math.abs(ra[1]+ra[3]-rb[1])<1?rb[1]:ra[1];
+   const x0=Math.max(ra[0],rb[0]),x1=Math.min(ra[0]+ra[2],rb[0]+rb[2]);s=[(x0+x1)/2-t*.14,y-3,t*.28,6]}
+  else{const x=Math.abs(ra[0]+ra[2]-rb[0])<1?rb[0]:ra[0];const y0=Math.max(ra[1],rb[1]),y1=Math.min(ra[1]+ra[3],rb[1]+rb[3]);s=[x-3,(y0+y1)/2-t*.14,6,t*.28]}
+  g.fillStyle=flr(a.ty==='room'?bc:a.c);g.fillRect(s[0],s[1],s[2],s[3]);
+  g.fillStyle='rgba(180,150,100,.6)';if(s[2]>s[3])g.fillRect(s[0],s[1]+2,2,2);else g.fillRect(s[0]+2,s[1],2,2)}
+ // 對外窗：完好為藍色玻璃，破窗為黑色缺口並冒煙
+ for(const n of L.N){if(!n.win)continue;const x=tacCel(B,vf,n.c),r=G.r(n.c),wy=n.win==='n'?r[1]-3:r[1]+r[3]-3,wx=r[0]+r[2]*.3,ww=r[2]*.4;
+  TAC.hits.push({t:'cell',f:vf,c:n.c,x:wx,y:wy-6,w:ww,h:18});
+  if(x.v){g.fillStyle='#07080a';g.fillRect(wx,wy,ww,6);g.strokeStyle='#c9d0d8';g.lineWidth=1;g.beginPath();
+   for(let k=0;k<4;k++){g.moveTo(wx+ww*k/4,wy);g.lineTo(wx+ww*(k+.5)/4,wy+6)}g.stroke();
+   if(x.s>.05||x.h>.2)for(let k=0;k<3;k++){const ph=(T*.6+k/3)%1,dir=n.win==='n'?-1:1;
+    g.fillStyle=x.h>.5&&k===0?'rgba(255,120,40,'+(.6*(1-ph)).toFixed(2)+')':'rgba(120,122,128,'+((x.s*.6+.1)*(1-ph)).toFixed(3)+')';
+    g.beginPath();g.arc(wx+ww/2+(k-1)*ww*.3,wy+3+dir*ph*30,4+ph*9,0,TAU);g.fill()}}
+  else{g.fillStyle=x.h>.3?'rgba(255,160,70,.9)':'#5d86a8';g.fillRect(wx,wy,ww,6)}}
+ // 入口（1F 樓梯間南側）與正壓送風機
+ const e=tacEnt(G);
+ if(vf===0){g.fillStyle='#23262c';g.fillRect(e[0]-t*.16,e[1]-3,t*.32,7);g.fillStyle='#e9a13b';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText('入口',e[0],e[1]+6)}
+ if(B.ppv&&vf===0){const fx=e[0],fy=e[1]+26;g.fillStyle='#3a3d44';g.beginPath();g.arc(fx,fy,10,0,TAU);g.fill();
+  g.strokeStyle='#c9d0d8';g.lineWidth=2;g.beginPath();for(let k=0;k<3;k++){const a=T*14+k*TAU/3;g.moveTo(fx,fy);g.lineTo(fx+Math.cos(a)*9,fy+Math.sin(a)*9)}g.stroke();
+  g.strokeStyle='rgba(200,230,255,.55)';g.lineWidth=1.4;for(let k=0;k<3;k++){const ph=(T*1.4+k/3)%1;g.beginPath();g.moveTo(fx-5+k*5,fy-14-ph*22);g.lineTo(fx-5+k*5,fy-20-ph*22);g.stroke()}}
+ // 水線：幫浦車 → 入口 → 樓梯間 →（本層）走廊與房間 → 射水組
+ let li=0;
  for(const q of B.sq){
-  if(!q.line)continue;
-  const tp=TP[q.u];if(!tp)continue;
-  g.strokeStyle='rgba(125,179,232,.9)';g.lineWidth=2.2;g.setLineDash([7,5]);g.lineDashOffset=-T*30;
-  g.beginPath();g.moveTo(tp[0]+27,tp[1]);
+  if(!q.line)continue;li++;
+  const tp=TP[q.u],off=(li-2)*4;
+  g.strokeStyle='rgba(125,179,232,.9)';g.lineWidth=2.4;g.setLineDash([8,5]);g.lineDashOffset=-T*30;
   if(q.ty==='ladder'){
-   const ex=G.x(q.lc)+G.w(q.lc)*.7,ey=G.y(q.lf)+G.fh*.35,lx=tp[0]+40+(ex-tp[0]-40)*q.ext,ly=tp[1]+(ey-tp[1])*q.ext;g.lineTo(lx,ly)}
-  else{
-   const p=tacSqPos(B,G,q,0);
-   g.lineTo(G.bx-2,G.yG-6);
-   if(q.f>=0){const sx=G.bx+G.sw*.5;g.lineTo(sx,G.yG-6);
-    for(let f=0;f<=q.f;f++)g.lineTo(sx+(f%2?-1:1)*G.sw*.2,G.y(f)+G.fh-6)}
-   g.lineTo(p[0],p[1]-4)}
+   if(q.lf===vf&&tp&&q.ext>0){const r=G.r(q.lc),n=L.N[q.lc],wx=r[0]+r[2]/2,wy=n.win==='n'?r[1]:r[1]+r[3];
+    g.beginPath();g.moveTo(tp[0]+25,tp[1]+10);g.lineTo(tp[0]+25+(wx-tp[0]-25)*q.ext,tp[1]+10+(wy-tp[1]-10)*q.ext);g.stroke()}
+   g.setLineDash([]);continue}
+  g.beginPath();
+  if(vf===0&&tp){g.moveTo(tp[0]+25,tp[1]);g.lineTo(e[0]+off,e[1]+8)}
+  const sc=G.ctr(0);
+  if(q.f>=vf&&vf>=0){
+   if(vf===0)g.lineTo(sc[0]+off,sc[1]);else g.moveTo(sc[0]+off,sc[1]+t*.3);
+   if(q.f===vf){const p=tacSqPos(B,G,q,0);let pc=0;
+    for(const st of tacPath(B,vf,0,vf,q.c)){const c=G.ctr(st[1]);g.lineTo(c[0]+off,c[1]+off);pc=st[1]}
+    if(p)g.lineTo(p[0],p[1])}
+   else g.lineTo(sc[0]+off,sc[1]-t*.4)}
   g.stroke();g.setLineDash([])}
- // 雲梯
- for(const q of B.sq){
-  if(q.ty!=='ladder'||q.lf===undefined||!TP[q.u]||q.task==='idle'&&!q.ext)continue;
-  const tp=TP[q.u],ex=G.x(q.lc)+G.w(q.lc)*.7,ey=(q.task==='roof'?ry-8:G.y(q.lf)+G.fh*.35);
-  const bx=tp[0]+40,by=tp[1],lx=bx+(ex-bx)*q.ext,ly=by+(ey-by)*q.ext;
-  const a=Math.atan2(ly-by,lx-bx),nx=-Math.sin(a)*3,ny=Math.cos(a)*3;
-  g.strokeStyle='#d8d4c8';g.lineWidth=1.5;g.beginPath();g.moveTo(bx+nx,by+ny);g.lineTo(lx+nx,ly+ny);g.moveTo(bx-nx,by-ny);g.lineTo(lx-nx,ly-ny);
-  const len=Math.hypot(lx-bx,ly-by);for(let k=8;k<len;k+=8){const t=k/len;g.moveTo(bx+(lx-bx)*t+nx,by+(ly-by)*t+ny);g.lineTo(bx+(lx-bx)*t-nx,by+(ly-by)*t-ny)}
-  g.stroke();
-  if(q.task==='master'&&q.line&&q.ext>=1){g.strokeStyle='rgba(160,205,245,.75)';g.lineWidth=3;g.beginPath();g.moveTo(lx,ly);
-   g.quadraticCurveTo(lx-12,ly-14,ex-G.w(q.lc)*.3,ey+6);g.stroke()}
-  if(q.ext>=1){figure(g,lx,ly-6,Math.max(2.4,Math.min(5,G.fh*.09)),'fire',{scba:1})}}
+ // 雲梯：只畫在目標樓層
+ for(const q of lad){
+  if(q.lf!==vf||q.task==='idle'&&!q.ext||!TP[q.u])continue;
+  const tp=TP[q.u],n=L.N[q.lc],r=G.r(q.lc),wx=r[0]+r[2]/2,wy=n.win==='n'?r[1]:r[1]+r[3];
+  const bx=tp[0]+25,by=tp[1]+10,ex=bx+(wx-bx)*q.ext,ey=by+(wy-by)*q.ext,a=Math.atan2(ey-by,ex-bx),nx=-Math.sin(a)*5,ny=Math.cos(a)*5;
+  g.strokeStyle='#d8d4c8';g.lineWidth=2;g.beginPath();g.moveTo(bx+nx,by+ny);g.lineTo(ex+nx,ey+ny);g.moveTo(bx-nx,by-ny);g.lineTo(ex-nx,ey-ny);
+  const len=Math.hypot(ex-bx,ey-by);for(let k=7;k<len;k+=7){const u=k/len;g.moveTo(bx+(ex-bx)*u+nx,by+(ey-by)*u+ny);g.lineTo(bx+(ex-bx)*u-nx,by+(ey-by)*u-ny)}g.stroke();
+  if(q.ext>=1){tacMan(g,ex,ey,5,'#f3c43b',a,{scba:1});
+   if(q.task==='master'&&q.line){g.fillStyle='rgba(170,210,245,.5)';for(let k=0;k<6;k++){const ph=(T*2+k/6)%1;
+    g.beginPath();g.arc(ex+(r[0]+r[2]/2-ex)*ph,ey+(r[1]+r[3]/2-ey)*ph,3+ph*7,0,TAU);g.fill()}}}}
  // 小組
- const fr=Math.max(2.2,Math.min(7.5,G.fh*.12));
- const slot={};
+ const fr=Math.max(3,Math.min(8,t*.055)),slot={};
  for(const q of B.sq){
-  const key=q.f<0?'out'+(q.ty==='ladder'?'L':''):q.f+','+q.c,k=slot[key]=(slot[key]||0)+1;
-  if(q.ty==='ladder'&&q.ext>=1)continue;
-  const p=tacSqPos(B,G,q,k-1),moving=q.mt>0;
-  const kit=q.ty==='resc'?'rescue':'fire',n=Math.min(4,q.n);
-  const sel=TAC.sq===q.u;
-  if(sel){g.strokeStyle='#e9a13b';g.lineWidth=2;g.beginPath();g.ellipse(p[0]+n*fr*.8,p[1]+fr*.6,n*fr*1.1+6,fr*1.4,0,0,TAU);g.stroke()}
-  if(q.down){
-   const pul=.5+.5*Math.sin(T*8);
-   g.fillStyle='rgba(226,86,79,'+(.25+.35*pul).toFixed(2)+')';g.beginPath();g.arc(p[0]+fr*2,p[1],fr*4,0,TAU);g.fill();
-   for(let i=0;i<n;i++){g.fillStyle='#1e2c52';g.fillRect(p[0]+i*fr*1.8-fr,p[1]-fr*.3,fr*2.2,fr*.8);g.fillStyle='#f3c43b';g.beginPath();g.arc(p[0]+i*fr*1.8+fr*1.4,p[1],fr*.5,0,TAU);g.fill()}
-   g.fillStyle='#ff5a4a';g.font='700 10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText('MAYDAY',p[0]+fr*2,p[1]-fr*2.5)}
-  else if(q.ty==='robot'){
-   g.fillStyle='#6b7f96';scRR(g,p[0]-fr,p[1]-fr*1.6,fr*3.2,fr*1.6,2);g.fill();g.fillStyle='#222';g.fillRect(p[0]-fr,p[1]-fr*.2,fr*3.2,fr*.6);
-   if(q.line&&q.f===q.tf&&q.c===q.tc){g.strokeStyle='rgba(160,205,245,.8)';g.lineWidth=2;g.beginPath();g.moveTo(p[0]+fr*2.2,p[1]-fr);g.lineTo(p[0]+fr*6,p[1]-fr*2);g.stroke()}}
+  if(q.ty==='ladder')continue;
+  const key=q.f<0?'out':q.f+','+q.c,k=slot[key]=(slot[key]||0)+1;
+  const p=tacSqPos(B,G,q,k-1);if(!p)continue;
+  const n=Math.min(4,q.n),sel=TAC.sq===q.u,moving=q.mt>0;
+  const tgt=q.f===q.tf&&q.c===q.tc&&q.f>=0?G.ctr(q.c):null;
+  let a=-Math.PI/2;
+  if(moving&&q.nf===q.f){const c2=G.ctr(q.nc),c1=G.ctr(q.c);a=Math.atan2(c2[1]-c1[1],c2[0]-c1[0])}
+  if(q.task==='attack'&&q.line&&tgt){const hot=tacCel(B,q.f,q.c);a=-Math.PI/2+Math.sin(T*.7+q.u)*.9}
+  if(sel){g.strokeStyle='#e9a13b';g.lineWidth=2;g.beginPath();g.arc(p[0],p[1],fr*3.2,0,TAU);g.stroke()}
+  if(q.down){const pul=.5+.5*Math.sin(T*8);g.fillStyle='rgba(226,86,79,'+(.3+.35*pul).toFixed(2)+')';g.beginPath();g.arc(p[0],p[1],fr*4,0,TAU);g.fill()}
+  if(q.ty==='robot'){g.save();g.translate(p[0],p[1]);g.rotate(a);g.fillStyle='#6b7f96';scRR(g,-fr*1.6,-fr*1.1,fr*3.2,fr*2.2,2);g.fill();
+   g.fillStyle='#222';g.fillRect(-fr*1.6,-fr*1.4,fr*3.2,fr*.4);g.fillRect(-fr*1.6,fr*1,fr*3.2,fr*.4);g.fillStyle='#c9d3e0';g.fillRect(fr*.8,-fr*.25,fr*1.4,fr*.5);g.restore()}
   else for(let i=0;i<n;i++){
-   const fx=p[0]+i*fr*1.6;
-   figure(g,fx,p[1]-fr*.9,fr,kit,{moving,ph:i*1.3+q.u,scba:q.f>=0||q.task==='rit',helmet:true,hose:q.task==='attack'&&i===0&&q.line});
-   if(q.task==='attack'&&q.line&&i===0&&q.f===q.tf&&q.c===q.tc){
-    g.fillStyle='rgba(170,210,245,.55)';for(let k=0;k<5;k++){const ph=(T*2+k/5)%1;
-     g.beginPath();g.arc(fx+fr*1.6+ph*G.cw*.35,p[1]-fr*1.2-Math.sin(ph*Math.PI)*fr*2,fr*(.3+ph*.6),0,TAU);g.fill()}}}
-  if(q.carry){g.fillStyle='rgba(236,234,227,.95)';g.fillRect(p[0]-fr,p[1]-fr*1.6,fr*4.4,fr*.7);g.fillStyle='#7a4a9a';g.fillRect(p[0],p[1]-fr*2,fr*2,fr*.5)}
-  // 標籤：呼號、空氣量
+   const ox=Math.cos(a)*(-i*fr*1.9)+Math.cos(a+Math.PI/2)*((i%2)-.5)*fr*1.2,oy=Math.sin(a)*(-i*fr*1.9)+Math.sin(a+Math.PI/2)*((i%2)-.5)*fr*1.2;
+   const col=q.ty==='resc'?'#f6f6f2':'#f3c43b',coat=q.ty==='resc'?'#c8332c':'#1e2c52';
+   const lie=q.down;
+   tacMan(g,p[0]+ox,p[1]+oy,fr,col,lie?a+Math.PI/2:a+(moving?Math.sin(T*8+i)*.15:0),{scba:q.f>=0||q.task==='rit',coat})}
+  if(q.task==='attack'&&q.line&&tgt&&!q.down){ // 射水
+   g.fillStyle='rgba(170,210,245,.5)';for(let k=0;k<7;k++){const ph=(T*2.2+k/7)%1,sp=(k%3-1)*.25;
+    g.beginPath();g.arc(p[0]+Math.cos(a+sp)*(fr*2+ph*t*.4),p[1]+Math.sin(a+sp)*(fr*2+ph*t*.4),fr*(.3+ph*.7),0,TAU);g.fill()}}
+  if(q.carry){g.fillStyle='rgba(236,234,227,.95)';g.save();g.translate(p[0],p[1]);g.rotate(a);g.fillRect(-fr*3,-fr*.6,fr*2.4,fr*1.2);
+   g.fillStyle='#7a4a9a';g.fillRect(-fr*2.8,-fr*.4,fr*1.6,fr*.8);g.restore()}
   g.font='10px '+FONT;g.textAlign='left';g.textBaseline='bottom';
-  const lx=p[0]-fr,ly=p[1]-fr*3.1;
-  g.fillStyle=sel?'#e9a13b':'rgba(236,234,227,.85)';g.fillText((q.task==='rit'||q.task==='ritgo'?'RIT ':'')+q.cs,lx,ly);
-  if(q.ty!=='robot'&&q.ty!=='ladder'){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(lx,ly+1,24,3);
-   g.fillStyle=q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,24*q.air,3)}
-  TAC.hits.unshift({t:'sq',id:q.u,x:p[0]-fr*1.5,y:p[1]-fr*4,w:n*fr*1.6+fr*3,h:fr*5})}
- // 提示
+  const lx=p[0]-fr*2,ly=p[1]-fr*3;
+  g.fillStyle=q.down?'#ff5a4a':sel?'#e9a13b':'rgba(236,234,227,.9)';
+  g.fillText((q.down?'MAYDAY ':'')+(q.task==='rit'||q.task==='ritgo'?'RIT ':'')+q.cs,lx,ly);
+  if(q.ty!=='robot'){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(lx,ly+1,26,3);
+   g.fillStyle=q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,26*q.air,3)}
+  TAC.hits.unshift({t:'sq',id:q.u,x:p[0]-fr*3.5,y:p[1]-fr*4,w:fr*7,h:fr*7})}
+ // 樓層選擇列：每層一格，顯示火勢、煙、小組數、受困通報與 MAYDAY
+ g.fillStyle='#161615';g.fillRect(0,0,G.sx+G.sw+10,tH);
+ g.fillStyle='#9d9a92';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText('樓層',G.sx+G.sw/2,8);
+ const ry=G.fy(B.F);
+ g.fillStyle=B.roof?'#07080a':'#3a3833';g.fillRect(G.sx,ry+G.sh*.35,G.sw,G.sh*.55);
+ g.fillStyle='#9d9a92';g.textBaseline='middle';g.fillText(B.roof?'屋頂 開':'屋頂',G.sx+G.sw/2,ry+G.sh*.62);
+ for(let f=0;f<B.F;f++){
+  const y=G.fy(f),h=G.sh-3;let mh=0,ms=0,vic=0;
+  for(let c=0;c<B.W;c++){const x=tacCel(B,f,c);mh=Math.max(mh,x.h);ms=Math.max(ms,x.s);if(x.srch>=1)vic+=x.vic}
+  g.fillStyle='#24211d';g.fillRect(G.sx,y,G.sw,h);
+  if(ms>.05){g.fillStyle='rgba(90,92,98,'+(ms*.8).toFixed(2)+')';g.fillRect(G.sx,y,G.sw,h)}
+  if(mh>.05){g.fillStyle='rgba(255,'+(120-mh*70|0)+',40,'+(.25+mh*.7).toFixed(2)+')';g.fillRect(G.sx,y+h*.5,G.sw*Math.min(1,mh*1.2),h*.5)}
+  if(f===vf){g.strokeStyle='#e9a13b';g.lineWidth=2;g.strokeRect(G.sx-1,y-1,G.sw+2,h+2)}
+  g.fillStyle=f===B.of?'#ff8a6a':'#eceae3';g.font='600 11px '+FONT;g.textAlign='left';g.textBaseline='middle';g.fillText((f+1)+'F',G.sx+3,y+h/2);
+  const ns=B.sq.filter(q=>q.f===f).length,dn=B.sq.some(q=>q.f===f&&q.down);
+  if(ns){g.fillStyle=dn&&(T*3)%1<.5?'#ff5a4a':'#f3c43b';g.textAlign='right';g.fillText('●'+ns,G.sx+G.sw-3,y+h/2)}
+  if(vic||(f===B.hint&&B.cells.some(x=>x.f===f&&x.vic>0&&x.srch<1))){g.fillStyle='#e9a13b';g.font='9px '+FONT;g.textAlign='center';g.fillText(vic?'受困':'通報',G.sx+G.sw*.55,y+h/2)}
+  TAC.hits.push({t:'flr',f,x:G.sx,y,w:G.sw,h})}
+ // 提示列
  g.font='12px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillStyle='rgba(236,234,227,.85)';
  const sq=B.sq.find(q=>q.u===TAC.sq);
- g.fillText(sq?(TAC.ord?'【'+sq.cs+'】'+TAC_TASK[TAC.ord]+'：點選目標房間（Esc 取消）':'【'+sq.cs+'】已選取：點房間＝預設指令，或從下方選擇指令'):'點選小組（或按 1–9）後，再點選房間下達指令；右鍵＝預設指令',10,8);
- if(B.mayday){g.fillStyle='rgba(226,86,79,'+(.6+.4*Math.sin(T*8)).toFixed(2)+')';g.font='700 15px '+FONT;g.fillText('MAYDAY × '+B.mayday,10,26)}}
+ g.fillText((vf+1)+'F 平面　'+(sq?(TAC.ord?'【'+sq.cs+'】'+TAC_TASK[TAC.ord]+'：點選目標（Esc 取消）':'【'+sq.cs+'】點空間＝預設指令，或從下方選擇指令'):'點選小組（或按 1–9），再點房間或走廊下達指令；左側／滾輪／[ ] 切換樓層'),G.sx+G.sw+18,8);
+ if(B.mayday){g.fillStyle='rgba(226,86,79,'+(.6+.4*Math.sin(T*8)).toFixed(2)+')';g.font='700 14px '+FONT;g.textAlign='right';g.fillText('MAYDAY × '+B.mayday+'　'+B.sq.filter(q=>q.down).map(q=>q.cs+' '+tacFlr(q.f)).join('、'),tW-10,8)}}
 // 面板 HTML
 function tacTopHTML(inc){
  const B=inc.tac,others=S.inc.filter(i=>i!==inc),wait=others.filter(i=>!onScene(i).length).length;
@@ -223,7 +276,7 @@ function tacBotHTML(inc){
  B.sq.forEach((q,i)=>{
   h+='<div class="tsq'+(q.u===TAC.sq?' sel':'')+(q.down?' dn':'')+'" data-tsq="'+q.u+'"><div class="row" style="padding:0"><b class="mono">'+(i<9?(i+1)+' ':'')+q.cs+'</b>'+
    '<span class="sub">'+TAC_TYN[q.ty]+' '+q.n+' 人</span></div>'+
-   '<div class="sub">'+(q.down?'<span style="color:var(--red)">倒地待救</span>':TAC_TASK[q.task]+(q.prev?'（換瓶後續行）':''))+' · '+tacFlr(q.f)+(q.f>=0?(q.c?'-'+q.c+' 室':' 樓梯'):'')+(q.line?' · 💧':'')+'</div>'+
+   '<div class="sub">'+(q.down?'<span style="color:var(--red)">倒地待救</span>':TAC_TASK[q.task]+(q.prev?'（換瓶後續行）':''))+' · '+(q.ty==='ladder'&&q.lf!==undefined&&q.task!=='idle'?'雲梯→'+tacNm(inc.tac,q.lf,q.lc):tacNm(inc.tac,q.f,q.c))+(q.line?' · 💧':'')+'</div>'+
    (q.ty==='robot'||q.ty==='ladder'?'':'<div class="bar"><i style="width:'+Math.round(q.air*100)+'%;background:'+(q.air<.25?'var(--red)':q.air<.5?'var(--amb)':'var(--grn)')+'"></i></div>')+
    '<div class="bar hp"><i style="width:'+Math.round(Math.max(0,q.hp)*100)+'%"></i></div></div>'});
  if(!B.sq.length)h+='<div class="sub">尚無可編組的小組到場（幫浦、雲梯、救助、排煙、機器人）。</div>';
@@ -239,13 +292,18 @@ function tacUI(){
  if(a!==tTopH){tTopH=a;morph($('tacTop'),a)}
  if(b!==tSideH){tSideH=b;morph($('tacSide'),b)}
  if(c!==tBotH){tBotH=c;morph($('tacBot'),c)}}
+// 點空間時的預設指令：依小組類型與該空間狀態
 function tacDefault(B,q,f,c){
  if(f<0)return q.ty==='vent'?'ppv':'exit';
- const x=tacCel(B,f,c);
+ const x=tacCel(B,f,c),n=B.L.N[c];
  if(q.ty==='ladder')return c===0?'roof':(x.h>.05&&x.srch>=1&&!x.vic)?'master':'ladder';
+ if(n.ty!=='room')return(x.h>.05&&(q.ty==='pump'||q.ty==='robot'))?'attack':(c===0&&f===B.F-1&&q.ty!=='pump')?'roof':'move';
  if(q.ty==='pump'||q.ty==='robot')return(x.h>.05||q.ty==='robot')?'attack':'search';
- if(q.ty==='vent')return c===0?'roof':'vent';
- return(c===0&&f===B.F-1)?'roof':'search'}
+ if(q.ty==='vent')return'vent';
+ return'search'}
+function tacSel(B,id){TAC.sq=id;TAC.ord=null;const q=B.sq.find(x=>x.u===id);
+ if(q){const f=q.ty==='ladder'?(q.task!=='idle'&&q.lf!==undefined?q.lf:-1):q.f;if(f>=0)TAC.vf=f}}
+function tacFloor(B,d){TAC.vf=Math.max(0,Math.min(B.F-1,TAC.vf+d))}
 function tacCmd(k){
  const inc=S.inc.find(i=>i.id===TAC.id);if(!inc)return;
  const B=inc.tac;
@@ -256,16 +314,19 @@ function tacCmd(k){
  if(TAC_NEEDT[k]){TAC.ord=TAC.ord===k?null:k;return}
  tacOrder(inc,q,k,k==='roof'?B.F-1:-1,0);TAC.ord=null}
 tcv.addEventListener('contextmenu',e=>e.preventDefault());
+tcv.addEventListener('wheel',e=>{const inc=S.inc.find(i=>i.id===TAC.id);if(!inc||!inc.tac)return;
+ e.preventDefault();tacFloor(inc.tac,e.deltaY<0?1:-1)},{passive:false});
 tcv.addEventListener('pointerdown',e=>{
  const inc=S.inc.find(i=>i.id===TAC.id);if(!inc||!inc.tac)return;
  const B=inc.tac,r=tcv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
  const hit=TAC.hits.find(h=>x>=h.x&&x<=h.x+h.w&&y>=h.y&&y<=h.y+h.h);
- if(hit&&hit.t==='sq'&&e.button!==2){TAC.sq=hit.id;TAC.ord=null;tBotH='';tacUI();return}
+ if(hit&&hit.t==='flr'){TAC.vf=hit.f;return}
+ if(hit&&hit.t==='sq'&&e.button!==2){tacSel(B,hit.id);tBotH='';tacUI();return}
  const q=B.sq.find(s=>s.u===TAC.sq);
  if(!q)return;
  let f=-1,c=0;
  if(hit&&hit.t==='cell'){f=hit.f;c=hit.c}
- else if(y<tacGeo(B).yG)return;
+ else if(y<tacGeo(B).stY)return;
  const k=(e.button===2||!TAC.ord)?tacDefault(B,q,f,c):TAC.ord;
  if(TAC_NEEDT[k]&&f<0){msg='請點選建物內的房間';return}
  tacOrder(inc,q,k,f,c);TAC.ord=null;tBotH='';tacUI()});
@@ -274,7 +335,7 @@ document.getElementById('tac').addEventListener('click',e=>{
  const D=b.dataset;msg='';
  if(D.texit){tacClose();return}
  if(D.tpause){paused=!paused;$('btnPause').textContent=paused?'繼續':'暫停'}
- if(D.tsq){TAC.sq=+D.tsq;TAC.ord=null}
+ if(D.tsq){const inc=S.inc.find(i=>i.id===TAC.id);if(inc)tacSel(inc.tac,+D.tsq)}
  if(D.tord)tacCmd(D.tord);
  tTopH=tBotH='';tacUI()});
 document.addEventListener('keydown',e=>{
@@ -283,7 +344,9 @@ document.addEventListener('keydown',e=>{
  const k=e.key.toLowerCase();
  if(k==='escape'){if(TAC.ord)TAC.ord=null;else tacClose();}
  else if(k===' '){e.preventDefault();paused=!paused;$('btnPause').textContent=paused?'繼續':'暫停'}
- else if(/^[1-9]$/.test(k)){const q=inc.tac.sq[+k-1];if(q){TAC.sq=q.u;TAC.ord=null}}
+ else if(/^[1-9]$/.test(k)){const q=inc.tac.sq[+k-1];if(q)tacSel(inc.tac,q.u)}
+ else if(k==='['||k==='pagedown'){e.preventDefault();tacFloor(inc.tac,-1)}
+ else if(k===']'||k==='pageup'){e.preventDefault();tacFloor(inc.tac,1)}
  else if(TAC_KEYS[k]){msg='';tacCmd(TAC_KEYS[k])}
  else return;
  tTopH=tBotH='';tacUI()});
