@@ -10,7 +10,7 @@ const TAC_STN=[
  {k:'treat',n:'救護醫療站',need:'有 EMT-P 的救護車',codes:['91'],tp:1,fx:'等待後送的傷患惡化減為三成'},
  {k:'media',n:'聯訪處',need:'指揮站已開設，且警方到場或另一輛指揮車',codes:['41','警'],fx:'統一對媒體與家屬發布，避免扣評鑑；結案評鑑 +2'}];
 const TAC_ROLE=[
- {k:'safety',n:'安全官',fx:'自動編成 RIT、MAYDAY 時派員救援、閃燃前兆與體力透支時撤出小組'},
+ {k:'safety',n:'安全官',fx:'在入口設置人員管制板（之後才看得到各組氣量）；自動編成 RIT、MAYDAY 時派員救援、閃燃前兆時撤出小組'},
  {k:'water',n:'水源組長',fx:'自動佔水、送水口加壓、鄰棟周界防護'},
  {k:'search',n:'搜救組長',fx:'自動派閒置的救助組搜索、雲梯救援窗口與屋頂受困者'},
  {k:'ems',n:'救護組長',fx:'自動請求救護車、開設檢傷站與醫療站'}];
@@ -53,8 +53,14 @@ function tacRoleSet(inc,B,k,on){
   if(used>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}
   B.role[k]=1;radio(inc,'受理','指派'+TAC_ROLE.find(x=>x.k===k).n+'。')}
  else if(!on&&B.role[k]){B.role[k]=0;radio(inc,'受理','解除'+TAC_ROLE.find(x=>x.k===k).n+'。')}}
-// 每幀：站點人員仍在場、聯訪處、集結區增援
+// 人員管制板：安全官就位約 10 秒後在入口設好，才能掌握各組入室時間與氣量
+const tacAcc=B=>!!(B.role.safety&&B.accT>=10);
+// 每幀：站點人員仍在場、聯訪處、集結區增援、人員管制板
 function tacStnStep(inc,B,dt){
+ if(B.role.safety){const was=B.accT||0;B.accT=was+dt;
+  if(was<10&&B.accT>=10){const e=B.ents.find(x=>x.side===B.arr)||B.ents[0];
+   radio(inc,'安全官','已於'+(e?TAC_SDN[e.side]+'側':'')+'入口設置人員管制板，開始登錄各組入室時間與氣量。')}}
+ else B.accT=0;
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
   if(s.u!==null){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
