@@ -133,8 +133,9 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 #tacSide{width:290px;flex:none;background:var(--pnl);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
 #tacSide .tlog div{font-size:12px;padding:3px 0;border-bottom:1px solid var(--line);color:var(--fg2)}
 #tacSide .tlog .lt{color:var(--blu)}
-#tacBot{flex:none;background:var(--pnl);border-top:1px solid var(--line);padding:7px 10px;display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow:auto}
-.tsqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:5px}
+#tacBot{flex:none;background:var(--pnl);border-top:1px solid var(--line);padding:7px 10px;display:flex;flex-direction:column;gap:6px;max-height:30vh;overflow:auto}
+.tsqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px}
+.tsq .sub{font-size:11px}
 .tsq{background:var(--pnl2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;cursor:pointer}
 .tsq.sel{border-color:var(--amb);background:var(--pnl3)}
 .tsq.dn{border-color:var(--red)}

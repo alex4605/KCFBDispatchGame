@@ -112,6 +112,8 @@ function tacExpo(inc,B,dt){
   B.exp[s]=Math.max(0,Math.min(1,(B.exp[s]||0)+dt*(.004*add-.03*cov)));
   if(B.exp[s]>.5&&!B.expW[s]){B.expW[s]=1;radio(inc,'安全官',TAC_SDN[s]+'側鄰棟外牆受熱嚴重，請派水線防護！')}
   if(B.exp[s]<.3)B.expW[s]=0;
+  // 受熱已降、該面牆也沒有房間在燒：防護組收線待命
+  if(B.exp[s]<.05&&!add)for(const q of B.sq)if(q.task==='cover'&&q.cside===s){q.task='idle';radio(inc,q.cs,TAC_SDN[s]+'側鄰棟已降溫，停止防護射水。')}
   if(B.exp[s]>=1&&!B.expL[s]){B.expL[s]=1;S.rep-=6;inc.pay=Math.round(inc.pay*.85);
    radio(inc,'受理','火勢延燒至'+TAC_SDN[s]+'側鄰棟（評鑑 -6），請加強防護並注意鄰棟住戶疏散。');
    if(S.rep<=0){S.rep=0;S.over=true}}}}

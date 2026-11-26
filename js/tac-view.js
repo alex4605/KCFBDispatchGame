@@ -32,7 +32,7 @@ function tacClose(why){
 // 版面：左側樓層選擇列；建物平面置中，四周依現場地圖畫出道路、鄰棟或水域
 function tacGeo(B){
  const L=B.L,sx=8,sw=58,top=28,ax=sx+sw+16,ay=top,aw=tW-ax-8,ah=tH-ay-6,m={};
- for(const s of TAC_SIDES)m[s]=B.sd[s].road?60:30;
+ for(const s of TAC_SIDES)m[s]=B.sd[s].road?84:30; // 道路：外側兩排車位、內側一條人員待命通道
  const t=Math.max(34,Math.min(170,(aw-m.w-m.e-20)/L.GW,(ah-m.n-m.s-20)/L.GH));
  const bw=t*L.GW,bh=t*L.GH;
  const bx=ax+m.w+10+Math.max(0,(aw-m.w-m.e-20-bw)/2),by=ay+m.n+10+Math.max(0,(ah-m.n-m.s-20-bh)/2);
@@ -46,13 +46,44 @@ function tacGeo(B){
 function tacDoor(G,s){const d=G.L.door[s]||[0,0];return[G.bx+d[0]*G.t,G.by+d[1]*G.t]}
 // 屋外人員在某側的站位（沿外牆排開）
 function tacStage(G,s,i){
- const d=tacDoor(G,s),a=34+(i%6)*38,b=Math.floor(i/6)*22;
- return s==='n'?[d[0]+a,G.by-24-b]:s==='s'?[d[0]+a,G.by+G.bh+24+b]:s==='w'?[G.bx-24-b,d[1]+a-G.t*.9]:[G.bx+G.bw+24+b,d[1]+a-G.t*.9]}
+ const d=tacDoor(G,s),a=34+(i%8)*36,b=0;
+ return s==='n'?[d[0]+a,G.by-22-b]:s==='s'?[d[0]+a,G.by+G.bh+22+b]:s==='w'?[G.bx-22-b,d[1]+a-G.t*.9]:[G.bx+G.bw+22+b,d[1]+a-G.t*.9]}
 // 車輛停放格：道路外緣一字排開；東西兩側直放
 function tacSlot(G,s,i){
  const b=G.band[s];
- if(s==='n'||s==='s'){const x=G.bx+i*58;return[Math.min(x,b[0]+b[2]-54),s==='n'?b[1]+4:b[1]+b[3]-24,0]}
- return[s==='w'?b[0]+4:b[0]+b[2]-24,Math.min(G.by+i*58,b[1]+b[3]-54),1]}
+ if(s==='n'||s==='s'){const per=Math.max(1,Math.floor(G.bw/58)),r=Math.floor(i/per)%2,x=G.bx+(i%per)*58;
+  return[x,s==='n'?b[1]+4+r*24:b[1]+b[3]-24-r*24,0]}
+ const per=Math.max(1,Math.floor(G.bh/58)),r=Math.floor(i/per)%2;
+ return[s==='w'?b[0]+4+r*24:b[0]+b[2]-24-r*24,G.by+(i%per)*58,1]}
+// 建物四角的路口：放站點帳篷（車輛不會停在那裡）；抵達側兩角優先
+function tacCorners(G,side){
+ const B4=G.band,rc=(v,h)=>[B4[v][0],B4[h][1],B4[v][2],B4[h][3]];
+ const all={nw:rc('w','n'),ne:rc('e','n'),sw:rc('w','s'),se:rc('e','s')};
+ const ord={n:['nw','ne','sw','se'],s:['sw','se','nw','ne'],e:['ne','se','nw','sw'],w:['nw','sw','ne','se']}[side];
+ return ord.map(k=>all[k])}
+// 家具：依房間用途畫，固定種子讓每次畫的位置一樣
+function tacFurn(g,r,kind,seed,dark){
+ let sd=seed*9301+49297;const rnd=()=>((sd=(sd*9301+49297)%233280)/233280);
+ const[x,y,w,h]=r,u=Math.min(w,h),p=u*.1;
+ const fc=dark?'#1e1b18':'#4a443c',lc=dark?'#26221e':'#5e574d';
+ const box=(a,b,c,d,col)=>{g.fillStyle=col||fc;g.fillRect(a,b,c,d);g.strokeStyle=lc;g.lineWidth=1;g.strokeRect(a,b,c,d)};
+ if(kind==='bed'){const bw=u*.36,bh=u*.52,bx=rnd()<.5?x+p:x+w-p-bw;box(bx,y+p,bw,bh);g.fillStyle=dark?fc:'#7b7468';g.fillRect(bx+bw*.1,y+p+bh*.05,bw*.8,bh*.16);box(bx+(bx<x+w/2?bw+p*.5:-p*1.8),y+p,p*1.3,p*1.3);
+  if(w>u*1.3)box(x+w-p-u*.5,y+h-p-u*.18,u*.5,u*.18)}
+ else if(kind==='living'){box(x+p,y+h-p-u*.2,w*.5,u*.2);box(x+p,y+h-p-u*.55,u*.2,u*.35);box(x+w*.3,y+h*.45,w*.22,h*.15);box(x+w-p-u*.08,y+h*.3,u*.08,h*.35)}
+ else if(kind==='kitchen'){box(x+p,y+p,w-2*p,u*.16);box(x+p,y+p,u*.16,h*.6);g.fillStyle=fc;g.beginPath();g.arc(x+w*.6,y+h*.62,u*.14,0,TAU);g.fill();
+  for(let k=0;k<3;k++){const a=k*2.1+.4;g.beginPath();g.arc(x+w*.6+Math.cos(a)*u*.22,y+h*.62+Math.sin(a)*u*.22,u*.04,0,TAU);g.fill()}}
+ else if(kind==='bath'){box(x+p,y+p,w*.55,h*.3,dark?fc:'#55606a');g.fillStyle=dark?fc:'#6b7680';g.beginPath();g.ellipse(x+w-p-u*.1,y+h-p-u*.13,u*.08,u*.12,0,0,TAU);g.fill()}
+ else if(kind==='store'){for(let k=0;k<6;k++){const s2=u*(.12+rnd()*.1);box(x+p+rnd()*(w-2*p-s2),y+p+rnd()*(h-2*p-s2),s2,s2)}}
+ else if(kind==='office'){const nx=Math.max(1,Math.floor(w/(u*.45))),ny=Math.max(1,Math.floor(h/(u*.45)));
+  for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const dx=x+p+i*(w-2*p)/nx,dy=y+p+j*(h-2*p)/ny;box(dx,dy,(w-2*p)/nx*.6,(h-2*p)/ny*.35);
+   g.fillStyle=fc;g.beginPath();g.arc(dx+(w-2*p)/nx*.3,dy+(h-2*p)/ny*.55,u*.04,0,TAU);g.fill()}}
+ else if(kind==='ward'){const n2=Math.max(2,Math.min(4,Math.floor(w/(u*.3))));
+  for(let i=0;i<n2;i++){const bx=x+p+i*(w-2*p)/n2;box(bx,y+p,(w-2*p)/n2*.6,h*.32);g.fillStyle=dark?fc:'#7b7468';g.fillRect(bx+2,y+p+2,(w-2*p)/n2*.6-4,h*.06)}
+  g.strokeStyle=lc;g.setLineDash([3,3]);g.beginPath();g.moveTo(x+p,y+h*.45);g.lineTo(x+w-p,y+h*.45);g.stroke();g.setLineDash([])}
+ else if(kind==='shelf'){const n2=Math.max(2,Math.floor(h/(u*.28)));for(let i=0;i<n2;i++)box(x+w*.12,y+p+i*(h-2*p)/n2,w*.76,u*.07)}
+ else if(kind==='machine'){box(x+w*.12,y+h*.2,w*.45,h*.4,dark?fc:'#4f555c');g.strokeStyle=lc;g.lineWidth=2;
+  for(let k=0;k<2;k++){g.beginPath();g.arc(x+w*.25+k*w*.2,y+h*.4,u*.07,0,TAU);g.stroke()}
+  g.lineWidth=1;g.beginPath();g.moveTo(x+w*.1,y+h*.78);g.lineTo(x+w*.9,y+h*.78);g.moveTo(x+w*.1,y+h*.84);g.lineTo(x+w*.9,y+h*.84);g.stroke()}}
 // 窗戶在某側的外牆位置
 function tacWinPt(G,c,s){const r=G.r(c);
  return s==='n'?[r[0]+r[2]/2,r[1]]:s==='s'?[r[0]+r[2]/2,r[1]+r[3]]:s==='e'?[r[0]+r[2],r[1]+r[3]/2]:[r[0],r[1]+r[3]/2]}
@@ -151,9 +182,14 @@ function drawTac(){
   else{g.fillStyle='rgba(236,234,227,.4)';g.font='12px '+FONT;g.textAlign='center';g.fillText(B.roofS?'屋頂已確認無人':'屋頂（點選可派員或雲梯登頂）',vc[0],vc[1])}}
  else{
  // 現場站點（帳篷）：排在各自那側道路的末端
- {const per={};
-  for(const d of TAC_STN){const o=B.st[d.k];if(!o)continue;const sd=o.side,i=per[sd]=(per[sd]||0)+1,b=G.band[sd];
-   const x=sd==='n'||sd==='s'?b[0]+b[2]-40-(i-1)*70:b[0]+b[2]/2,y=sd==='n'||sd==='s'?b[1]+b[3]/2:b[1]+b[3]-30-(i-1)*44;
+ {// 每個路口依大小排成格子（每格 56×44），大的路口先用
+  const slots=[];
+  tacCorners(G,B.arr).map((cr,o)=>({cr,o,cap:Math.max(1,Math.floor(cr[2]/56))*Math.max(1,Math.floor(cr[3]/44))}))
+   .sort((a,b)=>b.cap-a.cap||a.o-b.o).forEach(({cr})=>{const cl=Math.max(1,Math.floor(cr[2]/56)),rw=Math.max(1,Math.floor(cr[3]/44));
+    for(let j=0;j<rw;j++)for(let i=0;i<cl;i++)slots.push([cr[0]+cr[2]*(i+.5)/cl,cr[1]+cr[3]*(j+.5)/rw-8])});
+  let i=0;
+  for(const d of TAC_STN){const o=B.st[d.k];if(!o)continue;
+   const sp=slots[i++%slots.length],x=sp[0],y=sp[1];
    g.fillStyle=d.k==='icp'?'#e9a13b':d.k==='triage'||d.k==='treat'?'#5dcaa5':d.k==='air'?'#7db3e8':d.k==='rehab'?'#afa9ec':'#9d9a92';
    g.beginPath();g.moveTo(x-12,y+8);g.lineTo(x,y-9);g.lineTo(x+12,y+8);g.closePath();g.fill();
    g.fillStyle='#eceae3';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(d.n,x,y+10)}}
@@ -170,6 +206,7 @@ function drawTac(){
   const x=tacCel(B,vf,n.c),r=G.r(n.c);
   TAC.hits.push({t:'cell',f:vf,c:n.c,x:r[0],y:r[1],w:r[2],h:r[3]});
   g.fillStyle=burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c';g.fillRect(r[0],r[1],r[2],r[3]);
+  if(n.ty==='room')tacFurn(g,r,n.kind,n.c*7+vf*3+1,burnt(x)||x.fu<.3);
   if(n.ty==='hall'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;for(let k=1;k<4;k++){g.beginPath();g.moveTo(r[0]+r[2]*k/4,r[1]);g.lineTo(r[0]+r[2]*k/4,r[1]+r[3]);g.stroke()}}
   if(n.ty==='stair'){
    g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;
@@ -196,7 +233,8 @@ function drawTac(){
     g.fillStyle='rgba(236,234,227,.2)';g.font='600 '+Math.max(12,t*.22|0)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
     g.fillText('?',r[0]+r[2]/2,r[1]+r[3]/2)}
    g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='right';g.textBaseline='top';
-   g.fillText(tacRm(B,vf,n.no),r[0]+r[2]-5,r[1]+4)}
+   g.fillText(tacRm(B,vf,n.no),r[0]+r[2]-5,r[1]+4);
+   g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[n.kind].n,r[0]+(x.srch>=1&&!x.vic?18:5),r[1]+4)}
   if(x.s>.03){g.fillStyle='rgba(66,68,74,'+(.12+.68*x.s).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3]);
    for(let k=0;k<3;k++){const ph=(T*.15+k/3+n.c*.13)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.18).toFixed(3)+')';
     g.beginPath();g.arc(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.37+n.c*.21)%1)),t*.18,0,TAU);g.fill()}}}
