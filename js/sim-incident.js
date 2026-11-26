@@ -15,7 +15,7 @@ function stepIncident(i,dt){
    if(onTank&&inc.fl.gap)inc.fl.gap=0}
   const flow=stepWater(inc,dt,first);
   stepAgencies(inc,Kd,dt,first);
-  // 已進入戰術指揮的建物火災：進度由 tactics.js 的剖面模型決定
+  // 已進入戰術指揮的建物火災：進度由 tactics.js 的樓層平面模型決定
   if(inc.tac)tacIncident(inc,dt,first,flow);
   else{
   const waitPol=Kd.pol&&inc.pol<2&&inc.ph>=1,waitPow=Kd.pow&&inc.pow<2&&inc.ph>=1;
