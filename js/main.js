@@ -68,7 +68,7 @@ document.body.addEventListener('click',e=>{
  document.querySelector('main').classList.toggle('lc',!leftOpen);
  dirty();ui();size()});
 document.body.addEventListener('click',e=>{
- const b=e.target.closest('[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
+ const b=e.target.closest('[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
  if(!b)return;
  msg='';
  const D=b.dataset;
@@ -91,6 +91,7 @@ document.body.addEventListener('click',e=>{
    else msg=u.cs+' 無法抵達勤務地點'}
   dirty();return}
  const inc=S.inc.find(x=>x.id===sel);if(!inc)return;
+ if(D.tac){tacOpen(inc);dirty();return}
  if(D.note){
   const el=$('note'),er=$('nerr');
   if(!el.value.trim()){if(er)er.textContent='輸入內容後再儲存';return}
@@ -204,7 +205,9 @@ function size(){
  cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);
  ctxMain.setTransform(dpr,0,0,dpr,0,0);clamp();
  if(document.getElementById('scenewrap').style.display!=='none')sizeScene()}
-window.addEventListener('resize',()=>{size()});
+window.addEventListener('resize',()=>{size();if(TAC.open)sizeTac()});
+// 雙擊現場畫面進入戰術指揮
+scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&TACK[inc.k]){tacOpen(inc);dirty()}});
 size();reset();size();
 let faults=0;
 let frameN=0;
@@ -212,8 +215,9 @@ function loop(ts){
  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
  try{
   if(!paused)step(dt);
-  draw();if((++frameN&1)===0)drawScene();
-  uiT+=dt;if(uiT>.28){uiT=0;ui()}
+  if(TAC.open)drawTac();
+  else{draw();if((++frameN&1)===0)drawScene()}
+  uiT+=dt;if(uiT>.28){uiT=0;ui();if(TAC.open)tacUI()}
   if(msg){mt+=dt;if(mt>5){msg='';mt=0;dh=''}}else mt=0;
  }catch(err){
   faults++;console.error(err);

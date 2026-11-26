@@ -15,6 +15,9 @@ function stepIncident(i,dt){
    if(onTank&&inc.fl.gap)inc.fl.gap=0}
   const flow=stepWater(inc,dt,first);
   stepAgencies(inc,Kd,dt,first);
+  // 已進入戰術指揮的建物火災：進度由 tactics.js 的樓層平面模型決定
+  if(inc.tac)tacIncident(inc,dt,first,flow);
+  else{
   const waitPol=Kd.pol&&inc.pol<2&&inc.ph>=1,waitPow=Kd.pow&&inc.pow<2&&inc.ph>=1;
   const tacHold=Kd.tac&&inc.clr>0&&inc.ph>=(Kd.clrPh!==undefined?Kd.clrPh:3);
   const gm=inc.ph>=0?phaseMiss(inc):null;
@@ -32,6 +35,7 @@ function stepIncident(i,dt){
   stepChatter(inc,Kd,dt,first);
   const blsGo=got===0&&inc.pm.cc!==undefined&&onScene(inc).some(u=>u.code==='91'&&(u.st==='work'||u.st==='tx'));
   if(!((got>0||blsGo)&&wo&&!held&&flow>0))inc.left-=dt*(first?(gm?.35:held?.75:.5):1);
+  }
   if(inc.work>=inc.dur&&!inc.wrap&&first&&inc.phs[inc.phs.length-1]!=='到院交接'){
    inc.wrap=6+tot*1.6;
    radio(inc,first.cs,'任務目標達成，開始收整裝備與人員清點，預計 '+Math.round(inc.wrap)+' 秒。')}
@@ -72,7 +76,8 @@ function stepWater(inc,dt,first){
     const supCap=Math.max(1,Math.floor((inflow+(tp1[0]>tp1[1]*.3?LPS:0))/LPS));
     const want=Math.min(recLines(inc),cap2,supCap);
     const tp0=tankPool(inc),lowW=tp0[1]&&tp0[0]/tp0[1]<.25&&inflow<inc.lines*LPS;
-    if(!inc.lines){inc.lines=want;
+    if(inc.tac){}
+    else if(!inc.lines){inc.lines=want;
      radio(inc,boss.cs,'現場評估後佈設 '+inc.lines+' 線攻擊，水源由'+(inc.shuttle?'幫浦車輪流往返補水':inc.tender?'水庫車供應':'消防栓佔水')+'。')}
     else{inc.lineT=(inc.lineT||10)-dt;
      if(inc.lineT<=0){inc.lineT=12;

@@ -121,3 +121,29 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
  .chip{padding:2px 7px}
  .buy,.pkg,.kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+/* 戰術畫面 */
+#tac{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}
+#tac[hidden]{display:none}
+#tacTop{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:7px 12px;background:var(--pnl);border-bottom:1px solid var(--line);flex:none}
+#tacTop .tt{font-size:15px;color:var(--amb)}
+#tacTop .strat{font-size:12px;color:var(--blu)}
+#tacTop .tmsg{font-size:12px;color:var(--amb)}
+#tacMid{flex:1;display:flex;min-height:0;gap:6px;padding:6px}
+#tcv{display:block;border-radius:8px;background:#0d1015;touch-action:none;cursor:crosshair}
+#tacSide{width:290px;flex:none;background:var(--pnl);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
+#tacSide .tlog div{font-size:12px;padding:3px 0;border-bottom:1px solid var(--line);color:var(--fg2)}
+#tacSide .tlog .lt{color:var(--blu)}
+#tacBot{flex:none;background:var(--pnl);border-top:1px solid var(--line);padding:7px 10px;display:flex;flex-direction:column;gap:6px;max-height:30vh;overflow:auto}
+.tsqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px}
+.tsq .sub{font-size:11px}
+.tsq{background:var(--pnl2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;cursor:pointer}
+.tsq.sel{border-color:var(--amb);background:var(--pnl3)}
+.tsq.dn{border-color:var(--red)}
+.tsq .bar{height:3px;background:rgba(0,0,0,.5);border-radius:2px;margin-top:3px;overflow:hidden}
+.tsq .bar i{display:block;height:100%}
+.tsq .bar.hp i{background:var(--pnk)}
+.tords{display:flex;flex-wrap:wrap;gap:5px}
+.tacbtn{border-color:var(--amb);color:var(--amb)}
+@media (max-width:760px){#tacMid{flex-direction:column}#tacSide{width:auto;max-height:24vh}}
+#tacSide .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tords .tgl{font-size:11px;color:var(--fg3);align-self:center;margin:0 2px 0 8px}.tords .tgl:first-child{margin-left:0}
