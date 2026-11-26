@@ -90,7 +90,7 @@ function tacTruck(inc,B,q,s,quiet){
  q.tgt=s;q.tmv=12;q.side=q.tside;
  if(!quiet)radio(inc,q.cs,'收到，移車至'+TAC_SDN[s]+'側'+B.sd[s].nm+'，約 12 秒。');
  return true}
-// 正壓送風的作用範圍：從送風入口經門與樓梯通往各排煙開口（破窗、屋頂）的路徑；沒有開口就沒有效果
+// 正壓排煙的作用範圍：從送風入口經門與樓梯通往各排煙開口（破窗、屋頂）的路徑；沒有開口就沒有效果
 function tacPpvSet(B){
  const set=new Set();
  if(!B.ppv||!B.ppvSide)return set;
@@ -110,7 +110,7 @@ function tacExpo(inc,B,dt){
    if(n.edge.includes(s))add+=(x.h-.5)*(x.v?2:1)}
   const cov=B.sq.filter(q=>q.task==='cover'&&q.cside===s&&q.line&&!q.tmv).reduce((a,q)=>a+q.pf,0);
   B.exp[s]=Math.max(0,Math.min(1,(B.exp[s]||0)+dt*(.004*add-.03*cov)));
-  if(B.exp[s]>.5&&!B.expW[s]){B.expW[s]=1;radio(inc,'安全官',TAC_SDN[s]+'側鄰棟外牆受熱嚴重，請派水線防護！')}
+  if(B.exp[s]>.5&&!B.expW[s]){B.expW[s]=1;radio(inc,'安全官',TAC_SDN[s]+'側鄰棟外牆受熱嚴重，請佈線防護射水！')}
   if(B.exp[s]<.3)B.expW[s]=0;
   // 受熱已降、該面牆也沒有房間在燒：防護組收線待命
   if(B.exp[s]<.05&&!add)for(const q of B.sq)if(q.task==='cover'&&q.cside===s){q.task='idle';radio(inc,q.cs,TAC_SDN[s]+'側鄰棟已降溫，停止防護射水。')}

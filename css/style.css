@@ -146,3 +146,4 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 .tacbtn{border-color:var(--amb);color:var(--amb)}
 @media (max-width:760px){#tacMid{flex-direction:column}#tacSide{width:auto;max-height:24vh}}
 #tacSide .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tords .tgl{font-size:11px;color:var(--fg3);align-self:center;margin:0 2px 0 8px}.tords .tgl:first-child{margin-left:0}
