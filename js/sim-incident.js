@@ -195,6 +195,7 @@ function closeIncident(inc,i){
    if(inc.pm.ohca){
     if(inc.dai==='cpr'){bonus+=500;S.money+=500;S.score+=80;S.rep=Math.min(100,S.rep+2)}
     else{S.rep-=3;tail='；OHCA 未實施 DA-CPR，預後不佳（評鑑 -3）'}}
+   if(Kd.hoax&&!inc.tac){const u0=onScene(inc)[0];radio(inc,u0?u0.cs:'現場','查證完畢，查無火煙與傷患，研判為'+(inc.pm.mal?'惡作劇謊報，建議轉報 110 究辦':'善意誤報')+'。')}
    if(Kd.hoax&&inc.pm.mal&&inc.pol===2){bonus+=600;S.money+=600;S.score+=60}
    S.money+=inc.pay;S.score+=Math.round(inc.pay/10);S.solved++;S.rep=Math.min(100,S.rep+1);
    msg='結案：'+(inc.nm||Kd.n)+' '+inc.addr+'（+$'+(inc.pay+bonus)+'）'+tail;

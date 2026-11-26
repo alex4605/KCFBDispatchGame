@@ -184,6 +184,11 @@ function setZoom(z){
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);
 $('zFit').onclick=fit;
+// 全市圖收合：只在現場畫面放大（地圖在右欄）時可用，把空間讓給案件詳情與 ARR 派遣
+let mapMin=false;
+function setMapMin(v){mapMin=v;document.querySelector('main').classList.toggle('mapc',v);size()}
+$('zMin').onclick=()=>setMapMin(true);
+$('zMax').onclick=()=>setMapMin(false);
 $('zSwap').onclick=e=>{wantSwap=!wantSwap;e.currentTarget.style.background=wantSwap?'#2a4a6a':'';applySwap()};
 function scSetZoom(z){scZoom=Math.max(.5,Math.min(3.5,z))}
 $('sIn').onclick=()=>scSetZoom(scZoom*1.25);

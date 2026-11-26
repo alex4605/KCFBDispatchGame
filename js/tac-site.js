@@ -43,7 +43,7 @@ function tacCanSide(B,q,s){
 function tacBestEnt(B,side,f,c,hose){
  let best=null,bd=INF;
  for(const e of B.ents){
-  const d=(hose?tacOutLen(side,e.side):tacWalk(side,e.side)/2)+tacPath(B,B.bf,e.c,f,c).length;
+  const d=(hose?tacOutLen(side,e.side):tacWalk(side,e.side)/2)+tacPath(B,B.bf,e.c,f,c).length+(e.lock?3:0);
   if(d<bd){bd=d;best=e}}
  return best}
 // 人員離開建物時落在哪一側：同一節點有多個出口時，優先自己車輛那側
@@ -110,14 +110,14 @@ function tacExpo(inc,B,dt){
    if(n.edge.includes(s))add+=(x.h-.5)*(x.v?2:1)}
   const cov=B.sq.filter(q=>q.task==='cover'&&q.cside===s&&q.line&&!q.tmv).reduce((a,q)=>a+q.pf,0);
   B.exp[s]=Math.max(0,Math.min(1,(B.exp[s]||0)+dt*(.004*add-.03*cov)));
-  if(B.exp[s]>.5&&!B.expW[s]){B.expW[s]=1;radio(inc,'安全官',TAC_SDN[s]+'側鄰棟外牆受熱嚴重，請佈線防護射水！')}
+  if(B.exp[s]>.5&&!B.expW[s]){B.expW[s]=1;radio(inc,'安全官',TAC_SDN[s]+'側鄰棟外牆受熱嚴重，請佈線周界防護！')}
   if(B.exp[s]<.3)B.expW[s]=0;
   // 受熱已降、該面牆也沒有房間在燒：防護組收線待命
-  if(B.exp[s]<.05&&!add)for(const q of B.sq)if(q.task==='cover'&&q.cside===s){q.task='idle';radio(inc,q.cs,TAC_SDN[s]+'側鄰棟已降溫，停止防護射水。')}
+  if(B.exp[s]<.05&&!add)for(const q of B.sq)if(q.task==='cover'&&q.cside===s){q.task='idle';radio(inc,q.cs,TAC_SDN[s]+'側鄰棟已降溫，停止周界防護。')}
   if(B.exp[s]>=1&&!B.expL[s]){B.expL[s]=1;S.rep-=6;inc.pay=Math.round(inc.pay*.85);
    radio(inc,'受理','火勢延燒至'+TAC_SDN[s]+'側鄰棟（評鑑 -6），請加強防護並注意鄰棟住戶疏散。');
    if(S.rep<=0){S.rep=0;S.over=true}}}}
-// 防護射水：幫浦車停在鄰棟相鄰的道路側（不能是對面），向鄰棟外牆射水
+// 周界防護（鄰棟）：幫浦車停在鄰棟相鄰的道路側（不能是對面），向鄰棟外牆射水
 function tacCoverSide(B,q,s){
  const ok=TAC_SIDES.filter(x=>x!==s&&!tacOpp(x,s)&&!tacCanSide(B,q,x));
  return ok.includes(q.tside)?q.tside:ok[0]||null}

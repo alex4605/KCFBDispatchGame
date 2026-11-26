@@ -5,13 +5,13 @@ const TAC_STN=[
  {k:'icp',n:'指揮站',need:'指揮車',codes:['41'],fx:'作業效率 +15%；每輛指揮車提供 2 名幕僚可指派職務'},
  {k:'stage',n:'待命集結區',need:'指揮車或一組幫浦組',codes:['41','11','16','57'],fx:'新到小組在集結區整裝即可派用；幫浦組不足時自動請求增援'},
  {k:'air',n:'氣瓶充填區',need:'救助器材車（氣瓶灌充機）',codes:['71'],fx:'換瓶 3 秒、不限數量；未開設時每組只有 2 支備用瓶，用完換瓶要 25 秒'},
- {k:'rehab',n:'Rehab 區',need:'救護車一輛',codes:['91'],fx:'隊員休息補水，疲勞恢復快 5 倍'},
+ {k:'rehab',n:'後勤照護區',need:'救護車一輛',codes:['91'],fx:'隊員休息、補水與生命徵象監測，疲勞恢復快 5 倍'},
  {k:'triage',n:'救護檢傷站',need:'救護車一輛',codes:['91'],fx:'依傷勢優先後送；裝載較快；紅色傷患惡化減緩'},
  {k:'treat',n:'救護醫療站',need:'有 EMT-P 的救護車',codes:['91'],tp:1,fx:'等待後送的傷患惡化減為三成'},
  {k:'media',n:'聯訪處',need:'指揮站已開設，且警方到場或另一輛指揮車',codes:['41','警'],fx:'統一對媒體與家屬發布，避免扣評鑑；結案評鑑 +2'}];
 const TAC_ROLE=[
- {k:'safety',n:'安全官',fx:'自動編成 RIT、MAYDAY 時派員救援、閃燃前兆與體力透支時撤出小組'},
- {k:'water',n:'水源組長',fx:'自動佔水、送水口加壓、鄰棟防護射水'},
+ {k:'safety',n:'安全官',fx:'在入口設置人員管制板（之後才看得到各組氣量）；自動編成 RIT、MAYDAY 時派員救援、閃燃前兆時撤出小組'},
+ {k:'water',n:'水源組長',fx:'自動佔水、送水口加壓、鄰棟周界防護'},
  {k:'search',n:'搜救組長',fx:'自動派閒置的救助組搜索、雲梯救援窗口與屋頂受困者'},
  {k:'ems',n:'救護組長',fx:'自動請求救護車、開設檢傷站與醫療站'}];
 const tacStnDef=k=>TAC_STN.find(x=>x.k===k);
@@ -53,8 +53,14 @@ function tacRoleSet(inc,B,k,on){
   if(used>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}
   B.role[k]=1;radio(inc,'受理','指派'+TAC_ROLE.find(x=>x.k===k).n+'。')}
  else if(!on&&B.role[k]){B.role[k]=0;radio(inc,'受理','解除'+TAC_ROLE.find(x=>x.k===k).n+'。')}}
-// 每幀：站點人員仍在場、聯訪處、集結區增援
+// 人員管制板：安全官就位約 10 秒後在入口設好，才能掌握各組入室時間與氣量
+const tacAcc=B=>!!(B.role.safety&&B.accT>=10);
+// 每幀：站點人員仍在場、聯訪處、集結區增援、人員管制板
 function tacStnStep(inc,B,dt){
+ if(B.role.safety){const was=B.accT||0;B.accT=was+dt;
+  if(was<10&&B.accT>=10){const e=B.ents.find(x=>x.side===B.arr)||B.ents[0];
+   radio(inc,'安全官','已於'+(e?TAC_SDN[e.side]+'側':'')+'入口設置人員管制板，開始登錄各組入室時間與氣量。')}}
+ else B.accT=0;
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
   if(s.u!==null){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
@@ -109,3 +115,42 @@ function tacAmbReq(inc,B,quiet){
  inc.req={t:'need',s:'現場傷患 '+B.pts.length+' 名待送醫，請求增派救護車'+(red?'（含 EMT-P）':'')+'。',c:'91',als:red?1:0,cs:'救護組'};inc.reqT=22;
  radio(inc,'救護組',inc.req.s);B.ambT=40;return true}
 const tacAmbFree=(inc,B)=>onScene(inc).filter(u=>u.code==='91'&&u.st==='work'&&!tacStnBusy(B,u.id)&&!u.load).length;
+// 現場民眾：剛到場時有避難出來的住戶或管理員可詢問屋內資訊（答案可能不完全正確）
+const TAC_ASK=[
+ {k:'who',q:'裡面還有人嗎？在哪裡？'},{k:'fire',q:'火是從哪裡燒起來的？'},{k:'gas',q:'裡面有瓦斯桶或危險物品嗎？'},
+ {k:'lock',q:'門有沒有鎖？有鑰匙嗎？'},{k:'layout',q:'樓上住幾戶？樓梯在哪？'}];
+function tacCivInit(inc,B){B.civ={n:1+(Math.random()<.5?1:0),asked:{},until:S.t+240}}
+const tacCivOn=B=>B.civ&&S.t<B.civ.until&&Object.keys(B.civ.asked).length<TAC_ASK.length;
+function tacAsk(inc,B,k){
+ if(!tacCivOn(B)||B.civ.asked[k])return;B.civ.asked[k]=1;
+ const say=s=>inc.log.push({w:'民',s:'（現場民眾）'+s,t:S.t-inc.t0}),Q=TAC_ASK.find(x=>x.k===k).q;
+ inc.log.push({w:'場',s:'（現場指揮官）'+Q,t:S.t-inc.t0});
+ if(k==='who'){
+  const rs=B.cells.filter(x=>x.ty==='room'&&x.vic+x.hid>0),told=[];
+  for(const x of rs)if(Math.random()<.75){x.rep=1;told.push(tacNm(B,x.f,x.c))}
+  if(Math.random()<.15){const x=pick(B.cells.filter(y=>y.ty==='room'&&!y.vic&&!y.hid));if(x){x.rep=1;told.push(tacNm(B,x.f,x.c))}}
+  if(B.roofV)told.push('頂樓屋頂（有人往上跑）');
+  say(told.length?'我知道還有人在'+told.join('、')+'，拜託快去救！':B.hoax?'應該沒有人，我們都出來了，我也沒看到火。':'我們這戶都出來了，其他人我不確定。')}
+ else if(k==='fire'){
+  if(B.hoax){say('我沒看到火，只是聞到怪味道，有人說那層在冒煙。');return}
+  const oc=Math.random()<.85?B.oc:(B.L.N[B.oc].nb.find(o=>B.L.N[o].ty==='room')||B.oc);B.ocKnown=1;
+  say('是從'+tacNm(B,B.of,oc)+(B.L.N[oc].kind==='kitchen'?'廚房':'')+'那邊燒起來的，煙很大。')}
+ else if(k==='gas'){
+  if(B.gas!==undefined){B.gasK=1;say('有！'+tacNm(B,B.gasF,B.gas)+'有一桶瓦斯，你們要小心。')}
+  else say('應該沒有，這棟都是天然氣管線。')}
+ else if(k==='lock'){
+  for(const e of B.ents)e.known=1;
+  const lk=B.ents.filter(e=>e.lock);
+  if(!lk.length){say('門都沒鎖，可以直接進去。');return}
+  if(Math.random()<.5){const e=lk[0];e.lock=0;say(TAC_SDN[e.side]+'側的鐵捲門我有遙控器，我幫你們打開。'+(lk.length>1?'其他門是鎖著的。':''))}
+  else say(lk.map(e=>TAC_SDN[e.side]+'側').join('、')+'的門是鎖著的，我沒有鑰匙。')}
+ else if(k==='layout'){
+  say('這棟'+(B.F-B.bf)+'層'+(B.bf?'、還有地下室':'')+'，每層大概 '+Math.max(1,Math.round(B.R/2))+' 戶，樓梯在'+TAC_SDN.w+'邊'+(B.sp?'，一樓外面有送水口':'')+'。')}}
+// 瓦斯桶：火燒到時爆炸，波及本室與相鄰空間
+function tacGas(inc,B){
+ if(B.gas===undefined||B.gasX)return;
+ const x=tacCel(B,B.gasF,B.gas);if(x.h<.75||x.wet)return;
+ B.gasX=1;x.h=1;x.fl=1;
+ for(const o of B.L.N[B.gas].nb){const y=tacCel(B,B.gasF,o);y.h=Math.min(1,Math.max(y.h,.4)+.3)}
+ radio(inc,'安全官',tacNm(B,B.gasF,B.gas)+'桶裝瓦斯爆炸！');
+ for(const q of B.sq)if(tacIn(q)&&q.f===B.gasF&&(q.c===B.gas||B.L.N[B.gas].nb.includes(q.c))&&q.ty!=='robot'&&!q.down){q.hp=Math.max(.1,q.hp-.45);if(q.hp<.3)tacDown(inc,B,q,'瓦斯爆炸')}}

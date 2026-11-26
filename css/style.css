@@ -135,7 +135,7 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 #tacSide{width:290px;flex:none;background:var(--pnl);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
 #tacSide .tlog div{font-size:12px;padding:3px 0;border-bottom:1px solid var(--line);color:var(--fg2)}
 #tacSide .tlog .lt{color:var(--blu)}
-#tacBot{flex:none;background:var(--pnl);border-top:1px solid var(--line);padding:7px 10px;display:flex;flex-direction:column;gap:6px;max-height:30vh;overflow:auto}
+#tacBot{flex:none;background:var(--pnl);border-top:1px solid var(--line);padding:6px 10px;display:flex;flex-direction:column;gap:5px;max-height:36vh;overflow:auto}
 .tsqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px}
 .tsq .sub{font-size:11px}
 .tsq{background:var(--pnl2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;cursor:pointer}
@@ -149,3 +149,40 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 @media (max-width:760px){#tacMid{flex-direction:column}#tacSide{width:auto;max-height:24vh}}
 #tacSide .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 .tords .tgl{font-size:11px;color:var(--fg3);align-self:center;margin:0 2px 0 8px}.tords .tgl:first-child{margin-left:0}
+
+/* 全市圖收合 */
+#mapbar{display:none}
+#zMin{font-size:12px}
+main:not(.sw) #zMin{display:none}
+main.sw.mapc #right #mapwrap{height:34px}
+main.sw.mapc #cv,main.sw.mapc #zc,main.sw.mapc #legend{display:none}
+main.sw.mapc #mapbar{display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 10px;font-size:12px;color:var(--fg2)}
+main.sw.mapc #mapbar button{padding:2px 8px}
+/* 戰術側欄：精簡概況、水源、民眾 */
+.tstat{display:flex;flex-wrap:wrap;gap:4px}
+.tch{background:var(--pnl2);border-radius:5px;padding:3px 7px;font-size:12px;display:flex;gap:5px;align-items:baseline}
+.tch i{font-style:normal;color:var(--fg3);font-size:11px}
+.twater .row{padding:2px 0;font-size:12px}.twater .row>span:first-child{color:var(--fg3)}
+.tbar{display:inline-block;width:60px;height:5px;background:rgba(0,0,0,.5);border-radius:3px;overflow:hidden;vertical-align:middle}
+.tbar i{display:block;height:100%}
+.tline{display:grid;grid-template-columns:auto 1fr auto;gap:6px;align-items:center;font-size:12px;padding:2px 0;border-top:1px solid var(--line)}
+.tline .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tasks{display:flex;flex-direction:column;gap:4px}.tasks button{text-align:left}
+#tacSide .tlog .lm{color:var(--amb)}
+/* 管制牌看板 */
+.tboard{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.tcol{background:var(--pnl2);border-radius:7px;padding:4px;min-height:48px;max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.tch2{font-size:11px;color:var(--fg2);padding:0 2px;display:flex;justify-content:space-between}
+.c-in .tch2{color:#ff8a6a}.c-rit .tch2{color:var(--red)}.c-rest .tch2{color:var(--amb)}.c-stn .tch2{color:var(--pur)}
+.mtag{flex:none;background:#eceae3;color:#1a1a18;border-radius:4px;cursor:pointer;overflow:hidden;border:2px solid transparent;font-size:11px}
+.mtag .mh{display:flex;justify-content:space-between;align-items:baseline;padding:2px 6px;color:#fff;background:#c8332c}
+.mtag .mh b{font-family:var(--mono);font-size:12px}.mtag .mh span{font-size:10px;opacity:.85}
+.mtag.ty-resc .mh{background:#d9a51e;color:#1a1a18}.mtag.ty-vent .mh{background:#7a6fc4}.mtag.ty-ladder .mh{background:#d46a1e}.mtag.ty-robot .mh{background:#5b6570}
+.mtag .mb{padding:2px 6px;line-height:1.35}.mtag .mb>div:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mtag .mb .sub{color:#55534d;font-size:10px}
+.mtag .mf{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.mtag .tbar{width:50px;background:#c8c4ba}
+.mtag.sel{border-color:var(--amb);box-shadow:0 0 0 2px rgba(233,161,59,.4)}
+.mtag.dn{background:#ffd9d4;animation:mdn 1s infinite}
+@keyframes mdn{50%{background:#ff9d92}}
+.tords .trow{font-size:11px;color:var(--fg2);align-self:center;margin-right:4px;min-width:64px}
+@media (max-width:1100px){.tboard{grid-template-columns:repeat(3,minmax(0,1fr))}}

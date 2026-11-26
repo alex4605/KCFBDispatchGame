@@ -103,7 +103,8 @@ function reveal(inc,u){
  const d=KIND[inc.k];inc.rev=1;
  if(d.fake){radio(inc,u.cs,'到達現場，患者可自行對答與行走，生命徵象正常，'+
    pick(['主訴與檢查所見不符，仍依規定戒護送醫。','研判無立即危險，依規定送醫由急診評估。']));return}
- if(d.hoax){radio(inc,u.cs,'到達現場查無火煙、無傷病患，研判為'+(inc.pm.mal?'惡作劇謊報，建議轉報 110 究辦':'善意誤報')+'。');return}
+ // 誤報謊報：到場先查證（可進入戰術指揮逐層查證），查證完才研判
+ if(d.hoax){inc.dur=Math.max(inc.dur,45);radio(inc,u.cs,'到達現場，外觀未見明顯火光與煙霧，逐層查證中。');return}
  radio(inc,u.cs,'到達現場，'+(d.fire?
   '回報'+['','一級','二級','三級','四級'][inc.pm.lvl]+'火警，火載量 '+inc.pm.load+'、燃燒面積約 '+inc.pm.area+' ㎡、受困 '+inc.pm.trap+
   ' 人、結構穩定度 '+inc.pm.stab:
