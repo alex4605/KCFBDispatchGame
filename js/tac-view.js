@@ -128,9 +128,10 @@ function tacFloorPat(g,r,n){
  g.restore()}
 // 俯視車輛：50×20、車頭朝右；依車種畫車頂設備
 function tacVeh(g,u,T){
- const c=u.code,col=CODE[c].col;
+ const c=u.code;
  g.fillStyle='rgba(0,0,0,.35)';scRR(g,1.5,2,50,20,3);g.fill(); // 陰影
- const body=c==='91'?'#f2f2ee':c==='警'?'#e9e7e0':col;
+ // 消防車一律消防紅，救護車白色、警車白色；車種靠車頂設備區分
+ const body=c==='91'||c==='警'?'#f2f2ee':'#c8332c';
  g.fillStyle=body;scRR(g,0,0,50,20,3);g.fill();
  // 駕駛艙與擋風玻璃
  g.fillStyle=c==='91'||c==='警'?'#d8d8d2':'rgba(0,0,0,.18)';g.fillRect(38,1,11,18);
@@ -144,7 +145,7 @@ function tacVeh(g,u,T){
  else if(c==='61'){g.fillStyle='rgba(255,255,255,.25)';scRR(g,3,3,33,14,7);g.fill();g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=1;
   for(let x=10;x<36;x+=8){g.beginPath();g.moveTo(x,3);g.lineTo(x,17);g.stroke()}}
  else if(c==='91'){g.fillStyle='#2f8f6a';g.fillRect(0,8.5,38,3);g.fillStyle='#d8362f';g.fillRect(17,4,4,12);g.fillRect(13,8,12,4)}
- else if(c==='41'){g.fillStyle='rgba(0,0,0,.2)';g.fillRect(6,3,28,14);g.fillStyle='#f3c43b';g.fillRect(8,9,24,2)}
+ else if(c==='41'){g.fillStyle='rgba(0,0,0,.22)';g.fillRect(6,3,28,14);g.fillStyle='#f3c43b';g.fillRect(8,9,24,2);g.fillStyle='#eceae3';g.font='600 7px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('指揮',20,6)}
  else if(c==='75'){g.fillStyle='#3a3d44';g.beginPath();g.arc(18,10,6.5,0,TAU);g.fill();g.strokeStyle='#c9d0d8';g.lineWidth=1.2;g.beginPath();
   for(let k=0;k<3;k++){const a=k*TAU/3+T*6;g.moveTo(18,10);g.lineTo(18+Math.cos(a)*5.5,10+Math.sin(a)*5.5)}g.stroke()}
  else if(c==='71'||c==='搜'){g.strokeStyle='rgba(0,0,0,.3)';g.lineWidth=1;for(let x=5;x<36;x+=8){g.strokeRect(x,3,6,14)}}

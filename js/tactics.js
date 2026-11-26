@@ -44,10 +44,15 @@ function tacLayout(T,K,kind){
  const cuts=(a,b,lo,hi)=>{const r=[a];let x=a;
   while(b-x>hi){const w=lo+R()*(hi-lo);if(b-x-w<lo)break;x+=w;r.push(x)}
   r.push(b);return r};
+ // 樓梯核：樓梯間只佔一小塊，同一條邊的其餘空間是門廳走廊
+ // （先加樓梯間：第一座樓梯一定是節點 0，其他程式以此當主樓梯）
+ const core=(x,ya,yb,sy,sh)=>{add({ty:'stair',gx:x,gy:sy,gw:SW,gh:sh});
+  if(sy-ya>.2)add({ty:'hall',gx:x,gy:ya,gw:SW,gh:sy-ya});
+  if(yb-sy-sh>.2)add({ty:'hall',gx:x,gy:sy+sh,gw:SW,gh:yb-sy-sh})};
  if(T.lay==='house'){ // 透天：一側樓梯，中段小走道串起前廳、後間、廚房、浴室
   L.GW=SW+1.8;L.GH=3;
-  add({ty:'stair',gx:0,gy:0,gw:SW,gh:3});
   const hw=.45,y0=.9+R()*.25,y1=y0+.95;
+  core(0,0,3,y0,y1-y0);
   add({ty:'hall',gx:SW,gy:y0,gw:hw,gh:y1-y0});
   const bk=R()<.5?[SW,L.GW]:[SW,SW+.75+R()*.35,L.GW];
   for(let i=0;i<bk.length-1;i++)room(bk[i],0,bk[i+1]-bk[i],y0,'bed');
@@ -56,18 +61,18 @@ function tacLayout(T,K,kind){
   if(R()<.4){const w=.5+R()*.2;room(SW,y1,L.GW-SW-w,3-y1,'living');room(L.GW-w,y1,w,3-y1,'store')}
   else room(SW,y1,L.GW-SW,3-y1,'living')}
  else if(T.lay==='open'){ // 賣場／廠區：寬窄不一的兩排相通區塊，偶有隔出的小房間；百貨東側另有樓梯
-  L.GH=2.4;const we=SW+K*1.2,ym=.85+R()*.7;
-  add({ty:'stair',gx:0,gy:0,gw:SW,gh:L.GH});
+  L.GH=2.4;const we=SW+K*1.2,ym=.85+R()*.7,sy=Math.max(.3,Math.min(L.GH-1.1,ym-.4));
+  core(0,0,L.GH,sy,.8);
   const xs=cuts(SW,we,.85,1.5);
   for(let i=0;i<xs.length-1;i++){const w=xs[i+1]-xs[i];
    if(R()<.22&&w>1){const sy=R()<.5;room(xs[i],0,w/2,ym,sy?'store':'office');room(xs[i]+w/2,0,w/2,ym,'store')}
    else room(xs[i],0,w,ym);
    room(xs[i],ym,w,L.GH-ym)}
   L.GW=we;
-  if(T.st===2){add({ty:'stair',gx:we,gy:0,gw:SW,gh:L.GH});L.GW+=SW}}
+  if(T.st===2){core(we,0,L.GH,sy,.8);L.GW+=SW}}
  else{ // 走廊式：主走廊分段，有時多一條往北或往南的支走廊；兩側房間寬窄不一
   L.GW=SW+K;L.GH=3;const ch=.62,y0=.95+R()*.45,y1=y0+ch;
-  add({ty:'stair',gx:0,gy:0,gw:SW,gh:3});
+  core(0,0,3,y0-.1,ch+.2);
   let br=null;
   if(R()<.55&&K>=3){br={x:SW+1+R()*(K-2.3),w:.5,north:R()<.5}}
   const hc=cuts(SW,L.GW,.9,1.4);
@@ -106,8 +111,7 @@ function tacLayout(T,K,kind){
   if(n.gy<.01)n.edge.push('n');if(n.gy+n.gh>L.GH-.01)n.edge.push('s');
   if(n.gx<.01)n.edge.push('w');if(n.gx+n.gw>L.GW-.01)n.edge.push('e');
   if(n.ty==='room'&&n.edge.length){n.wins=n.edge.slice();n.win=n.wins[0]}}
- // 樓梯間的中心點對齊通往走廊（或房間）的門，水線與走位才會從門進出
- for(const s of N)if(s.ty==='stair'&&s.nb.length){const o=N[s.nb[0]];s.cy=Math.max(s.gy,o.gy)+(Math.min(s.gy+s.gh,o.gy+o.gh)-Math.max(s.gy,o.gy))/2}
+
  // 各側入口：優先走廊，其次樓梯間，再其次客廳或其他房間
  const pri=n=>n.ty==='hall'?0:n.ty==='stair'?1:n.kind==='living'?1.5:2+(n.small?1:0);
  for(const sd of['n','e','s','w']){
@@ -676,7 +680,7 @@ function tacAI(inc,B,dt,M){
  const free=B.sq.filter(q=>!q.down&&!q.tmv&&(q.task==='idle'||q.task==='hold')&&!q.prev&&(q.ty==='ladder'||q.ty==='robot'||q.air>(tacIn(q)?.45:.6)));
  const take=q=>{const i=free.indexOf(q);if(i>=0)free.splice(i,1)};
  const burning=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>a.f-b.f||b.h-a.h);
- // 站點（AI 指揮）：指揮站、氣瓶充填區、Rehab、聯訪處、集結區
+ // 站點（AI 指揮）：指揮站、氣瓶充填區、後勤照護區、聯訪處、集結區
  if(M.stn){
   if(!B.st.icp)tacStnOpen(inc,B,'icp',1);
   if(!B.st.air&&B.sq.length>=4)tacStnOpen(inc,B,'air',1);
