@@ -8,6 +8,8 @@ function step(dt){
  S.dspawn-=dt;if(S.dspawn<=0){spawnDuty();S.dspawn=130+Math.random()*80}
  for(const u of S.units)stepUnit(u,dt);
  stepDuties(dt);
+ // 玩家在戰術畫面時，由戰略 AI 代理指揮中心
+ if(TAC.open)stratAI(dt);
  for(let i=S.inc.length-1;i>=0;i--)stepIncident(i,dt)}
 // 單一車輛：報停計時、整裝、補水、公務、沿路徑移動與抵達後的狀態轉換
 function stepUnit(u,dt){
