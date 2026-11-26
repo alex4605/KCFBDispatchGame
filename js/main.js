@@ -230,7 +230,8 @@ let frameN=0;
 function loop(ts){
  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
  try{
-  if(!paused)step(dt);
+  // 戰術畫面開著時整體時間放慢（戰略與戰術共用同一個時鐘）
+  if(!paused)step(dt*(TAC.open?TAC.spd:1));
   if(TAC.open)drawTac();
   else{draw();if((++frameN&1)===0)drawScene()}
   uiT+=dt;if(uiT>.28){uiT=0;ui();if(TAC.open)tacUI()}

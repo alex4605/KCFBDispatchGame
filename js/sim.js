@@ -58,6 +58,8 @@ function stepUnit(u,dt){
     else if(u.st==='hosp'){u.wait=9;u.st='give'}
     else if(u.st==='tx'){u.wait=9;u.st='give';u.clean=1}
     else{u.st='idle';crewDown(u);u.tank=CODE[u.code].cap||0;
+     // 戰術現場有隊員受傷或殉職：返隊後報停
+     if(u.oosAfter){u.st='oos';u.oosT=u.oosAfter;u.oosAfter=0;return}
      if(Math.random()<.04){u.st='oos';u.oosT=45+Math.random()*45}}}}}
 // 公務勤務：逾時未派遣扣評鑑
 function stepDuties(dt){

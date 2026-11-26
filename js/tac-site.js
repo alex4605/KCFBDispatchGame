@@ -115,7 +115,7 @@ function tacExpo(inc,B,dt){
   // 受熱已降、該面牆也沒有房間在燒：防護組收線待命
   if(B.exp[s]<.05&&!add)for(const q of B.sq)if(q.task==='cover'&&q.cside===s){q.task='idle';radio(inc,q.cs,TAC_SDN[s]+'側鄰棟已降溫，停止周界防護。')}
   if(B.exp[s]>=1&&!B.expL[s]){B.expL[s]=1;S.rep-=6;inc.pay=Math.round(inc.pay*.85);
-   radio(inc,'受理','火勢延燒至'+TAC_SDN[s]+'側鄰棟（評鑑 -6），請加強防護並注意鄰棟住戶疏散。');
+   radio(inc,'受理','火勢延燒至'+TAC_SDN[s]+'側鄰棟（評鑑 -6），請加強防護並注意鄰棟住戶疏散。');tacEvt(inc,B,'danger','延燒至'+TAC_SDN[s]+'側鄰棟',1);
    if(S.rep<=0){S.rep=0;S.over=true}}}}
 // 周界防護（鄰棟）：幫浦車停在鄰棟相鄰的道路側（不能是對面），向鄰棟外牆射水
 function tacCoverSide(B,q,s){
