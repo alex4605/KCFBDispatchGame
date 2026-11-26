@@ -67,6 +67,18 @@ document.body.addEventListener('click',e=>{
  leftOpen=!leftOpen;
  document.querySelector('main').classList.toggle('lc',!leftOpen);
  dirty();ui();size()});
+// 進線列表在按下時就選取（列表每 0.28 秒重繪，等放開才算點擊容易落空）
+function selInc(id){sel=id;selU=null;const o=S.inc.find(x=>x.id===sel)||S.duties.find(x=>x.id===sel);if(o)center(o);dirty();ui()}
+$('calls').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-sel]');if(!b||e.button!==0)return;msg='';selInc(+b.dataset.sel)});
+$('calls').addEventListener('pointerenter',()=>{callsHover=true});
+$('calls').addEventListener('pointerleave',()=>{callsHover=false});
+// ↑／↓ 在進線案件間切換（輸入框內不作用）
+document.addEventListener('keydown',e=>{
+ if(TAC.open||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;
+ const ids=[...document.querySelectorAll('#calls [data-sel]')].map(x=>+x.dataset.sel);if(!ids.length)return;
+ e.preventDefault();const i=ids.indexOf(sel);
+ selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
 document.body.addEventListener('click',e=>{
  const b=e.target.closest('[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
  if(!b)return;
@@ -82,8 +94,7 @@ document.body.addEventListener('click',e=>{
  if(D.uc){selU=null;dirty();return}
  if(D.oos){const u=S.units.find(x=>x.id===+D.oos);if(u&&u.st==='idle'){u.st='oos';u.oosT=60}dirty();return}
  if(D.ret){const u=S.units.find(x=>x.id===+D.ret);if(u&&u.st==='oos'){u.st='idle';u.oosT=0}dirty();return}
- if(D.sel){sel=+D.sel;selU=null;
-  const o=S.inc.find(x=>x.id===sel)||S.duties.find(x=>x.id===sel);if(o)center(o);dirty();return}
+ if(D.sel){if(!b.closest('#calls'))selInc(+D.sel);return}
  if(D.duty){
   const u=S.units.find(x=>x.id===+D.duty),d=S.duties.find(x=>x.id===sel);
   if(u&&d&&!d.unit){const p=chase(getF(d,modeOf(u.code)),u);
@@ -194,7 +205,7 @@ cv.addEventListener('pointerup',e=>{
  if(mv>6)return;
  const r=cv.getBoundingClientRect(),c=cell();
  const x=((e.clientX-r.left)/r.width*cw+cam.x)/c,y=((e.clientY-r.top)/r.height*ch+cam.y)/c;
- let best=null,bd=1.4;
+ let best=null,bd=Math.max(1.4,22/c);
  for(const i of S.inc){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
  for(const i of S.duties){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
  sel=best;selU=null;dirty()});

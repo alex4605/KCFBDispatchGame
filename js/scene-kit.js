@@ -1,7 +1,7 @@
 // 現場畫面：畫布、人員與擔架圖元、車組動畫、通用特效
 'use strict';
 const scv=document.getElementById('sc'),sctx=scv.getContext('2d');
-let scW=400,scH=260,wantSwap=false,isSwapped=false,scZoom=1;
+let scW=400,scH=260,wantSwap=true,isSwapped=false,scZoom=1;
 function sizeScene(){
  const w=document.getElementById('scenewrap');
  scW=Math.max(180,w.clientWidth-10);scH=isSwapped?Math.max(220,w.clientHeight-12):260;
