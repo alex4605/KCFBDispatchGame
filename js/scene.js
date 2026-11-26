@@ -29,7 +29,7 @@ function drawScene(){
   if(cd==='71'||cd==='搜')rescV.push(u);
   if(cd==='41')cmdV.push(u)}
  const safeNow=emsSafe(inc),effNow=d.w?Math.max(0,effLines(inc)-(inc.burst>0?1:0)):0,wOK=waterOK(inc);
- const ct=Math.max(12,(isSwapped?46:Math.min(scW/11,scH/7))*scZoom);
+ const ct=Math.max(12,(isSwapped?Math.max(46,Math.min(scW/13,scH/9)):Math.min(scW/11,scH/7))*scZoom);
  const HW=Math.max(2,Math.ceil(scW/ct/2)),HH=Math.max(1,Math.ceil(scH/ct/2));
  const txU=crew.filter(u=>u.st==='tx'||u.st==='give'||u.st==='clean')[0];
  const fx=txU?txU.x:inc.x,fy=txU?txU.y:inc.y;

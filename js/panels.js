@@ -17,10 +17,15 @@ function leftHTML(){
     '</span><span class="dot" style="background:'+st[1]+'" title="'+st[0]+'"></span></div>')}
   out.push('</div>')}
  return out.join('')}
+let callOrd=[],callOrdT=0,callsHover=false;
 function callsHTML(){
  const out=['<div class="hd">進線案件 '+(S.inc.length+S.duties.length)+'</div>'];
  if(!S.inc.length&&!S.duties.length)out.push('<div class="sub">目前無受理案件。</div>');
- for(const i of S.inc.slice().sort((a,b)=>a.left-b.left)){
+ // 依剩餘時間排序，但滑鼠停在列表上時凍結順序、平常每 2 秒才重排，避免點下去的瞬間換位
+ const now=performance.now();
+ if(!callsHover&&now-callOrdT>2000){callOrdT=now;callOrd=S.inc.slice().sort((a,b)=>a.left-b.left).map(i=>i.id)}
+ const list=callOrd.map(id=>S.inc.find(i=>i.id===id)).filter(Boolean).concat(S.inc.filter(i=>callOrd.indexOf(i.id)<0));
+ for(const i of list){
   const d=KIND[i.k],f=fill(i,0),got=f.reduce((a,b)=>a+b,0),tot=i.need.reduce((a,g)=>a+g.n,0);
   const urg=i.left/i.max<.35,col=i.rev?d.col:'#6b6960';
   out.push('<div class="call'+(sel===i.id?' sel':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
