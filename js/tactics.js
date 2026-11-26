@@ -195,6 +195,10 @@ function tacInit(inc){
  for(const e of B.ents)e.lock=Math.random()<.5?1:0;
  B.lk=new Set();B.eo={};
  for(let f=0;f<F;f++)for(const n of L.N)if(n.ty==='room'&&!n.small&&Math.random()<.15)for(const o of n.nb)if(L.N[o].ty!=='room')B.lk.add(tacDK(B,f,n.c,o));
+ // 瓦斯桶：民宅與煮食不慎常見（多在廚房）
+ if(!T.hoax&&Math.random()<(inc.k==='mfire'||inc.k==='cook'?.45:.2)){const ks=rooms.filter(c=>L.N[c].kind==='kitchen'||L.N[c].kind==='store');
+  if(ks.length){B.gas=pick(ks);B.gasF=Math.max(bf,Math.min(F-1,of+tacRint(-1,1)))}}
+ tacCivInit(inc,B);
  inc.tac=B;tacSync(inc);
  if(T.hoax)radio(inc,'受理','指揮中心接管現場戰術指揮：報案指稱'+tacFlr(B,of)+'冒煙，現場未見明顯火光，請查證該層各戶。');
  else radio(inc,'受理','指揮中心接管現場戰術指揮：地上 '+Fa+' 層'+(bf?'、地下 1 層':'')+'建物、每層 '+R+' 室，起火點 '+tacNm(B,of,oc)+
@@ -404,13 +408,14 @@ function tacSquad(inc,B,q,dt,eff){
   if(lockE||lockD){const need=q.ty==='resc'?4:q.ty==='robot'?6:9;
    if(!q.frc&&!B.sq.some(y=>y!==q&&y.frc>0&&y.nf===ns[0]&&y.nc===ns[1]))radio(inc,q.cs,(lockE?TAC_SDN[lockE.side]+'側入口鐵捲門上鎖':tacNm(B,q.f,ns[1])+'房門上鎖')+'，破壞進入中。');
    q.frc=(q.frc||0)+dt;q.mt=0;
+   if(lockE)lockE.known=1;else(B.lkK||(B.lkK=new Set())).add(tacDK(B,q.f,q.c,ns[1]));
    if(q.frc>=need){q.frc=0;
     if(lockE){lockE.lock=0;radio(inc,q.cs,TAC_SDN[lockE.side]+'側入口破壞完成。')}
     else{B.lk.delete(tacDK(B,q.f,q.c,ns[1]));radio(inc,q.cs,tacNm(B,q.f,ns[1])+'門鎖破壞完成。')}}
    return}
   q.frc=0;q.mt+=dt;
   if(q.mt>=tacStepTime(B,q,ns)){q.mt=0;const pc=q.c;
-   if(q.f<0&&ns[0]>=0&&q.ent){B.eo[q.ent.side]=S.t;q.inEnt=q.ent}
+   if(q.f<0&&ns[0]>=0&&q.ent){B.eo[q.ent.side]=S.t;q.inEnt=q.ent;q.inT=S.t}
    if(ns[0]===q.f&&q.f>=0&&B.cd.delete(tacDK(B,q.f,pc,ns[1]))&&q.task!=='exit')radio(inc,q.cs,'打開'+tacNm(B,q.f,ns[1])+'的門通過，侷限解除。');
    q.f=ns[0];q.c=ns[1];
    if(q.f<0){q.side=tacExitSide(B,q,pc);B.eo[q.side]=S.t;q.ent=null;q.inEnt=null;tacOutside(inc,B,q)}}
@@ -800,6 +805,9 @@ function tacIncident(inc,dt,first,flow){
  B.sq=B.sq.filter(q=>!q.gone);
  tacFire(inc,B,dt);
  tacExpo(inc,B,dt);
+ tacGas(inc,B);
+ // AI 指揮時，到場就把現場民眾問一輪
+ if(!(TAC.open&&TAC.id===inc.id)&&tacCivOn(B))for(const a of TAC_ASK)tacAsk(inc,B,a.k);
  tacStnStep(inc,B,dt);
  tacEMS(inc,B,dt);
  // 屋頂避難者：頂樓樓梯間的煙會讓他們慢慢惡化
