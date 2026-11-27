@@ -933,7 +933,7 @@ function tacOrdWhy(B,q,k){
  if(/^ppe/.test(k))return q.ty==='ladder'||q.ty==='robot'?'此組不需換裝':tacIn(q)?'人員在室內，需先撤出才能換裝':q.down?'該組已倒地':'';
  const t=TAC_NEEDT[k],pr=(B.L.N.find(n=>n.ty==='room'&&n.wins&&n.wins.some(w=>B.sd[w].road))||B.L.N.find(n=>n.ty==='room')).c;
  const why=k==='truck'?tacCan(B,q,'truck'):k==='roofres'||k==='roof'?tacCan(B,q,k,B.F-1,0):tacCan(B,q,k,t?B.bf:-1,t?pr:0);
- return why&&!(t&&/高度|道路|窗|地下|樓梯|搜索|頂樓|房間|請點/.test(why))?why:''}
+ return why&&!(t&&/高度|道路|窗|地下|樓梯|搜索|頂樓|房間|請點/.test(why))?why:tacRefuse(B,q,k)}
 // 指令說明拆成欄位：可執行／目標／效果／注意
 function tacDescF(d){const p=d.split('｜');return p.length<3?{fx:d}:{who:p[0],tgt:p[1],fx:p[2],note:p[3]||''}}
 // 指令面板：上方說明列（選取的小組、滑過或選定的指令說明與不可執行原因），下方依類別分組的按鈕
@@ -1010,7 +1010,7 @@ function tacCmd(k){
   radio(inc,'受理','緊急撤退！所有入室小組立即撤出建物，人員清點。');msg=n?'已下令 '+n+' 組撤出':'';TAC.ord=null;return}
  const qs=tacSelList(B);
  if(!qs.length){msg='請先選擇小組';return}
- if(TAC.cwhy&&TAC.cwhy[k]){msg=TAC.cwhy[k];TAC.ord=null;return}
+ if(TAC.cwhy&&TAC.cwhy[k]){msg=TAC.cwhy[k];for(const q of qs){const w=tacOrdWhy(B,q,k);if(/^拒絕：/.test(w))tacNo(inc,q,w)}if(qs.length>1)msg=TAC.cwhy[k];TAC.ord=null;return}
  if(TAC_NEEDT[k]){TAC.ord=TAC.ord===k?null:k;return}
  let ok=0;qs.forEach((q,i)=>{if(tacOrder(inc,q,k,k==='roof'||k==='roofres'?B.F-1:-1,0,i>0))ok++});
  if(qs.length>1)msg=TAC_TASK[k]+'：'+ok+' / '+qs.length+' 組受令';TAC.ord=null}
