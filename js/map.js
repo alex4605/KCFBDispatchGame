@@ -120,8 +120,6 @@ function airportDetail(x,y,k,px,py,c){
  if(cp===10){ctx.fillStyle='#5a5f68';ctx.fillRect(px+c*.08,py,c*.84,c+.6);ctx.fillStyle='rgba(160,200,240,.35)';ctx.fillRect(px+c*.78,py,c*.08,c+.6);
   ctx.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.2+i*.2),py+c*.1,c*.08,c*.8);return}
  if(cp===11){ctx.strokeStyle='rgba(240,200,80,.55)';ctx.lineWidth=Math.max(1,c*.025);ctx.beginPath();ctx.moveTo(px,py+c/2);ctx.lineTo(px+c,py+c/2);ctx.stroke();
-  if(hsh(k,3)>.4){ctx.save();ctx.translate(px+c*.5,py+c*.5);ctx.fillStyle='#d8dadc';
-   ctx.fillRect(-c*.36,-c*.05,c*.72,c*.1);ctx.fillRect(-c*.05,-c*.34,c*.12,c*.68);ctx.fillRect(c*.24,-c*.14,c*.08,c*.28);ctx.restore()}
   return}
  // 跑道之間的草地；滑行道（跑道中間一列）與圍籬
  const mid=Math.round((A.y0+A.y1)/2);
@@ -161,7 +159,10 @@ function draw(){
  // 消防學校（楠梓）
  if(SCHOOL){schoolLive(c);if(c<34)mk(SCHOOL.p,'#6a4fb0','校','訓練中心');
   if(sel===SCHOOL_ID){const x=(SCHOOL.p[0]+.5)*c,y=(SCHOOL.p[1]+.5)*c;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,Math.max(9,m*.9),0,TAU);ctx.stroke();ctx.setLineDash([])}}
+ // 放大後：分隊、醫院、機場改畫俯視圖（map-sites.js），否則畫標記
+ if(c>=34)siteOverlay(c,x0,x1,y0,y1);
  HOSP.forEach(h=>{
+  if(c>=34)return;
   const w=h.w||1,h2=h.h||1,x=h.p[0]*c,y=h.p[1]*c;
   ctx.fillStyle='#1a6bb8';rr(x+2,y+2,c*w-4,c*h2-4,Math.max(3,m*.2));ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=1;ctx.stroke();
@@ -170,8 +171,8 @@ function draw(){
   ctx.font='500 '+Math.min(s2*.42,m*.8)+'px '+FONT;ctx.fillText('醫',x+c*w/2,y+c*h2/2-(c>=22?s2*.1:0));
   if(c>=22){ctx.fillStyle='#d6e6f6';ctx.font='400 '+Math.max(10,m*.3)+'px '+FONT;
    ctx.fillText(h.n,x+c*w/2,y+c*h2/2+s2*.3)}});
- for(let i=0;i<S.nst;i++)
-  mk(SPOT[i].p,'#a8431f',SPOT[i].n,'待 '+(S.ix?S.ix.idle[i]:0));
+ if(c<34)for(let i=0;i<S.nst;i++)
+  mk(SPOT[i].p,SPOT[i].n==='機場'?'#b8902a':'#a8431f',SPOT[i].n,'待 '+(S.ix?S.ix.idle[i]:0));
  for(const d of S.duties){
   const x=(d.x+.5)*c,y=(d.y+.5)*c;
   ctx.fillStyle=d.unit?'#7f77dd':'#46443f';

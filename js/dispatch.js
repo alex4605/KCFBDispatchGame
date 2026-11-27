@@ -179,10 +179,17 @@ function send(inc,u,mode){
  if(cnt<=3)radio(inc,u.cs,'受命出動，預計 '+(etaTo(u,inc)+Math.round(u.turn))+' 秒到達。');
  else if(cnt%4===0)radio(inc,'受理','已陸續增派，目前編組 '+cnt+' 車。');
  return true}
-function nearest(inc,codes,als){
+// 限定派遣：u.lim 為 'arff'（機場消防隊）或 'usar'（特一特二）的車，只在 opt.lim 相符（或 USAR 需求）時才派；opt.st 限定分隊
+function limOK(u,codes,opt){
+ if(opt&&opt.st&&SPOT[u.si].n!==opt.st)return false;
+ if(!u.lim)return true;
+ if(opt&&opt.lim===u.lim)return true;
+ return u.lim==='usar'&&codes.indexOf('搜')>=0}
+function nearest(inc,codes,als,opt){
  let best=null,bd=INF;
  for(const u of S.units){
   if(u.st!=='idle'||(codes.indexOf(u.code)<0&&!(u.usar&&codes.indexOf('搜')>=0)))continue;
+  if(!limOK(u,codes,opt))continue;
   if(als&&u.code==='91'&&tpFree(u.si)<=0)continue;
   const e=etaTo(u,inc);if(e===null||e>=bd)continue;bd=e;best=u}
  return best}
@@ -196,8 +203,8 @@ function sendPkg(inc,p){
  for(const item of p.l){
   const c=item[0],q=item[1],als=item[2],codes=ALT[c]||[c];
   for(let i=0;i<q;i++){
-   const u=nearest(inc,codes,als);
-   if(!u){msg='無可用或可進場的'+LB[c]+(als?'（含 EMT-P）':'');break}
+   const u=nearest(inc,codes,als,{lim:p.lim,st:p.st});
+   if(!u){msg='無可用或可進場的'+LB[c]+(als?'（含 EMT-P）':'')+(p.st?'（'+p.st+'）':'');break}
    if(send(inc,u,c==='91'?(als?'ALS':'BLS'):null))n++}}
  if(p.pol&&n)callPol(inc);
  return n}
@@ -219,12 +226,15 @@ function sendLv(inc,to){
   radio(inc,'受理',LVN[L]+'火警編組出動，共 '+n+' 車。')}
  return sent}
 function auto(inc){
+ // 機場範圍內的火警與救助：自動派遣時一併呼叫機場消防隊（只呼叫一次）
+ if(inc.z==='airport'&&!inc.arff&&/火警|救助/.test(KIND[inc.k].cls)){inc.arff=1;const p=PKG.find(x=>x.tag==='arff');if(p&&sendPkg(inc,p))radio(inc,'受理','機場範圍內案件，呼叫機場消防隊出動。')}
  for(let pass=0;pass<14;pass++){
   const f=fill(inc,0);
   let idx=-1;
   for(let i=0;i<inc.need.length;i++)if(f[i]<inc.need[i].n){idx=i;break}
   if(idx<0)break;
-  const g=inc.need[idx],u=nearest(inc,g.c,g.als);
+  // 自動派遣：機場內的案件可動用機場消防隊；USAR 需求可動用特一特二
+  const g=inc.need[idx],u=nearest(inc,g.c,g.als,{lim:inc.z==='airport'?'arff':g.k==='usar'?'usar':null});
   if(!u)break;
   // 派出後要重建車輛索引，否則下一輪的 fill() 看不到剛派的車，會一直重複派
   if(!send(inc,u,g.c.indexOf('91')>=0?(g.als?'ALS':'BLS'):null))break;

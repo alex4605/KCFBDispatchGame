@@ -9,6 +9,8 @@ const SCH_N={13:'訓練塔',14:'教室與宿舍',15:'操場',16:'報廢消防車
 const TRAIN={pass:[0,0,0],inc:null,lv:0};
 try{const v=JSON.parse(localStorage.getItem('kcfb.train')||'null');if(v&&Array.isArray(v.pass))TRAIN.pass=v.pass.slice(0,3)}catch(e){}
 const tacUnlocked=()=>TRAIN.pass.every(Boolean);
+// 跳過教學：三關視為通過
+function trainSkip(){TRAIN.pass=[1,1,1];trainSave();msg='已跳過教學，取得現場指揮權；之後仍可回消防學校練習。';dirty()}
 function trainSave(){try{localStorage.setItem('kcfb.train',JSON.stringify({pass:TRAIN.pass}))}catch(e){}}
 // 關卡：車輛、受困人數、說明與目標（每個目標回傳是否達成）
 const TRAIN_LV=[
@@ -61,6 +63,7 @@ function schoolHTML(){
  h+=tacUnlocked()?'<div class="note" style="background:#24463a;color:#d9f3e8">已取得現場指揮權：建物火災類案件可「⚔ 進入戰術指揮」。</div>':
   '<div class="sub" style="margin-top:6px">進度 '+TRAIN.pass.filter(Boolean).length+' / 3</div>';
  if(TRAIN.inc)h+='<button data-trainstop="1" style="margin-top:6px">放棄目前的訓練</button>';
+ if(!tacUnlocked()&&!TRAIN.inc)h+='<button data-trainskip="1" style="margin-top:6px" title="不經訓練直接取得現場指揮權（之後仍可回來練習）">⏭ 跳過教學，直接取得指揮權</button>';
  return h}
 // 開始訓練：在訓練場建立一件民宅火警，楠梓分隊（不足時就近）的車直接到場
 function trainStart(lv){

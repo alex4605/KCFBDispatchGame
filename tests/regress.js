@@ -1,4 +1,4 @@
-// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|lint|load|map|normal|tac|handoff|school]
+// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|lint|load|map|normal|dispatch|tac|handoff|school]
 // 需要可 require('playwright') 的環境；直接開啟 index.html，不需要伺服器
 'use strict';
 const path=require('path'),{chromium}=require('playwright');
@@ -55,6 +55,16 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<6000&&S.inc.includes(inc);t2++)step(.05);
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
   ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
+ if(which==='all'||which==='dispatch'){const {p,errs}=await page(b);
+  // 限定派遣：一般火警不派特一特二與機場消防隊；呼叫特一只派特一；呼叫機場消防派機消
+  const r=await p.evaluate(()=>{S.spawn=999;const mk=k=>{S.inc=[];for(const zz in POOL)for(const lv in POOL[zz])POOL[zz][lv]=[k];for(const zz in POOLB)for(const lv in POOLB[zz])POOLB[zz][lv]=[k];for(let i=0;i<40&&!S.inc.length;i++)spawn();return S.inc[0]};
+   const back=()=>{for(const u of S.units)if(u.inc!=null){u.inc=null;u.st='idle';u.x=SPOT[u.si].x[0];u.y=SPOT[u.si].x[1];u.path=[]}reindex()};
+   const cs=inc=>onScene(inc).map(u=>u.cs);
+   let inc=mk('mfire');sendLv(inc,3);reindex();const lv3=cs(inc).filter(c=>/^特|^機/.test(c));back();
+   inc=mk('mfire');sendPkg(inc,PKG.find(x=>x.n==='呼叫特一'));reindex();const c1=cs(inc);back();
+   inc=mk('mfire');sendPkg(inc,PKG.find(x=>x.n==='呼叫機場消防'));reindex();const af=cs(inc);
+   return{lv3,c1,af}});
+  ok('限定派遣（特一特二、機場消防隊）',!r.lv3.length&&r.c1.length&&r.c1.every(c=>/^特一/.test(c))&&r.af.some(c=>/^機消/.test(c))&&!errs.length,r);await p.close()}
  if(which==='all'||which==='school'){const {p,errs}=await page(b);
   // 確定性測試：訓練隊出動並自動進入戰術畫面後，直接撲滅火勢，驗證目標判定、通過、解散與解鎖流程
   const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);

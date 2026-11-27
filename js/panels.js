@@ -9,7 +9,7 @@ function leftHTML(){
  const out=['<div class="lhd"><span class="hd">車輛動態</span><button class="tg" data-lc="1" title="收合車輛動態" aria-label="收合車輛動態" aria-expanded="true">‹</button></div>'];
  for(let i=0;i<S.nst;i++){
   const us=S.ix.bySt[i].filter(u=>!u.ma&&!u.trainee),idle=S.ix.idle[i];
-  out.push('<div class="stn"><span>'+SPOT[i].n+' <b>'+idle+'/'+us.length+'</b></span>'+
+  out.push('<div class="stn"><span>'+(ST_FULL[SPOT[i].n]||SPOT[i].n)+' <b>'+idle+'/'+us.length+'</b></span>'+
    '<span class="mono" style="color:var(--fg3)">P'+tpFree(i)+'/'+S.tp[i]+'</span></div><div class="units">');
   for(const u of us){const st=ST[u.st];
    out.push('<div class="u'+(selU===u.id?' sel':'')+'" data-u="'+u.id+'"><span class="mono">'+u.cs+

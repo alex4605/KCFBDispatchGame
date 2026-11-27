@@ -155,7 +155,7 @@ function build(){
  ruralRoads();
  pruneIslands();
  // 分隊與醫院
- SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
+ SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:n==='機場'&&AP?[AP.x0,AP.y0+2]:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
@@ -254,13 +254,14 @@ const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 function addU(si,code){
  const st=SPOT[si],b=parseInt(code,10),same=S.units.filter(u=>u.si===si&&u.code===code).length;
  const num=isNaN(b)?code+(same?String(same+1):''):String(b+same);
- S.units.push({id:uid++,si,code,cs:st.n+num,usar:/^特/.test(st.n)?1:0,x:st.x[0],y:st.x[1],path:[],st:'idle',
+ // 機場消防隊的機場消防車呼號為「機消1、機消2…」
+ S.units.push({id:uid++,si,code,cs:st.n==='機場'&&code==='機'?'機消'+(same+1):st.n+num,usar:/^特/.test(st.n)?1:0,lim:/^特/.test(st.n)?'usar':st.n==='機場'?'arff':null,x:st.x[0],y:st.x[1],path:[],st:'idle',
   inc:null,duty:null,off:0,wait:0,turn:0,oosT:0,mode:null,tp:false,crew:0,res:false,
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
 // 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權
 function repGain(base){if(base<=0)return 0;const g=base*150/(150+Math.max(0,S.rep));S.rep+=g;S.repLast={g,t:S.t};return g}
 // 車輛所屬分隊名稱（跨縣市支援車隊用原單位分隊）
-const ST_FULL={'特一':'第一特搜','特二':'第二特搜'};
+const ST_FULL={'特一':'第一特搜','特二':'第二特搜','機場':'機場消防隊'};
 const stName=u=>u.stn||ST_FULL[SPOT[u.si].n]||SPOT[u.si].n;
 function tpFree(si){let n=0;for(const u of S.units)if(u.si===si&&u.res)n++;return S.tp[si]-n}
 function reindex(){
@@ -278,7 +279,7 @@ const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','3
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
-  spawn:10,dspawn:90,nst:12,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
+  spawn:10,dspawn:90,nst:13,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&(TR[k]===7?Math.random()<.14:!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05)))S.hyd.push([x,y])}
  // 消防訓練中心：火災模擬屋前的道路固定有一支消防栓
@@ -295,7 +296,8 @@ function reset(){
   [8,'16','11','11','艇','57','91','91','警'],
   [9,'11','11','16','41','91','91','71'],
   [10,'11','16','61','91','71','43'],
-  [11,'11','16','61','91','91']];
+  [11,'11','16','61','91','91'],
+  [12,'機','機','機','91']];
  roster.forEach(r=>{const si=r[0];for(let i=1;i<r.length;i++)addU(si,r[i])});
  for(const u of S.units)if(CAFS_CS.includes(u.cs))u.cafs=1;
  S.ix=null;reindex();sel=selU=null;paused=false;zoom=2;

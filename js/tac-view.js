@@ -196,6 +196,7 @@ function tacVeh(g,u,T){
   for(let k=0;k<3;k++){const a=k*TAU/3+T*6;g.moveTo(18,10);g.lineTo(18+Math.cos(a)*5.5,10+Math.sin(a)*5.5)}g.stroke()}
  else if(c==='71'||c==='搜'){g.strokeStyle='rgba(0,0,0,.3)';g.lineWidth=1;for(let x=5;x<36;x+=8){g.strokeRect(x,3,6,14)}}
  else if(c==='警'){g.fillStyle='#2f6fd0';g.fillRect(0,8,38,4);g.fillStyle='#22303c';g.fillRect(26,3,8,14)}
+ else if(c==='機'){g.fillStyle='#d8b83a';scRR(g,0,0,50,20,3);g.fill();g.fillStyle='#c8332c';g.fillRect(0,8,38,4);g.fillStyle='#3a3d44';g.beginPath();g.arc(30,10,4,0,TAU);g.fill();g.fillStyle='#eceae3';g.fillRect(30,9,14,2)}
  else if(c==='43'){g.fillStyle='#3b2a24';g.fillRect(2,3,22,14);g.strokeStyle='#d8d4c8';g.lineWidth=1;g.strokeRect(4,5,18,10);g.fillStyle='#1a1a1a';g.fillRect(0,0,3,20)}
  else if(c==='履'){g.fillStyle='#222';g.fillRect(2,0,34,4);g.fillRect(2,16,34,4)}
  else{ // 幫浦車：水帶床、白色腰線
