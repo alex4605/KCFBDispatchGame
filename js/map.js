@@ -45,7 +45,8 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
  if(r){// 道路本身由 roadPass 依等級繪製；市區道路格底下鋪人行道色
   if(inCity(x,y)&&!isSub(x,y)&&t===0){ctx.fillStyle='rgba(120,118,110,.13)';ctx.fillRect(px,py,c+.6,c+.6)}
   return}
- if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
+ if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
+ else if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const a=hsh(k,i*3+j);if(a<.18)continue;
    const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
    const lv=16+(a*22|0);ctx.fillStyle='rgb('+(lv+12)+','+(lv+11)+','+(lv+8)+')';ctx.fillRect(bx,by,bw,bh);
@@ -67,6 +68,7 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
   if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
    ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
    ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
+ else if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
  else if(t===0){// 郊區與鄉鎮：低矮透天與三合院，偶有廟宇、學校、鐵皮工廠
   const a=hsh(k,1);
   if(CROP[k]===9){const cols=['#3e4a56','#4a4f55','#56504a','#3f4d4a'],cl=cols[hsh(k,6)*4|0];
@@ -157,7 +159,7 @@ function draw(){
   if(c>=13){ctx.fillStyle='#fff';ctx.font='500 '+(s*.4)+'px '+FONT;ctx.fillText(t,x,y)}
   if(sub&&c>=26){ctx.fillStyle='#b9b5ac';ctx.font='400 '+(m*.28)+'px '+FONT;ctx.fillText(sub,x,y+s*.8)}};
  // 消防學校（楠梓）
- if(SCHOOL){mk(SCHOOL.p,'#6a4fb0','校','消防學校');
+ if(SCHOOL){schoolLive(c);if(c<34)mk(SCHOOL.p,'#6a4fb0','校','訓練中心');
   if(sel===SCHOOL_ID){const x=(SCHOOL.p[0]+.5)*c,y=(SCHOOL.p[1]+.5)*c;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,Math.max(9,m*.9),0,TAU);ctx.stroke();ctx.setLineDash([])}}
  HOSP.forEach(h=>{
   const w=h.w||1,h2=h.h||1,x=h.p[0]*c,y=h.p[1]*c;
@@ -429,6 +431,7 @@ function mapLabels(c){
  lb('山　區',OX+128,OY+14,13,'rgba(140,190,140,A)');
  lb('二 仁 溪',OX+40,3.5,12,'rgba(125,179,232,A)');
  lb('林園工業區',OX+93,OY+131,12,'rgba(200,205,215,A)');
+ if(SCHOOL)lb('消防訓練中心',SCHOOL.p[0]+.5,SCHOOL.y0-.6,12,'rgba(190,170,240,A)');
  ctx.restore()}
 // ===== 道路分級繪製 =====
 // 地面道路樣式（依 RG）：w 路寬（格寬比例）、col 路面、cl 中線（yy 雙黃、y 單黃、w 白虛線）、ed 路緣

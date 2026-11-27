@@ -1,15 +1,16 @@
 // 案件進線 spawn()
 'use strict';
-function spawn(){
- const cand=[];
- for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){
-  const k=K(x,y);
+// 案件候選災點快取：地圖生成（含消防學校）後呼叫
+let SPAWNC=[];
+function spawnCands(){
+ SPAWNC=[];
+ for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){const k=K(x,y);
   if(RD[k]||TR[k]===1)continue;
   let near=false;for(let i=0;i<4;i++)if(cls(x+DIR[i][0],y+DIR[i][1])){near=true;break}
-  if(!near)continue;
-  if(inFacility(x,y))continue;
-  if(S.inc.some(i=>Math.abs(i.x-x)<3&&Math.abs(i.y-y)<3))continue;
-  cand.push([x,y])}
+  if(near&&!inFacility(x,y))SPAWNC.push([x,y])}}
+function spawn(){
+ // 候選災點（臨路的非道路陸地格）在地圖生成後快取一次，這裡只排除鄰近已有案件的格
+ const cand=SPAWNC.filter(c=>!S.inc.some(i=>Math.abs(i.x-c[0])<3&&Math.abs(i.y-c[1])<3));
  if(!cand.length)return;
  // 鄉間人口稀少：候選點落在市區外時多半重抽（附近有自家分隊時機率較高）
  let c=pick(cand);

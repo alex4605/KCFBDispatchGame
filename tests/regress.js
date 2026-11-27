@@ -1,4 +1,4 @@
-// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|load|map|normal|tac|handoff|school]
+// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|lint|load|map|normal|tac|handoff|school]
 // 需要可 require('playwright') 的環境；直接開啟 index.html，不需要伺服器
 'use strict';
 const path=require('path'),{chromium}=require('playwright');
@@ -16,7 +16,20 @@ const TAC_RUN=`(k)=>{S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POO
  if(!S.inc.includes(inc))return{k,early:1};
  tacInit(inc);let t=0;for(;t<24000&&S.inc.includes(inc);t++){step(.05);if(inc.req&&t%20===0)answer(inc,true,false)}
  return{k,closed:!S.inc.includes(inc),t:Math.round(t*.05)}}`;
-(async()=>{const b=await chromium.launch();
+// 靜態檢查：程式裡產生的每個按鈕 data-* 屬性，都要在某個點擊處理的清單或選擇器裡（避免新按鈕按了沒反應）
+function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src={};
+ for(const f of fs.readdirSync(dir))if(f.endsWith('.js'))src[f]=fs.readFileSync(path.join(dir,f),'utf8');
+ const all=Object.values(src).join('\n'),used=new Set([...all.matchAll(/data-([a-z0-9]+)=/g)].map(m=>m[1]));
+ const handled=new Set();
+ for(const m of all.matchAll(/(?:MAIN_CLICK|TAC_CLICK)=\[([^\]]*)\]/g))for(const k of m[1].matchAll(/'([a-z0-9]+)'/g))handled.add(k[1]);
+ for(const m of all.matchAll(/closest\('([^']*)'\)/g))for(const k of m[1].matchAll(/\[data-([a-z0-9]+)\]/g))handled.add(k[1]);
+ const SECONDARY=['mode','wfs','wft','keep'];   // 搭配主要屬性一起使用，或不是按鈕
+ // AI 通話設定面板（#aipanel）以 closest('button') 處理所有按鈕，屬性皆以 ai 開頭
+ const miss=[...used].filter(k=>!handled.has(k)&&!SECONDARY.includes(k)&&!/^ai/.test(k));
+ ok('按鈕屬性都有點擊處理',!miss.length,miss)}
+(async()=>{if(which==='all'||which==='lint')lint();
+ if(which==='lint'){console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)}
+ const b=await chromium.launch();
  if(which==='all'||which==='load'){const {p,errs}=await page(b);ok('載入無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='map'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{const f=baseF(SPOT[0],0);const un=SPOT.filter(s=>f.D[K(s.x[0],s.x[1])]===INF).map(s=>s.n);

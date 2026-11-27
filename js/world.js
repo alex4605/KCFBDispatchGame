@@ -67,7 +67,7 @@ const inCity=(x,y)=>x>=OX&&y>=OY&&x<OX+CITY&&y<OY+CITY;
 function inFacility(x,y){
  for(let i=0;i<SPOT.length;i++)if(SPOT[i].p&&SPOT[i].p[0]===x&&SPOT[i].p[1]===y)return true;
  for(const h of HOSP)for(const q of (h.cells||[h.p]))if(q[0]===x&&q[1]===y)return true;
- if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.p[0]===x&&SCHOOL.p[1]===y)return true;
+ if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.set&&SCHOOL.set.has(K(x,y)))return true;
  return false}
 function build(){
  OX=0;OY=0;RTOWN.forEach((t,i)=>t.c=RTOWN0[i].slice());
@@ -193,7 +193,8 @@ function build(){
  roadGrades();
  indexLayers();
  ruralDetail();
- placeSchool()}
+ placeSchool();
+ spawnCands()}
 // 鋪高速公路：遇地面道路或水面成分層交會（HWL），否則為高速公路格
 function layHW(x,y,g){
  const k=K(x,y);HG[k]=g;

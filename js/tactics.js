@@ -406,7 +406,7 @@ function tacSync(inc){
   if(u.st!=='work'||!TAC_SQ[u.code])continue;
   if(B.sq.some(q=>q.u===u.id))continue;
   const ty=TAC_SQ[u.code];
-  B.sq.push({cafs:u.cafs?1:0,usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+  B.sq.push({rookie:u.trainee?1:0,cafs:u.cafs?1:0,usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
    task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
    tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:2})}
  tacEpaSync(inc,B);
@@ -448,6 +448,7 @@ function tacStepTime(B,q,ns){
  if(q.task==='attack'&&q.line)t*=1.4;
  if(q.carry)t*=1.5;
  if(q.ty==='robot')t*=1.6;
+ if(q.rookie)t*=1.15;                      // 訓練假想單位（新進人員）動作較慢
  if(q.task==='ritgo')t*=.8;
  return t*(1+(q.fat||0)*.6)}
 // 能力：回傳 '' 表示可以，否則為不可執行的原因

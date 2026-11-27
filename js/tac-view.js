@@ -177,7 +177,7 @@ function tacVeh(g,u,T){
  const c=u.code;
  g.fillStyle='rgba(0,0,0,.35)';scRR(g,1.5,2,50,20,3);g.fill(); // 陰影
  // 消防車一律消防紅，救護車白色、警車白色；車種靠車頂設備區分
- const body=c==='91'||c==='警'?'#f2f2ee':'#c8332c';
+ const body=u.trainee?(c==='91'?'#d8d6cc':'#9a4a40'):c==='91'||c==='警'?'#f2f2ee':'#c8332c';   // 訓練中心的除役車：褪色
  g.fillStyle=body;scRR(g,0,0,50,20,3);g.fill();
  // 駕駛艙與擋風玻璃
  g.fillStyle=c==='91'||c==='警'?'#d8d8d2':'rgba(0,0,0,.18)';g.fillRect(38,1,11,18);
@@ -939,8 +939,11 @@ function tacClick(inc,B,hit,e,x,y){
   if(tacOrder(inc,q,k,f,c,i>0,side))ok++});
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
+// 戰術畫面的按鈕：點擊時依 data-* 屬性分派（新增時加進 TAC_CLICK）
+const TAC_CLICK=['tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
+const TAC_CLICK_SEL=TAC_CLICK.map(k=>'[data-'+k+']').join(',');
 document.getElementById('tac').addEventListener('click',e=>{
- const b=e.target.closest('[data-tfl],[data-ttab],[data-tsq],[data-tord],[data-tpause],[data-texit],[data-thand],[data-tamb],[data-tstn],[data-trole],[data-task],[data-treq],[data-telev],[data-tspd],[data-tap],[data-tepa],[data-tma]');if(!b)return;
+ const b=e.target.closest(TAC_CLICK_SEL);if(!b)return;
  const D=b.dataset;msg='';
  const ic=S.inc.find(i=>i.id===TAC.id);
  if(ic&&ic.tac){const B=ic.tac;
