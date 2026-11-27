@@ -1,7 +1,7 @@
 // 戰術指揮：室外場景（資源回收場、加油站）——場區格局、風向、飛火、油料外洩、場區繪製
 // 室外沿用建物的節點模型：堆置區、加油島等是「空間」（room），場內車道是「走廊」（hall）；只有一層、沒有樓梯
 'use strict';
-const TAC_YFU={grass:.5,reed:.65,shrub:1,shack:1.5,cars:1,plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
+const TAC_YFU={forest:1.3,home:1.5,grass:.5,reed:.65,shrub:1,shack:1.5,cars:1,plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
 const TAC_WINDN={n:'北',e:'東',s:'南',w:'西',ne:'東北',nw:'西北',se:'東南',sw:'西南'};
 // 風向（風從哪裡吹來）與吹往的單位向量
 function tacWind(){const ks=Object.keys(TAC_WINDN),k=ks[Math.floor(Math.random()*ks.length)];
@@ -24,6 +24,11 @@ function tacYardLay(T,K,L,add,room,cuts,R){
     if(!off&&ya===0&&i===0){k='yoff';off=1}else if(!drum&&R()<.35){k='drum';drum=1}else if(!cyl&&R()<.3){k='cylz';cyl=1}
     const n=room(xs[i],ya,xs[i+1]-xs[i],yb-ya,k);if(k==='yoff')wall(n)}}
   if(!drum){const n=L.N.filter(n=>n.ty==='room'&&n.kind!=='yoff').pop();n.kind='drum'}}
+ else if(T.yard==='wui'){ // 建物防護：林地邊緣（山火來的方向）→ 雜草灌木的防禦空間 → 民宅聚落 → 道路
+  L.GH=3;L.GW=4+K*.3;const yf=.85+R()*.2,yh=yf+.65+R()*.2,yr=L.GH-.45;
+  for(const[ya,yb,kf]of[[0,yf,'forest'],[yf,yh,'gs']]){const xs=cuts(0,L.GW,.75,1.2);for(let i=0;i<xs.length-1;i++)room(xs[i],ya,xs[i+1]-xs[i],yb-ya,kf==='forest'?'forest':R()<.6?'grass':'shrub')}
+  {const xs=cuts(0,L.GW,.8,1.2);let sh=0;for(let i=0;i<xs.length-1;i++){const k=!sh&&R()<.3?(sh=1,'shack'):R()<.15?'cars':'home';const n=room(xs[i],yh,xs[i+1]-xs[i],yr-yh,k);if(k!=='cars')wall(n)}}
+  const hs=cuts(0,L.GW,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],yr,hs[i+1]-hs[i],L.GH-yr)}
  else if(T.yard==='grass'){ // 雜草火：空地（草地、灌木，邊上有鐵皮屋與停放的汽車）或河堤（臨河芒草坡、堤頂道路、另一側草坡）
   L.GH=3;L.GW=3.8+K*.45;
   if(T.river){const y0=1.05+R()*.25,y1=y0+.42;
@@ -47,13 +52,13 @@ function tacYardLay(T,K,L,add,room,cuts,R){
   L.canopy=[0,yi0-.15,L.GW,yi1-yi0+.3]}}
 // 場區初始化（tacInit 內）：燃料量、露天開口、風向、化學品與洩漏
 function tacYardInit(inc,B,T){
- B.out=1;B.wind=tacWind();if(T.wild){B.wild=1;if(B.wind.v<.35){B.wind.v=.45;B.wind.ms=3;B.wind.nm=B.wind.nm.replace(/\d+ m/,'3 m')}}
+ B.out=1;B.wind=T.wui&&inc.wf?Object.assign({},inc.wf.wind):tacWind();if(T.wild){B.wild=1;if(B.wind.v<.35){B.wind.v=.45;B.wind.ms=3;B.wind.nm=B.wind.nm.replace(/\d+ m/,'3 m')}}
  for(const x of B.cells){const n=B.L.N[x.c];
   if(n.ty==='hall'){x.fu=0;x.v=1;continue}
   x.fu=TAC_YFU[n.kind]||1;if(!n.walled)x.v=1;
   if(n.kind==='ewaste')x.li=1;if(n.kind==='plastic'||n.kind==='paper')x.deep=1;
   // 草地：燃料少、燒得快，不需搜索
-  if(T.wild){if(n.kind==='grass'||n.kind==='reed'||n.kind==='shrub')x.gr=1;x.srch=1;x.sl=2}}
+  if(T.wild){if(n.kind==='grass'||n.kind==='reed'||n.kind==='shrub')x.gr=1;if(n.kind!=='home'){x.srch=1;x.sl=2}}}
  if(T.wild)return;
  const t=tacTxt(inc);
  if(T.yard==='waste'){
@@ -80,7 +85,7 @@ function tacYardStep(inc,B,dt){
    const d=tacGd(B,x.c,y.c);if(d>1.8)continue;const b=B.L.N[y.c];
    let dx=b.gx+b.gw/2-a.gx-a.gw/2,dy=b.gy+b.gh/2-a.gy-a.gh/2;const l=Math.hypot(dx,dy)||1;
    const al=(dx*W.d[0]+dy*W.d[1])/l;if(al<.3)continue;
-   if(Math.random()<.004*(x.h-.5)*W.v*al*(TAC_RK[b.kind]||{fk:1}).fk*8){y.h=.12;radio(inc,'安全官','飛火順'+W.nm.slice(0,W.nm.indexOf('風')+1)+'引燃'+tacNm(B,0,y.c)+'！');tacEvt(inc,B,'warn','飛火引燃'+tacNm(B,0,y.c))}}}
+   if(Math.random()<.004*(x.h-.5)*W.v*al*(TAC_RK[b.kind]||{fk:1}).fk*8*(b.walled?.04:1)){y.h=.12;radio(inc,'安全官','飛火順'+W.nm.slice(0,W.nm.indexOf('風')+1)+'引燃'+tacNm(B,0,y.c)+'！');tacEvt(inc,B,'warn','飛火引燃'+tacNm(B,0,y.c))}}}
  // 油料外洩：油池擴散到相鄰車道，可被引燃
  if(B.leak&&B.leak.on&&B.chem&&B.chem.fuel)for(const cc of B.L.N[B.leak.c].nb){const y=tacCel(B,0,cc);if(B.L.N[cc].ty==='hall'&&y.fu<.4){y.fu=.4;y.fuel=1;y.pool=1}}}
 // 場區空間名稱：塑膠堆 A、加油島 2、場內車道
@@ -123,6 +128,10 @@ function tacYardCell(g,G,B,n,x,r,T){
  else if(k==='grass'||k==='reed'||k==='shrub'){if(burnt){g.fillStyle='#161412';g.fillRect(r[0],r[1],r[2],r[3]);for(let i=0;i<10;i++){g.fillStyle='rgba(120,115,105,.35)';g.fillRect(r[0]+r[2]*rnd(),r[1]+r[3]*rnd(),3,2)}}
   else{g.fillStyle=k==='reed'?'#4a4a2c':k==='shrub'?'#2e4028':'#3b4a2a';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle=k==='reed'?'#9a9a5a':k==='shrub'?'#4e6a3a':'#6a7a3a';g.lineWidth=1;
    const nn=k==='shrub'?10:28;for(let i=0;i<nn;i++){const tx=r[0]+r[2]*rnd(),ty=r[1]+r[3]*rnd();if(k==='shrub'){g.fillStyle='#3e5a32';g.beginPath();g.arc(tx,ty,t*.06,0,TAU);g.fill()}else{g.beginPath();g.moveTo(tx,ty);g.lineTo(tx-2,ty-(k==='reed'?9:5));g.moveTo(tx,ty);g.lineTo(tx+2,ty-(k==='reed'?8:4));g.stroke()}}}}
+ else if(k==='forest'){if(burnt){g.fillStyle='#161412';g.fillRect(r[0],r[1],r[2],r[3]);for(let i=0;i<8;i++){g.fillStyle='#2a221c';g.beginPath();g.arc(r[0]+r[2]*rnd(),r[1]+r[3]*rnd(),t*.05,0,TAU);g.fill()}}
+  else{g.fillStyle='#1a2e1e';g.fillRect(r[0],r[1],r[2],r[3]);for(let i=0;i<14;i++){g.fillStyle=['#24402a','#2c4c30','#1f3824'][i%3];g.beginPath();g.arc(r[0]+r[2]*(.1+.8*rnd()),r[1]+r[3]*(.1+.8*rnd()),t*(.09+.06*rnd()),0,TAU);g.fill()}}}
+ else if(k==='home'){g.fillStyle=dark?'#1a1816':'#4a3530';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle=dark?'#2a221c':'#8a5a4a';g.lineWidth=2;
+  g.beginPath();g.moveTo(r[0]+6,r[1]+r[3]/2);g.lineTo(r[0]+r[2]-6,r[1]+r[3]/2);g.stroke();g.strokeStyle='#8a857a';g.lineWidth=3;g.strokeRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12)}
  else if(k==='shack'){g.fillStyle=dark?'#1a1816':'#5a6268';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(200,205,210,.35)';g.lineWidth=1;for(let yy=r[1]+10;yy<r[1]+r[3]-8;yy+=5){g.beginPath();g.moveTo(r[0]+7,yy);g.lineTo(r[0]+r[2]-7,yy);g.stroke()}}
  else if(k==='cars'){for(let i=0;i<3;i++){g.fillStyle=dark?'#1e1c19':['#6a7a8a','#8a6a5a','#5a5a5a'][i];scRR(g,r[0]+r[2]*(.1+i*.3),r[1]+r[3]*.25,r[2]*.22,r[3]*.5,3);g.fill()}}
  else if(k==='wash'){g.strokeStyle='rgba(125,179,232,.3)';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/5,r[1]+4);g.lineTo(r[0]+r[2]*i/5,r[1]+r[3]-4);g.stroke()}}
@@ -137,6 +146,11 @@ function tacYardTop(g,G,B,T){
  if(B.wind)for(const n of L.N){const x=tacCel(B,0,n.c);if(x.h<.2)continue;const r=G.r(n.c);
   for(let k=0;k<4;k++){const ph=(T*.25+k/4+n.c*.17)%1,d=ph*t*2.2;
    g.fillStyle='rgba(70,70,74,'+((1-ph)*.45*x.h).toFixed(3)+')';g.beginPath();g.arc(r[0]+r[2]/2+B.wind.d[0]*d,r[1]+r[3]/2+B.wind.d[1]*d,t*(.12+ph*.3),0,TAU);g.fill()}}
+ // 建物防護：外圍山火逼近的方向（林地那側）
+ if(B.wui&&B.fside&&B.wh>.03){const s=B.fside,a=Math.min(1,B.wh),pl=.6+.4*Math.sin(T*3);
+  const r=s==='n'?[G.bx,G.by-28,G.bw,22]:[G.bx,G.by+G.bh+6,G.bw,22];
+  const gr=g.createLinearGradient(0,r[1],0,r[1]+r[3]);gr.addColorStop(s==='n'?0:1,'rgba(255,90,30,'+(.6*a*pl).toFixed(2)+')');gr.addColorStop(s==='n'?1:0,'rgba(255,90,30,0)');
+  g.fillStyle=gr;g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='#ffb08a';g.font='600 11px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('外圍山火逼近 '+Math.round(a*100)+'%',r[0]+r[2]/2,r[1]+r[3]/2)}
  // 風向標
  if(B.wind){const cx=G.bx+G.bw-28,cy=G.by-34,W=B.wind;g.save();g.translate(cx,cy);
   g.fillStyle='rgba(12,12,11,.8)';g.beginPath();g.arc(0,0,18,0,TAU);g.fill();
@@ -158,6 +172,14 @@ function tacHazDraw(g,G,B,vf){
   g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.fuel?'油料外洩':'洩漏源',r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
 // 河堤：臨河那側改為水域（不能停車、沒有入口）
 function tacYardPost(inc,B,T){
+ if(T.wui){ // 建物防護：道路在聚落那側，林地那側不能停車，兩側是產業道路（大型車禁入）
+  const rd=B.L.N.filter(n=>n.lane),fo=B.L.N.filter(n=>n.kind==='forest');
+  const rs=rd.reduce((a,n)=>a+n.gy,0)/rd.length>B.L.GH/2?'s':'n',fs=tacOpp(rs,'n')?'n':'s';
+  B.sd={n:null,e:null,s:null,w:null};B.sd[rs]={road:2,big:true,nm:'道路'};B.sd[fs]={road:0,big:false,nm:'林地'};
+  for(const s of['e','w'])B.sd[s]={road:5,big:false,nm:'產業道路'};
+  B.arr=rs;B.exp={};B.ents=TAC_SIDES.filter(s=>B.sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s]}));B.fside=fs;
+  if(!inc.hy||inc.tender)B.hyd=null;else B.hyd={side:rs,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)};
+  return}
  if(!T.river)return;
  const rv=B.L.N.filter(n=>n.riv);if(!rv.length)return;
  const top=rv.reduce((a,n)=>a+n.gy+n.gh/2,0)/rv.length<B.L.GH/2,rs=top?'n':'s';
@@ -194,6 +216,30 @@ function tacWildAI(inc,B,free,take,spare){
   if(ah&&tacOrder(inc,q,'brk',0,ah.c,1)){take(q);continue}
   const sm=fr.filter(x=>x.h<.5&&!B.sq.some(y=>y!==q&&y.task==='beat'&&y.tc===x.c)).sort((a,b)=>a.h-b.h)[0];
   if(sm&&tacOrder(inc,q,'beat',0,sm.c,1)){take(q);continue}}
- const sh=B.L.N.find(n=>n.kind==='shack');
- if(sh&&spare>0&&!(B.shT>S.t)&&!B.sq.some(q=>q.task==='guard'&&q.tc===sh.c)&&tacCel(B,0,sh.c).h<.3&&sh.nb.concat(sh.wl).some(o=>tacCel(B,0,o).h>.2)){
-  const p=free.find(q=>q.ty==='pump'&&!q.line);if(p&&tacOrder(inc,p,'guard',0,sh.c,1)){take(p);B.shT=S.t+30;radio(inc,p.cs,'鐵皮屋周界防護，阻止草火延燒建物。')}}}
+ const sh=B.L.N.filter(n=>(n.kind==='shack'||n.kind==='home')&&!B.sq.some(q=>q.task==='guard'&&q.tc===n.c)&&tacCel(B,0,n.c).h<.3&&(n.nb.concat(n.wl).some(o=>tacCel(B,0,o).h>.2)||(B.wui&&B.wh>.3&&n.kind==='home')))
+  .sort((a,b)=>(b.kind==='home')-(a.kind==='home')||(tacCel(B,0,b.c).pre||0)-(tacCel(B,0,a.c).pre||0))[0]; // 民宅優先、外牆預熱高的先守
+ if(sh&&spare>0&&!(B.shT>S.t)){
+  const p=free.find(q=>q.ty==='pump'&&!q.line);if(p&&tacOrder(inc,p,'guard',0,sh.c,1)){take(p);B.shT=S.t+(B.wui?8:30);radio(inc,p.cs,tacNm(B,0,sh.c)+'周界防護，阻止火勢延燒建物。')}}}
+// 建物防護：外圍山火（作戰圖上受保護民宅周邊的火格）持續烤林地邊緣、飛火；民宅燒毀回饋作戰圖；山火過境且場內撲滅後結束
+function tacWuiStep(inc,B,dt,first){
+ const W=inc.wf;if(!W){inc.tac=null;return}
+ const x=(B.wk/N)|0,y=B.wk%N;let heat=0;
+ for(const v of WF_D8.concat([[2,0],[-2,0],[0,2],[0,-2]])){const c=W.F.get(K(x+v[0],y+v[1]));if(c)heat=Math.max(heat,c.h*(Math.abs(v[0])+Math.abs(v[1])>2?.6:1))}
+ B.wh=heat;
+ {let sh=0;for(const c of B.cells)sh+=c.h;B.peak=Math.max(B.peak||0,sh)}
+ if(heat>.15)for(const c of B.cells){const n=B.L.N[c.c];if(c.fu<=0)continue;
+  if(n.kind==='forest'&&Math.random()<dt*.06*heat)c.h=Math.max(c.h,.2+heat*.5);
+  else if(n.ty==='room'&&n.kind!=='forest'&&!n.walled&&Math.random()<dt*.004*heat*B.wind.v)c.h=Math.max(c.h,.12)} // 飛火（建物有牆，不直接被飛火引燃）
+ for(const c of B.cells){const n=B.L.N[c.c];if(n.kind==='home'&&c.h>.6&&!c.lostF){c.lostF=1;B.homeLost=(B.homeLost||0)+1;S.rep-=2;
+  radio(inc,'受理',tacNm(B,0,c.c)+'遭山火延燒（評鑑 -2）。');tacEvt(inc,B,'danger',tacNm(B,0,c.c)+'燒毀',1);if(S.rep<=0){S.rep=0;S.over=true}}}
+ // 林地殘火交回山火作戰圖處理，只看聚落與防禦空間
+ const out=!B.cells.some(c=>(c.h>=.04||c.emb)&&B.L.N[c.c].kind!=='forest');let left=0;for(const c of B.cells)left+=c.vic+c.hid;for(const q of B.sq)left+=q.carry;
+ const evac=B.pts.length+onScene(inc).filter(u=>u.load>0).length;
+ if(heat<.05&&out&&!left&&!evac){B.doneT+=dt;if(B.doneT>=3){
+  const hs=B.cells.filter(c=>B.L.N[c.c].kind==='home'),sv=hs.filter(c=>!c.lostF).length;
+  radio(inc,first?first.cs:'現場','建物防護完成：保住民宅 '+sv+' / '+hs.length+' 棟'+(B.resc?'，救出 '+B.resc+' 名':'')+'。');
+  W.prot.delete(B.wk);(W.wd||(W.wd=new Set())).add(B.wk);if(B.homeLost)W.hit.add(B.wk);
+  B.done=1;B.burnt=B.homeLost||0;inc.tac=null}}
+ else B.doneT=0}
+// 作戰圖上仍待防護的民宅（受威脅、未燒毀、未完成防護）
+const wfWuiTodo=W=>[...W.thr].filter(k=>!W.hit.has(k)&&!(W.wd&&W.wd.has(k)));

@@ -29,7 +29,7 @@ function wfInit(inc){
  for(let i=0;i<n*3&&W.F.size<n;i++){const ks=[...W.F.keys()],k=ks[Math.floor(Math.random()*ks.length)],x=(k/N)|0,y=k%N,d=pick(WF_D8);wfIgn(W,x+d[0],y+d[1],.3+Math.random()*.4)}
  radio(inc,'受理','山林火警啟動山火作戰圖：起火點在'+inc.addr+'附近林地，'+W.wind.nm+'，火頭往'+wfDirN(W.wind.d)+'延燒。')}
 function wfDirN(d){const a=Math.atan2(d[1],d[0])*180/Math.PI;return['東','東南','南','西南','西','西北','北','東北'][((Math.round(a/45)%8)+8)%8]}
-function wfIgn(W,x,y,h){const k=K(x,y);if(x<0||y<0||x>=N||y>=N||W.F.has(k)||W.B.has(k)||W.BK.has(k))return false;const fu=wfFu(x,y);if(fu<=0)return false;
+function wfIgn(W,x,y,h){const k=K(x,y);if(W.prot&&W.prot.has(k))return false;if(x<0||y<0||x>=N||y>=N||W.F.has(k)||W.B.has(k)||W.BK.has(k))return false;const fu=wfFu(x,y);if(fu<=0)return false;
  W.F.set(k,{x,y,h,fu,f0:fu,wet:0});return true}
 // 火線（仍有可燃鄰格的燃燒格）與分區：以火場重心為中心，順風方向為火頭、逆風為火尾，左右為兩翼
 function wfEdges(W){
@@ -70,7 +70,9 @@ function wfStep(inc,dt){
  const{E}=wfEdges(W);W.E=E;W.peak=Math.max(W.peak,E.length);
  const bySec={};for(const k of WF_SECK)bySec[k]=E.filter(c=>c.sec===k).sort((a,b)=>b.h-a.h);
  if(W.auto)wfAuto(inc,W,bySec);
- for(const u of onScene(inc)){if(u.st!=='work')continue;const a=W.as[u.id];if(!a)continue;const L=bySec[a.sec];if(!L||!L.length)continue;
+ for(const u of onScene(inc)){if(u.st!=='work')continue;const a=W.as[u.id];if(!a)continue;
+  if(inc.tac&&inc.tac.sq.some(q=>q.u===u.id&&q.task!=='idle'))continue; // 正在建物防護戰術場景作業
+  const L=bySec[a.sec];if(!L||!L.length)continue;
   // 地面水線：先打逼近民宅的火線（建物防護），再打最猛的
   if(a.task==='water'&&wfPump(u)){const thr=c=>WF_D8.some(v=>wfUrban(c.x+v[0],c.y+v[1]))?1:0,rc=L.filter(c=>wfReach(c.x,c.y)).sort((a,b)=>thr(b)-thr(a)||b.h-a.h).slice(0,1);
    for(const c of rc){c.h=Math.max(0,c.h-s*.02*(wOK?1:.4)*(u.code==='57'?1.2:1));c.wet=Math.max(c.wet,4)}}
@@ -192,6 +194,7 @@ function wfPanel(inc){
  const W=inc.wf;if(!W)return'';
  const ctl=Math.round(Math.max(0,1-(W.E?W.E.length:0)/W.peak)*100);
  let h='<div class="hd mt">山火作戰圖</div><div class="kv"><div><b>燃燒中</b>'+W.F.size+' 公頃</div><div><b>已燒毀</b>'+W.B.size+' 公頃</div><div><b>控制</b>'+ctl+'%</div><div><b>風</b>'+W.wind.nm+'</div><div><b>防火線</b>'+W.BK.size+' 格</div><div><b>民宅</b>'+(W.lost?'<span style="color:var(--red)">延燒 '+W.lost+' 處</span>':W.thr.size?'<span style="color:var(--amb)">受威脅 '+W.thr.size+' 處</span>':'安全')+'</div></div>';
+ const td=wfWuiTodo(W);if(td.length||inc.tac)h+='<div class="note" style="display:block">'+(inc.tac?'建物防護戰術進行中（'+((inc.tac.wk/N)|0)+','+(inc.tac.wk%N)+'）。':'火線逼近民宅 '+td.length+' 處：可點上方「⚔ 建物防護戰術」親自指揮聚落防護。')+'</div>';
  const E=W.E||[];
  h+='<div class="row" style="flex-wrap:wrap;gap:4px">'+WF_SECK.map(k=>'<span class="tag" style="background:'+WF_SCOL[k]+';color:#111">'+WF_SEC[k]+' '+E.filter(e=>e.sec===k).length+'</span>').join('')+
   '<button data-wfauto="1"'+(W.auto?' class="on"':'')+' title="新到車輛自動分派到分區">自動分派'+(W.auto?'：開':'：關')+'</button></div>';
