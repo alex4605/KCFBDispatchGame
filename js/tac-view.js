@@ -18,9 +18,9 @@ const TAC_GRP=[
   ['ppeB','B級','','空氣呼吸器＋防濺衣：每輛化災車 2 套'],['ppeA','A級','','氣密全身防護：每輛化災車 1 套']]],
  ['雲梯',[['ladder','雲梯救援','L','架雲梯到窗口搜救'],['master','雲梯射水','M','由雲梯從窗外射水']]],
  ['調度',[['move','移動','G','移到指定位置待命'],['rit','RIT','R','於入口待命，MAYDAY 時入室救援'],['exit','撤出','X','撤出建物'],
-  ['truck','移車','T','把車移到另一側道路'],['stand','送水口加壓','C','接連結送水管送水口，各樓層出水口可用']]]];
+  ['truck','移車','T','把車移到另一側道路'],['hyd','佔據水源','','幫浦車移到消防栓那一側接栓佔水，水線改由消防栓持續供水（沒有佔水只能用車上水箱）'],['stand','送水口加壓','C','接連結送水管送水口，各樓層出水口可用']]]];
 // 指令的 Emoji
-const TAC_EMO={cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofresc:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
@@ -853,7 +853,7 @@ function tacGear(B,q){
  const eq=EQ[q.code]||[],g=[];
  for(const [k,n] of TAC_PORT){if(!eq.includes(k))continue;
   if(n==='RIT 包'&&!(q.task==='rit'||q.task==='ritgo'))continue;
-  if((n==='送風機'&&!B.ppv)||(n==='排風機'&&q.task!=='npv'))continue;
+  if((n==='送風機'&&!(B.ppv&&q.task==='ppv'))||(n==='排風機'&&q.task!=='npv'))continue;
   if((n==='生命探測器'||n==='SKED 擔架')&&!(q.task==='search'||q.task==='search2'||q.carry))continue;
   if(n==='油壓剪'&&q.task!=='force'&&q.task!=='dctrl')continue;
   g.push(n)}
@@ -880,7 +880,7 @@ function tacDoing(B,q){
  return D[q.task]||'作業中'}
 function tacTagHTML(inc,B,q,i){
  const acc=tacAcc(B),inT=tacIn(q)&&q.inT?S.t-q.inT:0;
- const dn=tacDoing(B,q),task=q.down?'倒地待救（MAYDAY）':(q.task==='idle'?'待命':q.task==='station'?tacStnDef(q.stn).n:TAC_TASK[q.task]||q.task)+(q.prev?'（換瓶後續行）':dn?'（'+dn+'）':'');
+ const dn=tacDoing(B,q),task=q.down?'倒地待救（MAYDAY）':(q.task==='idle'?'待命':q.task==='station'?tacStnDef(q.stn).n:tacTN(B,q.task)||q.task)+(q.prev?'（換瓶後續行）':dn?'（'+dn+'）':'');
  const noz=tacNoz(B,q),gear=tacGear(B,q),sk=tacSk(q);
  const offS=TAC.off&&TAC.off.some(o=>o.u.id===q.u);
  const loc=offS&&!tacIn(q)&&(q.task==='idle'||q.ty==='pump')?'已抵達（畫面外）':q.ty==='ladder'&&q.lf!==undefined&&q.task!=='idle'?'雲梯→'+tacNm(B,q.lf,q.lc):tacIn(q)?tacNm(B,q.f,q.c):(q.ty==='pump'||q.ty==='ladder'?(q.tmv?'移車往'+TAC_SDN[q.tgt]+'側':TAC_SDN[q.tside]+'側'):'屋外');
@@ -906,7 +906,8 @@ function tacBotHTML(inc){
   if(sq&&/^ppe/.test(o[0]))dis=tacIn(sq)||sq.ty==='ladder'||sq.ty==='robot';
   else if(sq){const why=o[0]==='truck'?tacCan(B,sq,'truck'):o[0]==='roofres'?tacCan(B,sq,'roofres',B.F-1,0):o[0]==='roof'?tacCan(B,sq,'roof',B.F-1,0):tacCan(B,sq,o[0],t?B.bf:-1,t?pr:0);
    dis=!!why&&!/高度|道路|窗|地下|樓梯|搜索|頂樓|房間/.test(why)}
-  return'<button data-tord="'+o[0]+'" title="'+esc(o[3])+'"'+(TAC.ord===o[0]?' class="on"':'')+(dis?' disabled':'')+'><i class="emo">'+(TAC_EMO[o[0]]||'')+'</i>'+o[1]+' <span class="sub">'+o[2]+'</span></button>'};
+  const on2=B.out&&TAC_OUTN[o[0]];
+  return'<button data-tord="'+o[0]+'" title="'+esc(on2?on2[1]:o[3])+'"'+(TAC.ord===o[0]?' class="on"':'')+(dis?' disabled':'')+'><i class="emo">'+(TAC_EMO[o[0]]||'')+'</i>'+(on2?on2[0]:o[1])+' <span class="sub">'+o[2]+'</span></button>'};
  h+='<div class="tords"><span class="trow">需指定目標</span>';
  for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
  h+='</div><div class="tords"><span class="trow">立即執行</span>';

@@ -69,11 +69,14 @@ const tacSk=q=>TAC_SKL[q.sk||(q.rookie?'rookie':q.usar?'usar':'reg')];
 const TAC_VOLNO={attack:1,search:1,search2:1,rit:1,ritgo:1,vvent:1,hydro:1,confine:1,sky:1,fwdgo:1,roofres:1,dctrl:1,npv:1,vent:1};
 const TAC_SQ={'機':'pump','43':'resc','99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
 const TAC_TYN={crew:'人力組',med:'特搜醫療組',hazmat:'化災組',epa:'化災應變隊',pump:'幫浦組',ladder:'雲梯組',resc:'救助組',vent:'排煙組',robot:'機器人'};
-const TAC_TASK={sky:'車頂砲塔射水',beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
+const TAC_TASK={sky:'車頂砲塔射水',hyd:'佔據水源',beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
  guard:'周界防護',cover:'周界防護（鄰棟）',confine:'侷限火勢',search:'初期搜索',search2:'次級搜索',carry:'搬運傷者',
  vent:'破窗排煙',hydro:'水霧排煙',roof:'屋頂排煙',ppv:'正壓排煙',npv:'負壓排煙',vvent:'垂直排煙',force:'破壞進入',dctrl:'門控進入',overhaul:'殘火處理',ladder:'雲梯救援',master:'雲梯射水',roofres:'屋頂救援',
  rit:'RIT 待命',ritgo:'RIT 救援',exit:'撤出',station:'駐守站點'};
 // 需要水線的任務
+// 室外（工廠廠區、資源回收場、鐵皮屋、山林等）不叫「入室」：任務名稱改用戶外說法
+const TAC_OUTN={attack:['滅火攻擊','帶水線到火點射水滅火，撲滅後自動往最近火點推進'],trans:['外圍射水','先在外圍射水壓制，再推進攻擊'],search:['搜索','快速搜索建物與周邊，找出受困者'],search2:['複搜','徹底翻找，找出初搜遺漏的受困者'],exit:['撤離','撤離危險區域']};
+const tacTN=(B,k)=>B&&B.out&&TAC_OUTN[k]?TAC_OUTN[k][0]:TAC_TASK[k];
 const TAC_WET={confine:1,attack:1,sky:1,hold:1,trans:1,guard:1,hydro:1,cover:1,master:1};
 // 用水量較大的任務：占用兩條水線的流量
 const TAC_WET2={sky:1};
@@ -475,7 +478,8 @@ function tacCan(B,q,k,f,c){
  if(k==='exit')return lad?'雲梯組在建物外作業':'';
  if(k==='truck')return(q.ty==='pump'||lad)?'':'只有幫浦車與雲梯車需要移車';
  if(k==='stand')return q.ty!=='pump'?'只有幫浦組能做送水口加壓':!B.sp?'本建物沒有連結送水管（五層以上才有）':B.sp.on&&B.sp.u!==q.u?'送水口已由其他車接妥':tacIn(q)?'人員在室內':tacCanSide(B,q,B.sp.side);
- if(k==='ppv')return q.ty==='vent'?'':'只有排煙組有正壓排煙送風機';
+ if(k==='ppv')return q.ty==='vent'||(q.ty==='pump'&&q.code==='11')?'':'需要排煙組或 11 幫浦車的正壓排煙機';
+ if(k==='hyd')return q.ty!=='pump'?'只有幫浦車能佔水':!B.hyd?'附近沒有消防栓，需水庫車供水':tacIn(q)?'人員在室內':q.tside===B.hyd.side&&!q.tmv?'已在消防栓那一側':tacCanSide(B,q,B.hyd.side);
  if(k==='rit')return(lad||q.ty==='robot')?'此組無法編為 RIT':'';
  if(k==='cover')return q.ty!=='pump'?'只有幫浦組能做周界防護':Object.keys(B.exp).length?'':'四周沒有鄰棟';
  if(q.air<.3&&!lad&&q.ty!=='robot'&&k!=='exit'&&k!=='force'&&k!=='dctrl')return'空氣瓶不足，需先撤出換瓶';
@@ -521,6 +525,8 @@ function tacOrder(inc,q,k,f,c,quiet,side){
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
  if(k==='vent'&&f===B.F-1&&tacStair(B,c))k='roof';
  if(k==='truck')return tacTruck(inc,B,q,side,quiet);
+ if(k==='hyd'){const why=tacCan(B,q,'hyd');if(why){if(!quiet)msg=q.cs+'：'+why;return false}
+  if(tacTruck(inc,B,q,B.hyd.side,1)){radio(inc,q.cs,'收到，移車至'+TAC_SDN[B.hyd.side]+'側消防栓佔水。');return true}return false}
  if(k==='guard'&&side){k='cover'}
  if(k==='cover'){
   const why=q.ty!=='pump'?'只有幫浦組能做周界防護':!side||B.exp[side]===undefined?'請點選鄰棟那一側':tacIn(q)?'人員在室內':'';
@@ -654,7 +660,8 @@ function tacSquad(inc,B,q,dt,eff){
     tacOnce(inc,B,'entry','首組入室：'+q.cs+'（'+TAC_SDN[q.ent.side]+'側入口）');
     // 已知有受困者時入室救人屬「2 進 2 出」的救人例外，不記缺失
     if(!B.sq.some(y=>y.task==='rit'||y.task==='ritgo')&&!B.viol.noRit&&!B.cells.some(x=>x.vic>0&&(x.rep||x.rub||x.srch>=1))){B.viol.noRit=1;tacEvt(inc,B,'warn','未編成 RIT 即入室（'+q.cs+'）')}
-    if(B.played&&!tacAcc(B)&&!B.viol.noAcc){B.viol.noAcc=1;tacEvt(inc,B,'warn','未設人員管制板即入室（'+q.cs+'）')}}
+    // 初期搶救時間緊迫：指揮車未到、或到場後 2 分鐘內、或安全官正在設置管制板時入室，不記缺失
+    if(B.played&&!tacAcc(B)&&!B.viol.noAcc&&!B.role.safety&&S.t-B.t0>120&&onScene(inc).some(u=>(u.code==='41'||u.code==='指')&&u.st==='work')){B.viol.noAcc=1;tacEvt(inc,B,'warn','未設人員管制板即入室（'+q.cs+'）')}}
    const dk=tacDK(B,q.f,pc,ns[1]),fdd=ns[0]===q.f&&q.f>=0&&B.fd.get(dk);
    if(fdd)tacFDPass(inc,B,q,dk,fdd);
    else if(ns[0]===q.f&&q.f>=0&&B.cd.delete(dk)&&q.task!=='exit')radio(inc,q.cs,'打開'+tacNm(B,q.f,ns[1])+'的門通過，侷限解除。');
