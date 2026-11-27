@@ -109,7 +109,7 @@ function tacStnStep(inc,B,dt){
 function tacPatient(inc,B,vh,who){
  const sev=vh<.45?'red':vh<.8?'yellow':'green';
  B.pts.push({id:B.pid=(B.pid||0)+1,sev,hp:Math.min(1,vh+.15),t:S.t});B.resc++;
- tacEvt(inc,B,'victim','救出受困者 1 名（'+{red:'紅',yellow:'黃',green:'綠'}[sev]+'）');
+ tacEvt(inc,B,'victim','救出受困者 1 名（'+TAC_SEVN[sev]+'）');
  radio(inc,who||'現場','救出受困者 1 名（'+{red:'紅色・危急',yellow:'黃色・嚴重',green:'綠色・輕傷'}[sev]+'），送至傷患集結處。')}
 const TAC_SEVN={red:'紅',yellow:'黃',green:'綠'},TAC_SEVP={red:0,yellow:1,green:2};
 function tacEMS(inc,B,dt){

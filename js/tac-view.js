@@ -22,7 +22,7 @@ const TAC_GRP=[
 // 指令的 Emoji
 const TAC_EMO={hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
- ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofresc:'🚁',decon:'🚿'};
+ ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令

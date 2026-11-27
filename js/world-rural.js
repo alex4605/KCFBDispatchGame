@@ -177,8 +177,8 @@ function ruralAddr(x,y){
  const near=bd<=b.r+1;
  return b.n+'區'+(near?pick(RADDR[b.n])+(1+Math.floor(Math.random()*400))+'號':pick(['農路','產業道路','鄉道','堤防道路'])+'旁 '+pick(['一','二','三','五','七','九'])+'鄰')}
 // 鄉間地貌細節：作物分區、灌溉水圳、光電魚塭、學校、高壓電塔線（只影響繪製，不影響路網與案件）
-// CROP：1 稻田 2 香蕉園 3 檳榔園 4 溫室 5 果園 6 旱作 7 光電魚塭 8 學校操場
-const CROPN=['','稻田','香蕉園','檳榔園','溫室','果園','旱作','光電魚塭','學校','工廠','航廈','停機坪'];
+// CROP：1 稻田 2 香蕉園 3 檳榔園 4 溫室 5 果園 6 旱作 7 光電魚塭 8 學校操場 9 鐵皮工廠
+//       10 航廈 11 停機坪 12 塔台 19～21 機場建物（airport.js） 13～17 消防訓練中心（school.js）
 let PYLON=[];
 function ruralDetail(){
  CROP.fill(0);CANAL.fill(0);
