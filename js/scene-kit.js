@@ -316,38 +316,11 @@ function sceneFx(g,inc,d,crew,c,cx,cy){
     g.beginPath();g.arc(sx,sy,Math.max(1,c*.045),0,TAU);g.fill()}
    else{g.fillStyle='rgba(120,116,110,'+((1-p)*.22*lit).toFixed(3)+')';
     g.beginPath();g.arc(sx,sy,c*(.15+p*.4),0,TAU);g.fill()}}}}
-// 現場動畫第二層：患者心電圖、救助碎屑
-// 心電圖波形（P、QRS、T），回傳 0~1 的振幅
-function ecgY(q){
- if(q<.10)return 0;
- if(q<.20)return .12*Math.sin((q-.10)/.10*Math.PI);
- if(q<.28)return 0;
- if(q<.31)return -.12*Math.sin((q-.28)/.03*Math.PI);
- if(q<.35)return Math.sin((q-.31)/.04*Math.PI);
- if(q<.38)return -.22*Math.sin((q-.35)/.03*Math.PI);
- if(q<.50)return 0;
- if(q<.64)return .25*Math.sin((q-.50)/.14*Math.PI);
- return 0}
+// 現場動畫第二層：救助碎屑
 function sceneFx2(g,inc,d,crew,c,X,Y,cx,cy){
  if(c<11||!inc.rev)return;
- const T=S.t,work=crew.filter(u=>u.st==='work');
- if(!work.length)return;
- if(d.cls==='救護'&&work.some(u=>u.code==='91')){
-  const w=Math.min(scW*.3,c*3),h=c*1.1,x0=scW-w-8,y0=40+h/2,flat=inc.pm&&inc.pm.ohca,hr=+(inc.pm&&inc.pm.hr)||80;
-  g.fillStyle='rgba(6,14,12,.88)';scRR(g,x0-6,y0-h/2-6,w+12,h+12,5);g.fill();
-  g.strokeStyle='rgba(60,110,95,.5)';g.lineWidth=1;g.strokeRect(x0-6,y0-h/2-6,w+12,h+12);
-  g.strokeStyle='rgba(60,110,95,.18)';g.beginPath();
-  for(let gx=0;gx<=w;gx+=w/8){g.moveTo(x0+gx,y0-h/2);g.lineTo(x0+gx,y0+h/2)}
-  for(let gy=-1;gy<=1;gy++){g.moveTo(x0,y0+gy*h/2.2);g.lineTo(x0+w,y0+gy*h/2.2)}
-  g.stroke();
-  g.fillStyle=flat?'#e2564f':'#5dcaa5';g.font='600 11px '+FONT;g.textAlign='left';g.textBaseline='top';
-  g.fillText(flat?'ASYSTOLE':'HR '+hr,x0-2,y0-h/2-4);
-  g.strokeStyle=flat?'rgba(226,86,79,.9)':'rgba(93,202,165,.9)';g.lineWidth=1.4;g.beginPath();
-  for(let i=0;i<=60;i++){const q=(((i/60)*3+T*hr/60)%1+1)%1;let y=0;
-   if(!flat)y=-ecgY(q);
-   const px=x0+w*i/60,py=y0+y*h*.42;
-   if(i)g.lineTo(px,py);else g.moveTo(px,py)}
-  g.stroke()}
+ const T=S.t;
+ if(!crew.some(u=>u.st==='work'))return;
  if(d.cls==='救助'){
   g.fillStyle='rgba(150,144,134,.28)';
   for(let i=0;i<7;i++){const p=(T*.5+i/7)%1;

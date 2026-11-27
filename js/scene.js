@@ -135,7 +135,7 @@ function drawScene(){
  scMci(inc,g,d,c,X,Y,cx,cy);
  // ===== 化災：區劃、插旗、除污走廊、A/B/C 級防護 =====
  scHazmat(inc,g,d,crew,fx,fy,c,X,Y,cx,cy);
- // 人員與現場氛圍（警示光、火星、心電圖、救助碎屑）
+ // 人員與現場氛圍（警示光、火星、救助碎屑）
  drawCrew(g,inc,c,X,Y,cx,cy,inc.rev&&inc.ph>=0?phMode(inc.phs[inc.ph]):'line');
  sceneFx(g,inc,d,crew,c,cx,cy);sceneFx2(g,inc,d,crew,c,X,Y,cx,cy);
  // 空中水柱（畫在車輛與人員之上，避免被遮住）
