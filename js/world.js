@@ -197,6 +197,8 @@ function addU(si,code){
  S.units.push({id:uid++,si,code,cs:st.n+num,x:st.x[0],y:st.x[1],path:[],st:'idle',
   inc:null,duty:null,off:0,wait:0,turn:0,oosT:0,mode:null,tp:false,crew:0,res:false,
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
+// 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權
+function repGain(base){if(base<=0)return 0;const g=base*150/(150+Math.max(0,S.rep));S.rep+=g;S.repLast={g,t:S.t};return g}
 function tpFree(si){let n=0;for(const u of S.units)if(u.si===si&&u.res)n++;return S.tp[si]-n}
 function reindex(){
  S.tick=(S.tick||0)+1;

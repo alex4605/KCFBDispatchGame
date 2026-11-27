@@ -114,7 +114,8 @@ function wfIncident(inc,dt,first){
  if(inc.req){inc.reqT-=dt;if(inc.reqT<=0)answer(inc,false,true)}
  if(first)wfStep(inc,dt);
  const act=W.F.size,ctl=W.E&&W.peak>1?Math.max(0,1-W.E.length/W.peak):0;
- if(!act&&!W.done){W.mop+=dt;if(W.mop>=15){W.done=1;
+ // 建物防護場景還在進行時不結案
+ if(!act&&!W.done&&!inc.tac){W.mop+=dt;if(W.mop>=15){W.done=1;
   radio(inc,first?first.cs:'現場','山火撲滅、殘火處理完成，燒毀約 '+W.B.size+' 公頃'+(W.lost?'、延燒民宅工寮 '+W.lost+' 處':'')+'。')}}
  const w=inc.dur*(W.done?1:Math.min(.96,act?ctl*.9:.95));
  if(w>inc.work)inc.work=w;
@@ -194,7 +195,10 @@ function wfPanel(inc){
  const W=inc.wf;if(!W)return'';
  const ctl=Math.round(Math.max(0,1-(W.E?W.E.length:0)/W.peak)*100);
  let h='<div class="hd mt">山火作戰圖</div><div class="kv"><div><b>燃燒中</b>'+W.F.size+' 公頃</div><div><b>已燒毀</b>'+W.B.size+' 公頃</div><div><b>控制</b>'+ctl+'%</div><div><b>風</b>'+W.wind.nm+'</div><div><b>防火線</b>'+W.BK.size+' 格</div><div><b>民宅</b>'+(W.lost?'<span style="color:var(--red)">延燒 '+W.lost+' 處</span>':W.thr.size?'<span style="color:var(--amb)">受威脅 '+W.thr.size+' 處</span>':'安全')+'</div></div>';
- const td=wfWuiTodo(W);if(td.length||inc.tac)h+='<div class="note" style="display:block">'+(inc.tac?'建物防護戰術進行中（'+((inc.tac.wk/N)|0)+','+(inc.tac.wk%N)+'）。':'火線逼近民宅 '+td.length+' 處：可點上方「⚔ 建物防護戰術」親自指揮聚落防護。')+'</div>';
+ const td=wfWuiTodo(W);
+ if(td.length||inc.tac||W.wd){h+='<div class="note" style="display:block">'+(inc.tac?'建物防護戰術進行中（'+((inc.tac.wk/N)|0)+','+(inc.tac.wk%N)+'），完成後依序轉往下一處。':td.length?'火線逼近民宅 '+td.length+' 處：點上方「⚔ 建物防護戰術」依序親自指揮。':'受威脅民宅都已處置。')+
+  (W.wd?'　已防護 '+W.wd.size+' 處，保住 '+(W.svH||0)+' 棟、燒毀 '+(W.lsH||0)+' 棟。':'')+'</div>';
+  if(td.length)h+='<div class="row" style="flex-wrap:wrap;gap:4px"><span class="sub">處理順序</span>'+td.slice(0,6).map((k,i)=>'<button data-wfpri="'+k+'" style="padding:1px 6px'+(i===0?';background:var(--amb);color:#111':'')+'" title="設為下一處">'+(i+1)+'.（'+((k/N)|0)+','+(k%N)+'）火勢 '+Math.round(wfHeatAt(W,k)*100)+'%</button>').join('')+'</div>'}
  const E=W.E||[];
  h+='<div class="row" style="flex-wrap:wrap;gap:4px">'+WF_SECK.map(k=>'<span class="tag" style="background:'+WF_SCOL[k]+';color:#111">'+WF_SEC[k]+' '+E.filter(e=>e.sec===k).length+'</span>').join('')+
   '<button data-wfauto="1"'+(W.auto?' class="on"':'')+' title="新到車輛自動分派到分區">自動分派'+(W.auto?'：開':'：關')+'</button></div>';
@@ -213,6 +217,7 @@ function wfPanel(inc){
 function wfClick(inc,D){
  const W=inc.wf;if(!W)return false;
  if(D.wfauto){W.auto=W.auto?0:1;return true}
+ if(D.wfpri){W.pri=+D.wfpri;return true}
  if(D.wfheli){wfHeli(inc);return true}
  if(D.wfcrew){wfCrew(inc);return true}
  if(D.wfhs){W.heli.sec=D.wfhs;return true}

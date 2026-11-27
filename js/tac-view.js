@@ -735,6 +735,8 @@ function tacSideHTML(inc){
   if(gs.length){h+='<div class="hd mt">氣體偵測</div>';for(const x of gs){const r=x.gm;
    h+='<div class="row" style="flex-wrap:wrap"><span>'+esc(tacNm(B,x.f,x.c))+'</span><span>'+TAC_GAS.map(k=>'<b style="color:'+tacGasCol(k[0],r[k[0]])+'">'+k[1]+' '+r[k[0]]+'</b>').join(' ')+'</span></div>'}}}
  // 請求增援
+ if(maOK(inc)){h+='<div class="hd mt">跨縣市支援</div><div class="tords">'+Object.keys(MA_DEF).map(k=>{const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
+  return st?'<span class="sub">'+D.cs+'：'+(maStat(inc,k)||'已返隊')+'</span>':'<button data-tma="'+k+'" title="'+D.fx+'"'+(S.rep-D.cost<5?' disabled':'')+'>'+D.cs+'（評鑑 -'+D.cost+'）</button>'}).join('')+'</div>'}
  h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
   return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';
  // 現場民眾
@@ -903,7 +905,7 @@ function tacClick(inc,B,hit,e,x,y){
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
 document.getElementById('tac').addEventListener('click',e=>{
- const b=e.target.closest('[data-tsq],[data-tord],[data-tpause],[data-texit],[data-tamb],[data-tstn],[data-trole],[data-task],[data-treq],[data-telev],[data-tspd],[data-tap],[data-tepa]');if(!b)return;
+ const b=e.target.closest('[data-tsq],[data-tord],[data-tpause],[data-texit],[data-tamb],[data-tstn],[data-trole],[data-task],[data-treq],[data-telev],[data-tspd],[data-tap],[data-tepa],[data-tma]');if(!b)return;
  const D=b.dataset;msg='';
  const ic=S.inc.find(i=>i.id===TAC.id);
  if(ic&&ic.tac){const B=ic.tac;
@@ -911,6 +913,7 @@ document.getElementById('tac').addEventListener('click',e=>{
   if(D.task)tacAsk(ic,B,D.task);
   if(D.treq)tacReinf(ic,B,D.treq);
   if(D.tepa)epaCall(ic);
+  if(D.tma)maCall(ic,D.tma);
  if(D.telev&&B.elev&&!B.elOn&&!(B.elT>0)){B.elT=10;radio(ic,'受理','消防專用升降機切換消防模式中。')}}
  if(D.tspd){TAC.spd=+D.tspd}
  if(D.tap){TAC.autoPause=!TAC.autoPause}

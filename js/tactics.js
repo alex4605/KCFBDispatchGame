@@ -1115,7 +1115,10 @@ function tacIncident(inc,dt,first,flow){
    if(half){S.rep-=5;if(S.rep<=0){S.rep=0;S.over=true}}
    if(B.hoax)radio(inc,first?first.cs:'現場',tacFlr(B,B.hint)+' 各戶查證完畢，查無火煙與傷患，'+(inc.pm.mal?'研判為惡作劇謊報，建議轉報 110 究辦。':'研判為善意誤報。'));
    else radio(inc,first?first.cs:'現場',(half?'建物大部分燒毀，火勢因燃料耗盡熄滅（評鑑 -5）':'火勢完全撲滅、殘火處理完成')+'，救出 '+B.resc+' 名、送醫 '+B.tx+' 名'+(B.lost?'、罹難 '+B.lost+' 名':'')+(B.burnt?'，燒毀 '+B.burnt+' 室':'')+'。');
-   if(B.st.media){S.rep=Math.min(100,S.rep+2)}
+   if(B.st.media)repGain(2);
+   // 親自指揮的戰術案件：依結案報告等級累積評鑑
+   const rg=B.played?{S:6,A:4,B:2,C:1}[(B.report0=tacReport(inc,B)).grade]||0:0;
+   if(rg){const g=repGain(rg);radio(inc,'受理','戰術指揮成果（'+B.report0.grade+' 級）：評鑑 +'+g.toFixed(1)+'。')}
    if(!B.paid){B.paid=1;S.money+=B.tx*400;S.score+=B.tx*50+(B.lodd?0:60)}
    tacEvt(inc,B,'milestone','結案');
    B.report=tacReport(inc,B);if(B.played)tacShowRep(B.report)}}

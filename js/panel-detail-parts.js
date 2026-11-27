@@ -127,6 +127,7 @@ function dExternal(inc){
  h+=inc.pow===0?'<button data-ext="pow">通報台電斷電</button>':
   inc.pow===1?'<span class="tag" style="background:var(--amb)">台電處理中 '+Math.ceil(inc.powT)+' 秒</span>':
   '<span class="tag" style="background:var(--grn)">已確認斷電</span>';
+ h+=maHTML(inc);
  if(EPA_K(inc.k))h+=!inc.epa?'<button data-ext="epa">請求環保署化災應變隊</button>':
   inc.epa===1?'<span class="tag" style="background:#7f77dd">化災隊集結中 '+fmt(inc.epaT)+'</span>':
   inc.epa===2?'<span class="tag" style="background:#7f77dd">化災隊前往中 '+Math.ceil(inc.epaT)+' 秒</span>':'<span class="tag" style="background:var(--grn)">化災隊已到場</span>';

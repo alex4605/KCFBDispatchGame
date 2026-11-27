@@ -237,6 +237,8 @@ function toHosp(u){
  return{h:r.h,p:r.h?chase(baseF(r.h,0),u):null}}
 function home(u){
  unpark(u);u.lead=false;
+ // 跨縣市支援車隊：任務結束直接返回原縣市（離開轄區）
+ if(u.ma){u.gone=1;u.inc=null;u.st='idle';u.path=[];return}
  const p=chase(baseF(SPOT[u.si],modeOf(u.code)),u);
  u.path=p||[];u.st='back';u.turn=0}
 function release(inc,ok){

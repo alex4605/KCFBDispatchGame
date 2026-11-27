@@ -233,7 +233,7 @@ function tacWuiStep(inc,B,dt,first){
  const W=inc.wf;if(!W){inc.tac=null;return}
  const x=(B.wk/N)|0,y=B.wk%N;let heat=0;
  for(const v of WF_D8.concat([[2,0],[-2,0],[0,2],[0,-2]])){const c=W.F.get(K(x+v[0],y+v[1]));if(c)heat=Math.max(heat,c.h*(Math.abs(v[0])+Math.abs(v[1])>2?.6:1))}
- B.wh=heat;
+ B.wh=heat;B.whMax=Math.max(B.whMax||0,heat);
  {let sh=0;for(const c of B.cells)sh+=c.h;B.peak=Math.max(B.peak||0,sh)}
  if(heat>.15)for(const c of B.cells){const n=B.L.N[c.c];if(c.fu<=0)continue;
   if(n.kind==='forest'&&Math.random()<dt*.06*heat)c.h=Math.max(c.h,.2+heat*.5);
@@ -247,7 +247,19 @@ function tacWuiStep(inc,B,dt,first){
   const hs=B.cells.filter(c=>B.L.N[c.c].kind==='home'),sv=hs.filter(c=>!c.lostF).length;
   radio(inc,first?first.cs:'現場','建物防護完成：保住民宅 '+sv+' / '+hs.length+' 棟'+(B.resc?'，救出 '+B.resc+' 名':'')+'。');
   W.prot.delete(B.wk);(W.wd||(W.wd=new Set())).add(B.wk);if(B.homeLost)W.hit.add(B.wk);
-  B.done=1;B.burnt=B.homeLost||0;inc.tac=null}}
+  W.svH=(W.svH||0)+sv;W.lsH=(W.lsH||0)+hs.length-sv;
+  if(B.played&&sv&&B.whMax>.3){const g=repGain(sv*.8);radio(inc,'受理','建物防護成果：評鑑 +'+g.toFixed(1)+'。')}
+  B.done=1;B.burnt=B.homeLost||0;inc.tac=null;
+  // 還有其他受威脅的民宅：依序轉往下一處（指揮官在看就直接切換畫面）
+  const nx=wfWuiTodo(W);
+  if(nx.length&&B.played&&W.F.size){if(W.pri===nx[0])W.pri=null;
+   tacInit(inc);const N2=inc.tac;N2.played=1;
+   radio(inc,'受理','轉往下一處受威脅民宅（'+((N2.wk/N)|0)+','+(N2.wk%N)+'），火從'+TAC_SDN[N2.fside]+'側來，還有 '+(nx.length-1)+' 處待防護。');
+   if(TAC.open&&TAC.id===inc.id){TAC.B=N2;TAC.vf=0;TAC.sq=null;TAC.ms=[];TAC.ord=null;tTopH=tSideH=tBotH=''}}}}
  else B.doneT=0}
 // 作戰圖上仍待防護的民宅（受威脅、未燒毀、未完成防護）
-const wfWuiTodo=W=>[...W.thr].filter(k=>!W.hit.has(k)&&!(W.wd&&W.wd.has(k)));
+// 受威脅民宅的處理順序：指揮官指定優先的排最前，其餘依周邊火勢由急到緩
+function wfHeatAt(W,k){const x=(k/N)|0,y=k%N;let h=0;for(const v of WF_D8.concat([[2,0],[-2,0],[0,2],[0,-2]])){const c=W.F.get(K(x+v[0],y+v[1]));if(c)h=Math.max(h,c.h*(Math.abs(v[0])+Math.abs(v[1])>2?.6:1))}return h}
+// 只列仍受火勢威脅的（周邊火格還在燒）；山火已過境的民宅不需再防護
+const wfWuiTodo=W=>[...W.thr].filter(k=>!W.hit.has(k)&&!(W.wd&&W.wd.has(k))&&!(W.prot&&W.prot.has(k))&&wfHeatAt(W,k)>.05)
+ .sort((a,b)=>(b===W.pri)-(a===W.pri)||wfHeatAt(W,b)-wfHeatAt(W,a));

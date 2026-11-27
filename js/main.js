@@ -34,7 +34,7 @@ function ui(){
  const hs=S.day+'|'+Math.floor(S.t)+'|'+S.money+'|'+Math.round(S.rep)+'|'+S.score;
  if(hs!==hud){hud=hs;
   $('hDay').textContent=S.day;$('hClock').textContent=fmt(S.t);
-  $('hMoney').textContent='$'+S.money;$('hRep').textContent=Math.round(S.rep);
+  $('hMoney').textContent='$'+S.money;$('hRep').textContent=Math.round(S.rep)+(S.repLast&&S.t-S.repLast.t<4?' +'+S.repLast.g.toFixed(1):'');
   $('hScore').textContent=S.score;
   let fr=0;for(let i=0;i<S.nst;i++)fr+=S.ix.idle[i];
   $('hIdle').textContent=fr+'/'+S.units.length}
@@ -80,7 +80,7 @@ document.addEventListener('keydown',e=>{
  e.preventDefault();const i=ids.indexOf(sel);
  selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
 document.body.addEventListener('click',e=>{
- const b=e.target.closest('[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
+ const b=e.target.closest('[data-ma],[data-wfpri],[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
  if(!b)return;
  msg='';
  const D=b.dataset;
@@ -143,6 +143,7 @@ document.body.addEventListener('click',e=>{
    inc.log.push({w:'台',s:line,t:T});
    inc.log.push({w:'民',s:'好，我照做。',t:T+2})}
   dirty();return}
+ if(D.ma){maCall(inc,D.ma);dirty();return}
  if(D.ext){
   if(D.ext==='pol')callPol(inc);
   if(D.ext==='epa')epaCall(inc);
