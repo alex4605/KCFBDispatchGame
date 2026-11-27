@@ -735,7 +735,7 @@ function tacSideHTML(inc){
   if(gs.length){h+='<div class="hd mt">氣體偵測</div>';for(const x of gs){const r=x.gm;
    h+='<div class="row" style="flex-wrap:wrap"><span>'+esc(tacNm(B,x.f,x.c))+'</span><span>'+TAC_GAS.map(k=>'<b style="color:'+tacGasCol(k[0],r[k[0]])+'">'+k[1]+' '+r[k[0]]+'</b>').join(' ')+'</span></div>'}}}
  // 請求增援
- if(maOK(inc)){h+='<div class="hd mt">跨縣市支援</div><div class="tords">'+Object.keys(MA_DEF).map(k=>{const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
+ if(maAny(inc)){h+='<div class="hd mt">跨縣市支援</div><div class="tords">'+Object.keys(MA_DEF).filter(k=>maOK(inc,k)).map(k=>{const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
   return st?'<span class="sub">'+D.cs+'：'+(maStat(inc,k)||'已返隊')+'</span>':'<button data-tma="'+k+'" title="'+D.fx+'"'+(S.rep-D.cost<5?' disabled':'')+'>'+D.cs+'（評鑑 -'+D.cost+'）</button>'}).join('')+'</div>'}
  h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
   return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';

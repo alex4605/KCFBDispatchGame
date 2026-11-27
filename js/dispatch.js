@@ -299,7 +299,7 @@ function unpark(u){u.slot=null;u.arm=null;u.parked=0;u.ox=0;u.oy=0}
 function arrive(u){
  u.st='work';u.at=S.t;
  if(u.lead){const ic=S.inc.find(i=>i.id===u.inc);
-  if(ic)radio(ic,u.cs,SPOT[u.si].n+'分隊帶隊官隨車到場，率隊進入內圈作業。')}
+  if(ic)radio(ic,u.cs,stName(u).replace(/分隊.*$/,'')+'分隊帶隊官隨車到場，率隊進入內圈作業。')}
  const inc=S.inc.find(i=>i.id===u.inc);if(!inc)return;
  if(!inc.rev)reveal(inc,u);else radio(inc,u.cs,'到達現場，加入編組。');
  if(u.code==='91'){

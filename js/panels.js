@@ -8,13 +8,18 @@ function leftHTML(){
   return '<div class="lcol"><button class="tg" data-lc="1" title="展開車輛動態" aria-label="展開車輛動態" aria-expanded="false">›</button><div class="lvt">車輛動態</div><div class="lid">'+fr+'/'+S.units.length+'</div></div>'}
  const out=['<div class="lhd"><span class="hd">車輛動態</span><button class="tg" data-lc="1" title="收合車輛動態" aria-label="收合車輛動態" aria-expanded="true">‹</button></div>'];
  for(let i=0;i<S.nst;i++){
-  const us=S.ix.bySt[i],idle=S.ix.idle[i];
+  const us=S.ix.bySt[i].filter(u=>!u.ma),idle=S.ix.idle[i];
   out.push('<div class="stn"><span>'+SPOT[i].n+' <b>'+idle+'/'+us.length+'</b></span>'+
    '<span class="mono" style="color:var(--fg3)">P'+tpFree(i)+'/'+S.tp[i]+'</span></div><div class="units">');
   for(const u of us){const st=ST[u.st];
    out.push('<div class="u'+(selU===u.id?' sel':'')+'" data-u="'+u.id+'"><span class="mono">'+u.cs+
     (u.mode?'<span style="color:var(--fg3)">'+(u.mode==='ALS'?'ᴀ':'ʙ')+'</span>':'')+
     '</span><span class="dot" style="background:'+st[1]+'" title="'+st[0]+'"></span></div>')}
+  out.push('</div>')}
+ // 跨縣市支援車隊另外分組
+ for(const k in MA_DEF){const us=S.units.filter(u=>u.ma===k);if(!us.length)continue;
+  out.push('<div class="stn" style="color:#9ab8e8"><span>'+MA_DEF[k].n.replace('內政部消防署特種搜救隊','署特搜')+' <b>'+us.filter(u=>u.st==='work').length+'/'+us.length+'</b></span><span class="mono" style="color:var(--fg3)">支援</span></div><div class="units">');
+  for(const u of us){const st=ST[u.st];out.push('<div class="u'+(selU===u.id?' sel':'')+'" data-u="'+u.id+'"><span class="mono">'+u.cs+'</span><span class="dot" style="background:'+st[1]+'" title="'+st[0]+'"></span></div>')}
   out.push('</div>')}
  return out.join('')}
 let callOrd=[],callOrdT=0,callsHover=false;
@@ -61,7 +66,7 @@ function logHTML(inc){
 function unitHTML(u){
  const inc=S.inc.find(i=>i.id===u.inc),dy=S.duties.find(x=>x.id===u.duty);
  let h='<div class="hd">車輛資料</div><div class="mono" style="font-size:15px">'+u.cs+
-  ' <span class="sub">'+CODE[u.code].n+' · '+SPOT[u.si].n+'分隊</span></div>';
+  ' <span class="sub">'+CODE[u.code].n+' · '+(u.stn||SPOT[u.si].n+'分隊')+'</span></div>';
  h+='<div class="sub" style="margin:6px 0">狀態：'+ST[u.st][0]+
   (u.turn>0?'（整裝中 '+Math.ceil(u.turn)+' 秒）':'')+
   (u.st==='oos'?'（'+Math.ceil(u.oosT)+' 秒後復歸）':'')+

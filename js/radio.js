@@ -217,7 +217,7 @@ const AMB={
  其他:['現場已警戒，民眾請退到安全距離。','狀況回報指揮中心，持續處理中。',
   '現場照片已上傳救災群組。','已通知相關單位到場處理。',
   '人員清點完成，無人失聯。']};
-const say=(t,u,inc)=>t.replace(/\{u\}/g,u.cs).replace(/\{s\}/g,SPOT[u.si].n).replace(/\{L\}/g,inc?effLines(inc):1);
+const say=(t,u,inc)=>t.replace(/\{u\}/g,u.cs).replace(/\{s\}/g,stName(u).replace(/分隊.*$/,'')).replace(/\{L\}/g,inc?effLines(inc):1);
 // 通聯文字與現場狀態對照：句子提到的事實在遊戲狀態中不成立時，就不播這一句
 const OUTK={carfire:1,truckfire:1,grassfire:1,tentfire:1,ship:1,aircraft:1,airlanding:1,elec:1,forest:1,cargo:1,evfire:1,wastefire:1,tunnel:1};
 const BEHAVK={psych:1,crisis:1,selfharm:1,suicall:1,hypervent:1};

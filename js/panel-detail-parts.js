@@ -227,7 +227,7 @@ function dIndividual(inc){
   else btn='<button data-send="'+u.id+'"'+(o.ok?' class="on"':'')+'>出動</button>';
   const cov=sg.filter(g=>match(g,u)).map(g=>g.l.replace('（ALS）',''));
   const needALS=u.code==='91'&&!o.ok&&o.near&&sg.some(g=>g.als);
-  h+='<div class="row"><span class="mono">'+u.cs+' <span class="sub">'+SPOT[u.si].n+' · '+CODE[u.code].n+
+  h+='<div class="row"><span class="mono">'+u.cs+' <span class="sub">'+stName(u)+' · '+CODE[u.code].n+
    (cov.length?' · 可補 '+cov[0]+(cov.length>1?' 等 '+cov.length+' 項':''):
     needALS?' · <span style="color:var(--amb)">此案需 ALS，請以 ALS 編組出動</span>':'')+' · '+
    (unreach?'—':o.e+' 秒')+'</span></span>'+btn+'</div>'});
