@@ -100,7 +100,7 @@ function tacReport(inc,B){
  sc.resc=B.vtot?Math.max(0,Math.min(100,B.tx/B.vtot*100-B.lost*15)):100;
  // 安全
  const v=B.viol||{};
- sc.safe=Math.max(0,100-(B.mdN||0)*20-B.lodd*60-(v.noRit?15:0)-(v.noAcc?10:0)-(B.bdN||0)*15-(B.foN||0)*8);
+ sc.safe=Math.max(0,100-(B.mdN||0)*20-B.lodd*60-(v.noRit?15:0)-(v.noAcc?10:0)-(v.earlyV?5:0)-(B.bdN||0)*15-(B.foN||0)*8);
  // 財損：燒毀比例、延燒鄰棟、復燃
  const rooms=B.cells.filter(x=>x.ty==='room').length,burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
  sc.loss=Math.max(0,100-burnt/Math.max(1,rooms)*120-Object.keys(B.expL).length*25-(B.rkN||0)*5-(B.cz?25:0));
@@ -108,7 +108,8 @@ function tacReport(inc,B){
  const notes=[];
  if(v.noRit)notes.push('有小組入室時尚未編成 RIT');
  if(v.noAcc)notes.push('入室時尚未設置人員管制板，無法掌握氣量');
- if(B.bdN)notes.push('發生爆燃 '+B.bdN+' 次：缺氧火場應先射水降溫再開口');
+ if(B.bdN)notes.push('發生爆燃 '+B.bdN+' 次：悶燒缺氧的空間應採門控進入、先射水降溫再開口');
+ if(v.earlyV)notes.push('過早排煙：火點還沒有水線壓制就開口或送風，火勢因進氣變大');
  if(B.foN)notes.push('有小組在閃燃現場 '+B.foN+' 次');
  if(B.rkN)notes.push('殘火復燃 '+B.rkN+' 次');
  if(Object.keys(B.expL).length)notes.push('火勢延燒至鄰棟');

@@ -7,7 +7,7 @@ const TAC_GRP=[
  ['水線',[['attack','入室攻擊','A','帶水線進入火點射水'],['sky','車頂砲塔','','幫浦車車頂砲塔（朝天瞄）從車旁經窗口大流量射水（1F～3F、窗戶面向道路），快速降溫、壓制火勢，也可作為快速過渡攻擊；用水量是一般水線的兩倍（占兩條水線），壓制後自動轉入室攻擊；室內有小組時會把熱煙蒸汽壓回去'],['trans','過渡射水','E','先從 1F、2F 窗外射水降溫，再自動轉入室攻擊'],
   ['cover','周界防護','H','只針對鄰接的建築物：點選鄰棟那一側，幫浦車停在相鄰道路對鄰棟外牆射水，防止延燒過去（室外場景可點要保護的建物）'],['confine','侷限火勢','F','帶水線到火點附近的房間，對本室與相鄰房間射水降溫、濕潤，阻止火勢延燒過來（需幫浦組水線）'],
   ['overhaul','殘火處理','Q','翻搜餘燼並澆熄，避免復燃；有餘燼未處理不會結案']]],
- ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）或房門（點房間）'],['dctrl','門控進入','K','破壞進入時同步控制門：點道路為入口（上鎖會先破壞，再守門控制開度）；點空間則到門邊把通往火點的門關上並控住，阻斷進氣路徑']]],
+ ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）、指定的門（點門）或本室房門（點房間）；速度快，但門的開關不受控制，悶燒缺氧的空間容易爆燃'],['dctrl','門控進入','K','控制門的開度慢慢開門（上鎖會先破壞）：點道路為入口、點門為指定的門；比破壞進入慢，但悶燒缺氧的空間不容易爆燃、受傷較輕。點房間則把通往火點的門關上並控住，阻斷進氣']]],
  ['搜救',[['search','初期搜索','S','快速掃過，濃煙中可能漏人'],['search2','次級搜索','D','徹底翻找，找出初搜遺漏的人'],['gas','氣體偵測','Y','以五用氣體偵測器量測 O₂、LEL、CO、H₂S、HCN'],['roofres','屋頂救援','U','上屋頂帶回避難民眾']]],
  ['排煙',[['vent','破窗排煙','V','打破窗戶建立排煙開口（缺氧火場突然開口可能爆燃）'],['hydro','水霧排煙','W','開窗後以水霧把煙帶出窗外（需水線）'],
   ['ppv','正壓排煙','P','在入口架送風機，沿送風路徑把煙推向開口'],['npv','負壓排煙','N','在窗口架排風機把煙抽出，不會灌空氣助長火勢'],
@@ -912,7 +912,9 @@ function tacBotHTML(inc){
  for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
  h+='</div><div class="tords"><span class="trow">立即執行</span>';
  for(const gp of TAC_GRP)for(const o of gp[1])if(!TAC_NEEDT[o[0]]&&(gp[0]!=='化災'||hzOn))h+=btn(o);
- h+='<button data-tord="evac" style="border-color:var(--red);margin-left:auto">全員撤出</button></div>';
+ h+='<span class="trow" style="margin-left:auto" title="小組自行開門（上鎖或關著的門、入口）時的方式：破壞進入快，但門的開關不受控制，悶燒缺氧的空間容易爆燃；門控進入較慢，但不容易爆燃">ROE</span>'+
+  ['force','dctrl'].map(r=>'<button data-troe="'+r+'"'+((B.roe||'force')===r?' class="on"':'')+'>'+(r==='force'?'🪓 破壞進入':'🚪 門控進入')+'</button>').join('');
+ h+='<button data-tord="evac" style="border-color:var(--red)">全員撤出</button></div>';
  return h}
 function tacUI(){
  const inc=S.inc.find(i=>i.id===TAC.id);if(!inc||!inc.tac)return;
@@ -992,11 +994,17 @@ function tacClick(inc,B,hit,e,x,y){
   if(!k){if(!i)msg='點鄰棟可下令幫浦組做鄰棟周界防護';return}
   if((k==='truck'||k==='cover')&&!side){if(!i)msg=k==='truck'?'移車請點選建物外的道路':'鄰棟周界防護請點選鄰棟那一側';return}
   if(TAC_NEEDT[k]&&k!=='truck'&&k!=='cover'&&k!=='guard'&&!((k==='force'||k==='dctrl')&&side)&&f<0){if(!i)msg='請點選建物內的房間';return}
-  if(tacOrder(inc,q,k,f,c,i>0,side))ok++});
+  // 破壞進入／門控進入：點在門附近就指定那扇門（站在較安全的一側）
+  let door=null,c2=c;
+  if((k==='force'||k==='dctrl')&&f>=0){const G=tacGeo(B);let bd=20;
+   for(const o of B.L.N[c].nb){const ra=G.r(c),rb=G.r(o),mx=(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,my=(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2,d=Math.hypot(mx-x,my-y);
+    if(d<bd){bd=d;door=o}}
+   if(door!==null){const a=tacCel(B,f,c),b=tacCel(B,f,door);if(a.h+a.s*.3>b.h+b.s*.3){c2=door;door=c}}}
+  if(tacOrder(inc,q,k,f,c2,i>0,side,door))ok++});
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
 // 戰術畫面的按鈕：點擊時依 data-* 屬性分派（新增時加進 TAC_CLICK）
-const TAC_CLICK=['tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
+const TAC_CLICK=['troe','tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
 const TAC_CLICK_SEL=TAC_CLICK.map(k=>'[data-'+k+']').join(',');
 document.getElementById('tac').addEventListener('click',e=>{
  const b=e.target.closest(TAC_CLICK_SEL);if(!b)return;
@@ -1010,6 +1018,7 @@ document.getElementById('tac').addEventListener('click',e=>{
   if(D.tma)maCall(ic,D.tma);
  if(D.telev&&B.elev&&!B.elOn&&!(B.elT>0)){B.elT=10;radio(ic,'受理','消防專用升降機切換消防模式中。')}}
  if(D.tspd){TAC.spd=+D.tspd}
+ if(D.troe){const ic=S.inc.find(i=>i.id===TAC.id);if(ic&&ic.tac){ic.tac.roe=D.troe;ic.tac.roeSet=1;radio(ic,'受理','進入方式 ROE：'+(D.troe==='dctrl'?'門控進入（較慢，悶燒空間不易爆燃）':'破壞進入（較快，悶燒空間容易爆燃）')+'。');tBotH=''}}
  if(D.tap){TAC.autoPause=!TAC.autoPause}
  if(ic&&ic.tac){const B=ic.tac;
   if(D.tstn){if(B.st[D.tstn]){tacStnClose(ic,B,D.tstn);if(D.tstn==='air')B.airOff=1}else tacStnOpen(ic,B,D.tstn)}
