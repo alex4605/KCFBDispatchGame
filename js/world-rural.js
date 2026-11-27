@@ -98,3 +98,41 @@ function ruralAddr(x,y){
  let b=RTOWN[0],bd=1e9;for(const t of RTOWN){const d=Math.hypot(t.c[0]-x,t.c[1]-y);if(d<bd){bd=d;b=t}}
  const near=bd<=b.r+1;
  return b.n+'區'+(near?pick(RADDR[b.n])+(1+Math.floor(Math.random()*400))+'號':pick(['農路','產業道路','鄉道','堤防道路'])+'旁 '+pick(['一','二','三','五','七','九'])+'鄰')}
+// 鄉間地貌細節：作物分區、灌溉水圳、光電魚塭、學校、高壓電塔線（只影響繪製，不影響路網與案件）
+// CROP：1 稻田 2 香蕉園 3 檳榔園 4 溫室 5 果園 6 旱作 7 光電魚塭 8 學校操場
+const CROPN=['','稻田','香蕉園','檳榔園','溫室','果園','旱作','光電魚塭','學校'];
+let PYLON=[];
+function ruralDetail(){
+ CROP.fill(0);CANAL.fill(0);
+ const T={};for(const t of RTOWN)T[t.n]=t.c;
+ const nearT=(x,y,a)=>{let n=0;for(let dx=-a;dx<=a;dx++)for(let dy=-a;dy<=a;dy++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<N&&yy<N&&TR[K(xx,yy)]===2)n++}return n};
+ // 以 3×3 區塊決定作物，讓同一片田一致
+ const blk=(x,y,s)=>{let h=((x/3|0)*73856093^(y/3|0)*19349663^s*83492791)>>>0;h^=h>>>13;h=Math.imul(h,1274126177)>>>0;return(h>>>0)/4294967296};
+ for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);if(inCity(x,y))continue;
+  if(TR[k]===5){const b=blk(x,y,1),dq=Math.hypot(x-T['旗山'][0],y-T['旗山'][1]),dm=Math.hypot(x-T['美濃'][0],y-T['美濃'][1]),hill=nearT(x,y,3);
+   let c=1;
+   if(hill>4&&b<.55)c=3;
+   else if(dq<16&&b<.5)c=2;
+   else if(dm<12&&b<.25)c=4;
+   else if(y>112&&b<.35)c=6;
+   else if(b>.86)c=5;
+   else if(b>.8)c=4;
+   CROP[k]=c}
+  else if(TR[k]===6&&blk(x,y,2)<.3)CROP[k]=7}
+ // 學校：每個鄉鎮邊緣一處操場
+ for(const t of RTOWN){for(let tries=0;tries<30;tries++){const x=t.c[0]+Math.round((Math.random()-.5)*2*t.r),y=t.c[1]+Math.round((Math.random()-.5)*2*t.r),k=K(x,y);
+  if(x<0||y<0||x>=N||y>=N||RD[k]||TR[k]!==0||inFacility(x,y))continue;CROP[k]=8;break}}
+ // 灌溉水圳：從高屏溪或山腳往平原流，沿田埂轉折，不穿越道路以外的設施（遇路以涵洞通過）
+ const starts=[[riverX(70)-2,70],[riverX(100)-2,100],[riverX(125)-2,125],[124,mtnEdge(124)+1],[112,mtnEdge(112)+1],[128,mtnEdge(128)+2]];
+ for(const s of starts){let x=Math.round(s[0]),y=Math.round(s[1]),d=x>CITY+18?1:2;
+  const tx=CITY+2+Math.random()*20,ty=s[1]+20+Math.random()*25;
+  for(let i=0;i<70;i++){
+   if(x<0||y<0||x>=N||y>=N||inCity(x,y))break;const k=K(x,y);
+   if(TR[k]===1||TR[k]===2&&i>3)break;
+   if(TR[k]===5&&!RD[k])CANAL[k]=1;
+   const dx=tx-x,dy=ty-y;if(Math.abs(dx)+Math.abs(dy)<2)break;
+   if(Math.random()<.25)d=Math.abs(dx)>Math.abs(dy)?(dx>0?0:1):(dy>0?2:3);
+   x+=DIR[d][0];y+=DIR[d][1]}}
+ // 高壓電塔線：從市區東緣往東南穿過農田到高屏溪
+ PYLON=[];const a=[CITY+1,56],b=[138,116],n=14;
+ for(let i=0;i<=n;i++)PYLON.push([a[0]+(b[0]-a[0])*i/n+.5,a[1]+(b[1]-a[1])*i/n+.5])}

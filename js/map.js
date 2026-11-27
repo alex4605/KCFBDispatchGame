@@ -18,7 +18,8 @@ function gridLines(c,x0,x1,y0,y1){
  ctx.strokeStyle='#7f6f3c';ctx.lineWidth=Math.max(1,c*.06);ctx.setLineDash([c*.35,c*.3]);
  ctx.beginPath();ctx.moveTo(FX*c+c/2,y0*c);ctx.lineTo(FX*c+c/2,Math.min(y1+1,CITY)*c);ctx.stroke();
  ctx.beginPath();ctx.moveTo(x0*c,FY*c+c/2);ctx.lineTo(Math.min(x1+1,FYE+1)*c,FY*c+c/2);ctx.stroke();
- ctx.setLineDash([])}
+ ctx.setLineDash([]);
+ if(c>=10&&PYLON.length)drawPylons(c,x0,x1,y0,y1)}
 function drawTerrain(c,x0,x1,y0,y1){
  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
   const k=K(x,y),t=TR[k],px=x*c,py=y*c,s=SH[k];
@@ -26,8 +27,8 @@ function drawTerrain(c,x0,x1,y0,y1){
   else if(t===2)ctx.fillStyle=s<.5?'#15251a':'#18291d';
   else if(t===3)ctx.fillStyle=s<.5?'#1c2430':'#202836';
   else if(t===4)ctx.fillStyle=s<.5?'#1d1f22':'#212327';
-  else if(t===5){const b=((x/3|0)*7+(y/3|0)*13)%5;ctx.fillStyle=b===0?'#2a2c1a':b===1?'#232a1a':s<.5?'#252c1b':'#262d1c'}
-  else if(t===6)ctx.fillStyle=s<.5?'#12282f':'#142c33';
+  else if(t===5){const cp=CROP[k];ctx.fillStyle=cp===2?(s<.5?'#1e3019':'#21341b'):cp===3?(s<.5?'#1b2b1d':'#1d2e1f'):cp===4?'#34362f':cp===5?(s<.5?'#22301b':'#25331d'):cp===6?(s<.5?'#2e2b1d':'#322e1f'):(s<.5?'#262f1b':'#29321d')}
+  else if(t===6)ctx.fillStyle=CROP[k]===7?'#1d2633':s<.5?'#12282f':'#142c33';
   else if(!inCity(x,y))ctx.fillStyle=s<.5?'#1d1c19':'#211f1b';
   else ctx.fillStyle=s<.33?'#171716':s<.66?'#1b1b19':'#1f1f1c';
   ctx.fillRect(px,py,c+.6,c+.6);
@@ -41,13 +42,14 @@ function drawTerrain(c,x0,x1,y0,y1){
    ctx.fillRect(px+c*.58,py+c*.66,c*.24,Math.max(1,c*.07))}
   const r=RD[k];
   if(r){ctx.fillStyle=r===1&&!inCity(x,y)?'#4a4433':RCOL[r];ctx.fillRect(px,py,c+.6,c+.6)}
+  if(CANAL[k]&&c>=8)drawCanal(x,y,px,py,c,r);
   if(c>=34)terrainDetail(x,y,k,t,r,s,px,py,c)}}
 // 放大後的街廓細節：建物量體、道路標線、港區貨櫃、綠地樹冠（以格子雜湊決定，畫面穩定不閃動）
 function hsh(k,i){let h=(k*2654435761+i*40503)>>>0;h^=h>>>15;h=Math.imul(h,2246822519)>>>0;h^=h>>>13;return(h>>>0)/4294967296}
 function terrainDetail(x,y,k,t,r,s,px,py,c){
  const rd=(a,b)=>a>=0&&b>=0&&a<N&&b<N&&RD[K(a,b)];
  if(r){const h=rd(x-1,y)||rd(x+1,y),v=rd(x,y-1)||rd(x,y+1),w=Math.max(1,c*.025);
-  ctx.fillStyle='rgba(0,0,0,.18)';
+  ctx.fillStyle=inCity(x,y)?'rgba(0,0,0,.18)':'rgba(60,84,40,.55)';
   if(!v){ctx.fillRect(px,py,c+.6,c*.08);ctx.fillRect(px,py+c*.92,c+.6,c*.08)}
   if(!h){ctx.fillRect(px,py,c*.08,c+.6);ctx.fillRect(px+c*.92,py,c*.08,c+.6)}
   ctx.fillStyle=r>=3?'rgba(214,190,110,.45)':'rgba(230,228,220,.28)';
@@ -62,21 +64,28 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
    const lv=16+(a*22|0);ctx.fillStyle='rgb('+(lv+12)+','+(lv+11)+','+(lv+8)+')';ctx.fillRect(bx,by,bw,bh);
    ctx.fillStyle='rgba(255,255,255,.06)';ctx.fillRect(bx,by,bw,Math.max(1,bh*.12));
    if(a>.8&&c>=60){ctx.fillStyle='rgba(255,214,140,.12)';ctx.fillRect(bx+bw*.25,by+bh*.35,bw*.15,bh*.12);ctx.fillRect(bx+bw*.6,by+bh*.6,bw*.15,bh*.12)}}}
+ else if(t===5&&CROP[k]>=2&&CROP[k]<=6){cropDetail(k,CROP[k],px,py,c);levee(x,y,px,py,c)}
  else if(t===5){// 農田：田埂分格，部分有作物行
-  const v=hsh(k,7);ctx.strokeStyle='rgba(150,150,90,.16)';ctx.lineWidth=Math.max(1,c*.03);
+  levee(x,y,px,py,c);const v=hsh(k,7);ctx.strokeStyle='rgba(150,150,90,.16)';ctx.lineWidth=Math.max(1,c*.03);
   ctx.strokeRect(px+c*.04,py+c*.04,c*.92,c*.92);
   if(v<.5){ctx.beginPath();ctx.moveTo(px+c*.5,py+c*.04);ctx.lineTo(px+c*.5,py+c*.96);ctx.stroke()}
   if(v>.35){ctx.strokeStyle=v>.7?'rgba(120,160,70,.22)':'rgba(170,160,80,.18)';
    for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(px+c*.1,py+c*i/6);ctx.lineTo(px+c*.9,py+c*i/6);ctx.stroke()}}
   if(hsh(k,8)>.93){ctx.fillStyle='#3a3226';ctx.fillRect(px+c*.62,py+c*.6,c*.22,c*.2);ctx.fillStyle='#57493a';ctx.fillRect(px+c*.62,py+c*.6,c*.22,c*.05)}}
- else if(t===6){// 魚塭：堤岸、水面、打氣水車
+ else if(t===6){// 魚塭：堤岸、水面、打氣水車；部分為漁電共生（水面上的光電板）
   ctx.fillStyle='#2b2c22';ctx.fillRect(px,py,c+.6,c+.6);
   ctx.fillStyle='#163a46';ctx.fillRect(px+c*.1,py+c*.1,c*.8,c*.8);
+  if(CROP[k]===7){ctx.fillStyle='#24344a';for(let i=0;i<4;i++)ctx.fillRect(px+c*.14,py+c*(.14+i*.19),c*.72,c*.13);
+   ctx.fillStyle='rgba(160,190,230,.18)';for(let i=0;i<4;i++)ctx.fillRect(px+c*.14,py+c*(.14+i*.19),c*.72,c*.025);return}
   if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
    ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
    ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
- else if(t===0&&!inCity(x,y)){// 鄉鎮：低矮透天與三合院，偶有廟宇
+ else if(t===0&&!inCity(x,y)){// 鄉鎮：低矮透天與三合院，偶有廟宇、學校
   const a=hsh(k,1);
+  if(CROP[k]===8){ctx.fillStyle='#3d4a2e';ctx.fillRect(px+c*.04,py+c*.04,c*.92,c*.92);
+   ctx.strokeStyle='#8a4a3a';ctx.lineWidth=Math.max(2,c*.07);ctx.beginPath();ctx.ellipse(px+c*.5,py+c*.55,c*.36,c*.24,0,0,TAU);ctx.stroke();
+   ctx.fillStyle='#4a4540';ctx.fillRect(px+c*.08,py+c*.06,c*.84,c*.16);
+   ctx.fillStyle='rgba(255,255,255,.7)';ctx.fillRect(px+c*.47,py+c*.02,Math.max(1,c*.02),c*.1);return}
   if(a<.05){ctx.fillStyle='#5a2a22';ctx.fillRect(px+c*.12,py+c*.18,c*.76,c*.6);
    ctx.fillStyle='#b8862e';ctx.fillRect(px+c*.12,py+c*.44,c*.76,c*.06);ctx.fillStyle='#d8b050';ctx.fillRect(px+c*.08,py+c*.16,c*.08,c*.08);ctx.fillRect(px+c*.84,py+c*.16,c*.08,c*.08);return}
   const roof=['#4a3a30','#3a3a38','#56402f','#40362c'];
@@ -106,6 +115,7 @@ function draw(){
  if(bgScale!==c&&(!bgScale||performance.now()-zoomT>140)&&!bakeBG())bgScale=0;
  if(bgScale)ctx.drawImage(bgc,0,0,N*c,N*c);
  else{drawTerrain(c,x0,x1,y0,y1);gridLines(c,x0,x1,y0,y1)}
+ if(c<40)mapLabels(c);
  ctx.fillStyle=C.hyd;
  for(const h of S.hyd){
   if(h[0]<x0-1||h[0]>x1+1||h[1]<y0-1||h[1]>y1+1)continue;
@@ -326,3 +336,62 @@ function mapNight(c,x0,x1,y0,y1,nf){
     const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
     for(let w=0;w<3;w++)if(hsh(k,i*9+j*3+w+70)>.4)ctx.fillRect(bx+bw*(.15+w*.27),by+bh*(.3+.3*hsh(k,w+80)),Math.max(1.5,bw*.12),Math.max(1.5,bh*.1))}}
   else if(hsh(k,40)>.35){ctx.fillRect(px+c*(.2+.5*hsh(k,41)),py+c*(.25+.4*hsh(k,42)),Math.max(2,c*.07),Math.max(2,c*.06))}}}
+// 灌溉水圳：沿相鄰水圳格連線，遇道路畫成涵洞（短暗格）
+function drawCanal(x,y,px,py,c,r){
+ const w=Math.max(1,c*.09),cx=px+c/2,cy=py+c/2;
+ ctx.strokeStyle=r?'rgba(20,40,52,.9)':'rgba(70,130,160,.75)';ctx.lineWidth=w;ctx.lineCap='round';
+ let any=false;
+ for(let i=0;i<4;i++){const a=x+DIR[i][0],b=y+DIR[i][1];
+  if(a<0||b<0||a>=N||b>=N)continue;const kk=K(a,b);
+  if(CANAL[kk]||TR[kk]===1){any=true;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+DIR[i][0]*c/2,cy+DIR[i][1]*c/2);ctx.stroke()}}
+ if(!any){ctx.beginPath();ctx.moveTo(px+c*.2,cy);ctx.lineTo(px+c*.8,cy);ctx.stroke()}
+ ctx.lineCap='butt'}
+// 堤防：鄰接高屏溪的田邊畫一道堤
+function levee(x,y,px,py,c){
+ for(let i=0;i<4;i++){const a=x+DIR[i][0],b=y+DIR[i][1];
+  if(a<0||b<0||a>=N||b>=N||TR[K(a,b)]!==1||inCity(a,b))continue;
+  ctx.fillStyle='#4a4638';const w=c*.16;
+  if(DIR[i][0])ctx.fillRect(DIR[i][0]>0?px+c-w:px,py,w,c+.6);else ctx.fillRect(px,DIR[i][1]>0?py+c-w:py,c+.6,w);
+  ctx.fillStyle='rgba(200,190,150,.25)';
+  if(DIR[i][0])ctx.fillRect(DIR[i][0]>0?px+c-w*.55:px+w*.35,py,Math.max(1,w*.2),c+.6);else ctx.fillRect(px,DIR[i][1]>0?py+c-w*.55:py+w*.35,c+.6,Math.max(1,w*.2))}}
+// 作物細節（放大時）：香蕉園、檳榔園、溫室、果園、旱作
+function cropDetail(k,cp,px,py,c){
+ if(cp===2){// 香蕉：大葉叢，成行
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){const ox=px+c*(.2+i*.3)+(j%2)*c*.06,oy=py+c*(.2+j*.3);
+   ctx.fillStyle='rgba(90,150,60,.55)';ctx.beginPath();
+   for(let a=0;a<5;a++){const an=a*1.257+hsh(k,i*3+j);ctx.ellipse(ox+Math.cos(an)*c*.05,oy+Math.sin(an)*c*.05,c*.075,c*.03,an,0,TAU)}
+   ctx.fill()}}
+ else if(cp===3){// 檳榔：細高樹幹的小樹冠，稀疏成排
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){if(hsh(k,i*4+j)<.25)continue;const ox=px+c*(.14+i*.24),oy=py+c*(.14+j*.24);
+   ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(ox+c*.02,oy+c*.03,c*.05,c*.02);
+   ctx.fillStyle='rgba(110,160,80,.7)';ctx.beginPath();ctx.arc(ox,oy,c*.045,0,TAU);ctx.fill()}}
+ else if(cp===4){// 溫室：白色網室，一排排屋脊
+  ctx.fillStyle='rgba(210,214,206,.55)';ctx.fillRect(px+c*.06,py+c*.08,c*.88,c*.84);
+  ctx.strokeStyle='rgba(120,124,118,.6)';ctx.lineWidth=Math.max(1,c*.02);
+  for(let i=1;i<5;i++){ctx.beginPath();ctx.moveTo(px+c*.06+i*c*.176,py+c*.08);ctx.lineTo(px+c*.06+i*c*.176,py+c*.92);ctx.stroke()}}
+ else if(cp===5){// 果園：圓樹冠格狀種植
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){ctx.fillStyle=hsh(k,i+j*3)>.5?'rgba(80,130,60,.7)':'rgba(70,115,55,.7)';
+   ctx.beginPath();ctx.arc(px+c*(.2+i*.3),py+c*(.2+j*.3),c*.1,0,TAU);ctx.fill()}}
+ else if(cp===6){// 旱作：土色畦溝
+  ctx.strokeStyle='rgba(120,100,70,.4)';ctx.lineWidth=Math.max(1,c*.04);
+  for(let i=1;i<7;i++){ctx.beginPath();ctx.moveTo(px+c*i/7,py+c*.08);ctx.lineTo(px+c*i/7,py+c*.92);ctx.stroke()}}}
+// 高壓電塔與電線
+function drawPylons(c,x0,x1,y0,y1){
+ ctx.strokeStyle='rgba(190,190,180,.35)';ctx.lineWidth=1;
+ for(const o of[-.12,.12]){ctx.beginPath();PYLON.forEach((p,i)=>{const x=p[0]*c,y=(p[1]+o)*c;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+ for(const p of PYLON){if(p[0]<x0-1||p[0]>x1+2||p[1]<y0-1||p[1]>y1+2)continue;
+  const x=p[0]*c,y=p[1]*c,s=Math.max(3,c*.18);
+  ctx.strokeStyle='rgba(210,210,200,.7)';ctx.lineWidth=Math.max(1,c*.03);
+  ctx.beginPath();ctx.moveTo(x-s,y-s);ctx.lineTo(x+s,y+s);ctx.moveTo(x+s,y-s);ctx.lineTo(x-s,y+s);ctx.stroke();
+  ctx.strokeRect(x-s,y-s,s*2,s*2)}}
+// 地名：鄉鎮、高屏溪、台灣海峽（中低倍率時顯示，放大後隱藏）
+function mapLabels(c){
+ const al=Math.min(1,(40-c)/12);
+ ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+ const lb=(s,x,y,sz,col,rot)=>{ctx.save();ctx.translate(x*c,y*c);if(rot)ctx.rotate(rot);ctx.font='600 '+sz+'px '+FONT;
+  ctx.lineWidth=3;ctx.strokeStyle='rgba(8,8,7,'+(.7*al).toFixed(2)+')';ctx.strokeText(s,0,0);ctx.fillStyle=col.replace('A',(al*.85).toFixed(2));ctx.fillText(s,0,0);ctx.restore()};
+ for(const t of RTOWN)lb(t.n+'區',t.c[0]+.5,t.c[1]-t.r-1.2,13,'rgba(236,230,210,A)');
+ lb('高 屏 溪',riverX(84)+.5,84,13,'rgba(125,179,232,A)',Math.PI/2);
+ lb('台 灣 海 峽',9,122,13,'rgba(125,179,232,A)');
+ lb('山　區',128,14,13,'rgba(140,190,140,A)');
+ ctx.restore()}

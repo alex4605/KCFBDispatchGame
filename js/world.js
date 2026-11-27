@@ -1,6 +1,8 @@
 // 全域狀態、地圖生成、路徑搜尋、車輛與開局
 'use strict';
 const RD=new Uint8Array(N*N),TR=new Uint8Array(N*N),SH=new Float32Array(N*N),RUN=new Uint8Array(N*N);
+// 鄉間地貌細節（只影響繪製）：CROP 作物／設施種類、CANAL 灌溉水圳
+const CROP=new Uint8Array(N*N),CANAL=new Uint8Array(N*N);
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
 let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[];
@@ -156,7 +158,8 @@ function build(){
    for(let d=1;d<6&&!e;d++){const x=s.p[0]+d,y=s.p[1];
     if(x>=N)break;if(TR[K(x,y)]!==1&&!RD[K(x,y)])RD[K(x,y)]=2;e=nbRoad(s.p[0],s.p[1])}}
   s.x=e||s.p}
- pruneIslands()}
+ pruneIslands();
+ ruralDetail()}
 
 let _hpD=0,_hpK=0; // hpop 結果暫存，避免每次彈出都配置新陣列
 function hpush(h,k,d){h.push(d,k);let i=(h.length>>1)-1;
