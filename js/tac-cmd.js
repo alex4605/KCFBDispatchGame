@@ -30,11 +30,13 @@ function tacStruct(inc,B,dt){
   for(const x of B.cells)if(B.cz.has(x.f)&&x.vic){B.lost+=x.vic;S.rep-=3*x.vic;x.vic=0}
   for(const x of B.cells)if(B.cz.has(x.f)&&x.hid){B.lost+=x.hid;x.hid=0}}}
 // ===== 消防專用升降機：消防模式下往返起火層下兩層以下的樓層 =====
-function tacElevOK(B,a,b){return B.elOn&&Math.max(a,b)<=B.of-2&&Math.min(a,b)>=B.bf}
+// 升降機可到的最高樓層：起火層下兩層；火在地下室時可到頂樓
+const tacElevTop=B=>B.of<B.bf?B.F-1:B.of-2;
+function tacElevOK(B,a,b){return B.elOn&&Math.max(a,b)<=tacElevTop(B)&&Math.min(a,b)>=B.bf}
 function tacElevStep(inc,B,dt){
  if(!B.elev)return;
- if(B.elT>0){B.elT-=dt;if(B.elT<=0){B.elOn=1;radio(inc,'受理','消防專用升降機已切換消防模式，可運送人員至'+tacFlr(B,Math.max(B.bf,B.of-2))+'。');tacEvt(inc,B,'milestone','啟用消防專用升降機')}}
- if(B.elOn){for(let f=B.bf;f<=B.of-2;f++)if(tacCel(B,f,0).s>.6){B.elOn=0;radio(inc,'安全官','升降機井道進煙，消防專用升降機停用！');tacEvt(inc,B,'warn','升降機井道進煙停用');break}}}
+ if(B.elT>0){B.elT-=dt;if(B.elT<=0){B.elOn=1;radio(inc,'受理','消防專用升降機已切換消防模式，可運送人員至'+tacFlr(B,Math.max(B.bf,tacElevTop(B)))+'。');tacEvt(inc,B,'milestone','啟用消防專用升降機')}}
+ if(B.elOn){for(let f=B.bf;f<=tacElevTop(B);f++)if(tacCel(B,f,0).s>.6){B.elOn=0;radio(inc,'安全官','升降機井道進煙，消防專用升降機停用！');tacEvt(inc,B,'warn','升降機井道進煙停用');break}}}
 // ===== 前進指揮所：高樓於起火層下兩層換瓶休息 =====
 const tacFwdOK=B=>!!(B.fwd&&B.sq.some(q=>q.task==='station'&&q.stn==='fwd'&&q.f===B.fwd.f));
 // ===== 幕僚建議：有開設指揮站（有幕僚）時才提供 =====
@@ -50,7 +52,7 @@ function tacHints(inc,B){
  if(B.hyd&&!tacHydOK(inc,B))add(2,'消防栓在'+TAC_SDN[B.hyd.side]+'側尚未佔水，建議移一輛幫浦車佔水。');
  if(B.sp&&!B.sp.on&&B.of-B.bf>=2)add(2,'高樓起火，建議送水口加壓，改由各樓層出水口接線。');
  if(B.F-B.bf>=5&&B.of-B.bf>=3&&!B.st.fwd)add(3,'建議於'+tacFlr(B,Math.max(B.bf+1,B.of-2))+'設置前進指揮所，就近換瓶休息。');
- if(B.elev&&!B.elOn&&!(B.elT>0)&&B.of-B.bf>=3)add(3,'可啟用消防專用升降機，運送人員到'+tacFlr(B,B.of-2)+'。');
+ if(B.elev&&!B.elOn&&!(B.elT>0)&&(B.of-B.bf>=3||B.of<B.bf))add(3,'可啟用消防專用升降機，運送人員到'+tacFlr(B,tacElevTop(B))+'。');
  if(B.flow)add(3,'入口沒有門控，形成進氣路徑，建議派員門控進入。');
  if(tacCivOn(B))add(2,'現場有民眾可詢問屋內資訊。');
  const rep=B.cells.find(x=>x.rep&&x.srch<1);if(rep)add(2,tacNm(B,rep.f,rep.c)+'民眾指稱有人，尚未搜索。');
@@ -58,6 +60,12 @@ function tacHints(inc,B){
  if(B.pts.length>tacAmbFree(inc,B))add(2,'傷患 '+B.pts.length+' 名待送醫，救護車不足，建議請求救護車。');
  const em=B.cells.filter(x=>x.emb).length;if(em&&!B.cells.some(x=>x.h>.05))add(3,'火勢已滅，仍有 '+em+' 間房有餘燼，建議殘火處理。');
  const lowB=B.sq.filter(q=>tacIn(q)&&q.air<.4&&q.task!=='exit').length;if(lowB&&tacAcc(B))add(2,'管制板顯示 '+lowB+' 組氣量偏低，注意撤出時機。');
+ if(B.gasL&&B.gasL.t>0)add(1,'瓦斯管線持續供氣：起火點撲滅後仍會再燒，先防護周邊與搜救瓦礫，待欣高關閥後再撲滅。');
+ if(B.cells.some(x=>x.rub&&x.vic))add(1,'1F 瓦礫堆中有受困者：派救助組搜救，瓦礫搜索很慢，注意結構。');
+ if(B.rf&&B.rf.h>0)add(1,'屋頂光電板起火'+(inc.pow>=2?'，台電已斷電，可派雲梯射水撲滅。':'，仍帶電：只能以雲梯水霧遠距射水，等待台電斷電。'));
+ if(B.ext&&B.ext.h>0)add(1,tacNm(B,B.ext.f,B.ext.c)+'窗外室外機起火：派雲梯射水或入室由窗口射水，並檢查上一層同位置住戶。');
+ if(B.T&&B.T.away&&B.cells.some(x=>x.o2<13&&x.h>.2))add(1,'起火戶門窗緊閉悶燒：破門前先備妥水線，開門後立即射水，防範爆燃。');
+ if(B.cells.some(x=>x.li&&(x.emb||x.h>.05)))add(2,'鋰電池火災：撲滅後仍會熱失控復燃，需持續灌水冷卻並做殘火處理。');
  // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
  const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
  if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}

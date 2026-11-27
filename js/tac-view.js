@@ -26,7 +26,7 @@ function sizeTac(){
  tcv.style.width=tW+'px';tcv.style.height=tH+'px';
  tcv.width=Math.round(tW*dpr);tcv.height=Math.round(tH*dpr);tctx.setTransform(dpr,0,0,dpr,0,0)}
 function tacOpen(inc){
- if(!TACK[inc.k]){msg='此案類沒有戰術指揮';return}
+ if(!tacHas(inc)){msg='此案類沒有戰術指揮';return}
  if(!inc.rev){msg='首車到場回報後才能進入戰術指揮';return}
  if(inc.wrap){msg='現場已在收整，無法進入戰術指揮';return}
  if(!inc.tac)tacInit(inc);
@@ -278,6 +278,14 @@ function drawTac(){
    g.fillStyle='#07080a';g.fillRect(r[0]+r[2]*.35,r[1]+r[3]*.35,r[2]*.3,r[3]*.3);
    for(let k=0;k<3;k++){const ph=(T*.6+k/3)%1;g.fillStyle='rgba(140,142,148,'+((1-ph)*.6).toFixed(2)+')';g.beginPath();g.arc(r[0]+r[2]/2,r[1]+r[3]/2-ph*30,5+ph*10,0,TAU);g.fill()}
    g.fillStyle='#eceae3';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText('垂直排煙口',r[0]+r[2]/2,r[1]+r[3]*.68)}
+  // 屋頂光電板：板陣列與火勢
+  if(B.rf){for(const n of L.N){if(n.ty!=='room'||n.c%2)continue;const r=G.r(n.c);
+    g.fillStyle=B.rf.h>0?'#2a3550':'#1f2738';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(140,170,220,.35)';g.lineWidth=1;
+    for(let k=r[0]+6;k<r[0]+r[2]-6;k+=12){g.beginPath();g.moveTo(k,r[1]+6);g.lineTo(k,r[1]+r[3]-6);g.stroke()}
+    if(B.rf.h>0)for(let k=0;k<Math.ceil(B.rf.h*4);k++){const fx=r[0]+r[2]*(.2+.6*((n.c*7+k*13)%11/11)),fy=r[1]+r[3]*(.2+.6*((n.c*3+k*5)%7/7)),fr=t*.12*(.8+.3*Math.sin(T*8+k));
+     const gr=g.createRadialGradient(fx,fy,0,fx,fy,fr*1.6);gr.addColorStop(0,'rgba(255,230,120,.95)');gr.addColorStop(1,'rgba(255,80,20,0)');g.fillStyle=gr;g.beginPath();g.arc(fx,fy,fr*1.6,0,TAU);g.fill()}}
+   g.fillStyle=B.rf.h>0?'#ff8a6a':'#5dcaa5';g.font='600 12px '+FONT;g.textAlign='center';g.textBaseline='bottom';
+   g.fillText(B.rf.h>0?'光電板燃燒 '+Math.round(B.rf.h*100)+'%　'+(inc.pow>=2?'台電已斷電':'帶電中：僅能水霧遠距射水'):'光電板火勢已撲滅',G.bx+G.bw/2,G.by+G.bh-8)}
   const vc=[G.bx+G.bw*.62,G.by+G.bh*.5];
   if(B.roofV>0){
    if(B.roofS){for(let k=0;k<B.roofV;k++){const a=k*1.3;tacMan(g,vc[0]+Math.cos(a)*t*.25,vc[1]+Math.sin(a)*t*.25,6,'#d9bfae',a,{coat:'#7a4a9a'})}
@@ -380,6 +388,16 @@ function drawTac(){
    else{const hx=s[0]+3,hy=s[1],dir=rr[0]>hx-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx+dir*dw,hy);g.arc(hx,hy,dw,dir>0?0:Math.PI,Math.PI/2,dir<0)}
    g.stroke()}
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}}
+ // 氣爆瓦礫
+ if(vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.rub)continue;const r=G.r(n.c);
+  for(let k=0;k<14;k++){const a=(n.c*17+k*31)%97/97,b=(n.c*7+k*13)%89/89,sz=6+(k*7)%9;g.fillStyle=k%3?'#5a5048':'#6e6258';
+   g.save();g.translate(r[0]+r[2]*(.1+.8*a),r[1]+r[3]*(.1+.8*b));g.rotate(k);g.fillRect(-sz/2,-sz/3,sz,sz*.66);g.restore()}
+  g.fillStyle='rgba(233,161,59,.9)';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText('瓦礫',r[0]+r[2]/2,r[1]+r[3]-4)}
+ // 外牆室外機火
+ if(B.ext&&B.ext.h>0&&(vf===B.ext.f||vf===B.ext.f+1)){const w=tacWinPt(G,B.ext.c,B.ext.side),dv=TAC_SDV[B.ext.side],up=vf===B.ext.f+1;
+  const fx=w[0]+dv[0]*14,fy=w[1]+dv[1]*14,fr=t*(up?.12:.2)*B.ext.h*(.85+.2*Math.sin(T*9));
+  const gr=g.createRadialGradient(fx,fy,0,fx,fy,fr*1.8);gr.addColorStop(0,'rgba(255,230,120,'+(up?.5:.95)+')');gr.addColorStop(1,'rgba(255,80,20,0)');g.fillStyle=gr;g.beginPath();g.arc(fx,fy,fr*1.8,0,TAU);g.fill();
+  g.fillStyle='#ff8a6a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(up?'下層外牆火往上竄':'室外機火 '+Math.round(B.ext.h*100)+'%',fx+dv[0]*30+(dv[0]?0:0),fy+dv[1]*22+(dv[1]?0:-18))}
  // 防火門（樓梯間）：已知樓層才顯示狀態
  if(vf<B.F&&B.fd){g.font='600 9px '+FONT;g.textAlign='center';g.textBaseline='middle';
   for(const[key,d]of B.fd){if(d.f!==vf)continue;const ra=G.r(d.s),rb=G.r(d.o);
@@ -575,7 +593,7 @@ function drawTac(){
  if(vf>=B.F){g.strokeStyle='#e9a13b';g.lineWidth=2;g.strokeRect(G.sx-1,ry-1,G.sw+2,rh+2)}
  g.fillStyle='#eceae3';g.font='600 11px '+FONT;g.textBaseline='middle';g.fillText('屋頂',G.sx+4,ry+rh/2);
  g.font='10px '+FONT;g.fillStyle=B.roofV&&(T*2)%1<.6?'#ff8a6a':'#9d9a92';
- g.fillText((B.roof?'排煙口開 ':'')+(B.roofV?(B.roofS?'避難 '+B.roofV+' 人':'通報有人'):''),G.sx+34,ry+rh/2);
+ g.fillText((B.rf&&B.rf.h>0?'光電板火 ':'')+(B.roof?'排煙口開 ':'')+(B.roofV?(B.roofS?'避難 '+B.roofV+' 人':'通報有人'):''),G.sx+34,ry+rh/2);
  TAC.hits.push({t:'flr',f:B.F,x:G.sx,y:ry,w:G.sw,h:rh});
  const smk=v=>v>.7?'濃煙':v>.4?'中煙':v>.15?'薄煙':'';
  for(let f=0;f<B.F;f++){
@@ -614,7 +632,7 @@ function drawTac(){
  // 樓梯間：前進指揮所、消防專用升降機
  if(vf<B.F){const r0=G.r(0);g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='bottom';
   if(B.fwd&&vf===B.fwd.f){g.fillStyle=tacFwdOK(B)?'#5dcaa5':'#9d9a92';g.fillText('前進指揮所',r0[0]+r0[2]/2,r0[1]-2)}
-  if(B.elev&&vf>=B.bf){g.fillStyle=B.elOn&&vf<=B.of-2?'#7db3e8':'#6b6960';g.textBaseline='top';g.fillText(B.elOn&&vf<=B.of-2?'升降機 ●':'升降機',r0[0]+r0[2]/2,r0[1]+r0[3]+2)}}
+  if(B.elev&&vf>=B.bf){g.fillStyle=B.elOn&&vf<=tacElevTop(B)?'#7db3e8':'#6b6960';g.textBaseline='top';g.fillText(B.elOn&&vf<=tacElevTop(B)?'升降機 ●':'升降機',r0[0]+r0[2]/2,r0[1]+r0[3]+2)}}
  // 框選框
  if(TAC.drag&&Math.hypot(TAC.drag.x1-TAC.drag.x0,TAC.drag.y1-TAC.drag.y0)>8){const d=TAC.drag;
   g.strokeStyle='#e9a13b';g.lineWidth=1.5;g.setLineDash([5,4]);g.strokeRect(Math.min(d.x0,d.x1),Math.min(d.y0,d.y1),Math.abs(d.x1-d.x0),Math.abs(d.y1-d.y0));g.setLineDash([]);
@@ -673,9 +691,12 @@ function tacSideHTML(inc){
  h+='<div class="hd mt">結構與設施</div><div class="twater">';
  if(!B.hoax){const dm=Math.min(1,B.dmg||0);h+='<div class="row"><span>結構受損（穩定度'+(inc.pm.stab||'—')+'）</span><span>'+Math.round(dm*100)+'% <span class="tbar"><i style="width:'+Math.round(dm*100)+'%;background:'+(dm>=.8?'var(--red)':dm>=.5?'var(--amb)':'var(--grn)')+'"></i></span></span></div>';
   if(B.cz)h+='<div class="row"><span>坍塌樓層</span><b style="color:var(--red)">'+[...B.cz].map(f=>tacFlr(B,f)).join('、')+'</b></div>'}
+ if(B.gasL)h+='<div class="row"><span>瓦斯管線</span><span>'+(B.gasL.t>0?'<b style="color:var(--red)">持續供氣，欣高關閥約 '+Math.ceil(B.gasL.t)+' 秒</b>':'已關閥')+'</span></div>';
+ if(B.rf)h+='<div class="row"><span>屋頂光電板</span><span>'+(B.rf.h>0?'<b style="color:var(--red)">燃燒 '+Math.round(B.rf.h*100)+'%</b>　'+(inc.pow>=2?'已斷電':'帶電中'):'已撲滅')+'</span></div>';
+ if(B.ext)h+='<div class="row"><span>外牆室外機</span><span>'+(B.ext.h>0?'<b style="color:var(--red)">燃燒 '+Math.round(B.ext.h*100)+'%</b>（'+tacNm(B,B.ext.f,B.ext.c)+'窗外）':'已撲滅')+'</span></div>';
  if(B.fd&&B.fd.size){const kv=[...B.fd.values()].filter(d=>B.fdK.has(d.f)),bad=kv.filter(d=>d.t==='gone'||d.t==='wedge');
   h+='<div class="row"><span>樓梯間防火門</span><span>'+(!kv.length?'未查明':bad.length?'<b style="color:var(--red)">'+[...new Set(bad.map(d=>tacFlr(B,d.f)))].join('、')+' 異常</b>':'已查 '+B.fdK.size+' 層正常')+'</span></div>'}
- if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,B.of-2))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
+ if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,tacElevTop(B)))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
  if(B.fwd)h+='<div class="row"><span>前進指揮所</span><span>'+tacFlr(B,B.fwd.f)+' · '+(tacFwdOK(B)?'就位':'前往中')+' · 備用瓶 '+(B.st.air?'充填區供應':B.fwd.stock)+'</span></div>';
  h+='</div>';
  // 請求增援

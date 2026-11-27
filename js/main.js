@@ -223,7 +223,7 @@ function size(){
  if(document.getElementById('scenewrap').style.display!=='none')sizeScene()}
 window.addEventListener('resize',()=>{size();if(TAC.open)sizeTac()});
 // 雙擊現場畫面進入戰術指揮
-scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&TACK[inc.k]){tacOpen(inc);dirty()}});
+scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)){tacOpen(inc);dirty()}});
 size();reset();size();
 let faults=0;
 let frameN=0;

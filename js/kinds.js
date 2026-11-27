@@ -269,7 +269,7 @@ const KIND={
   base:[GB('water',6),GB('aerial',2),GB('vent',2),GB('ems',3,1),GB('cmd',2),GB('rescue',2),GB('supply',1)],
   dur:40,pay:12000,pen:30,q:'起火樓層大概在幾樓？避難層有人嗎？',
   close:'請住戶依廣播往避難層或往下疏散，不要搭電梯，消防車已大量出動。',
-  dlg:[['商辦大樓三十幾樓在冒煙，好多人在窗邊揮手','樓梯間都是煙，警報一直響'],
+  dlg:[['商辦大樓十幾樓在冒煙，好多人在窗邊揮手','樓梯間都是煙，警報一直響'],
    ['住商大樓高樓層起火，火從外牆往上竄','管委會說上面還有很多住戶沒下來']]},
  dorm:{n:'外籍宿舍火災',ch:'宿',t:260,col:C.red,lv:3,w:1,carry:1,big:1,z:'city',cls:'火警',rare:.3,
   base:[GB('water',4),GB('aerial',1),GB('ems',3,1),GB('cmd',1),GB('rescue',1),GB('manpower',2)],
