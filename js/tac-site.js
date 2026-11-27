@@ -62,7 +62,7 @@ function tacLineTo(B,q,f,c){
  const pumps=q.ty==='pump'?[q]:B.sq.filter(x=>x.ty==='pump'&&!x.tmv);
  for(const p of pumps){
   const e=tacBestEnt(B,p.tside,f,c,true);if(!e)continue;
-  const len=tacOutLen(p.tside,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1;
+  const len=tacOutLen(p.tside,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1+(p.xh||0);   // 車停在畫面外：多接幾條水帶
   if(len>TAC_HOSE)continue;
   const pf=tacPf(len,Math.max(0,f-B.bf),0);
   if(!best||pf>best.pf)best={src:'pump',u:p.u,len,pf,ent:e}}
@@ -145,3 +145,39 @@ function tacExtraEnts(B){const L=B.L;
   const rs=L.N.filter(n=>n.ty==='room'&&!n.small&&n.edge.some(s=>sides.includes(s)));
   if(rs.length){const n=rs[Math.floor(Math.random()*rs.length)],s=n.edge.find(x=>sides.includes(x));
    B.ents.push({side:s,c:n.c,f,ramp:1,pt:tacEntPt(L,n,s)});B.ramp={f,c:n.c,side:s}}}}
+// ===== 車輛停放模型（模擬端，以公尺計；畫面依此繪製） =====
+// 每側可停長度＝建物面寬＋兩側各 8 公尺（鄰棟門前）；一般道路兩排、窄路一排；車距 2 公尺
+// 停放順序依車種優先度由正面中央往兩側排；作業中的雲梯車固定在目標窗戶正對處；停不下的停在畫面外，步行與水帶都要多算
+const TAC_VLEN={'11':8.5,'16':6.5,'21':11,'31':10.5,'41':5.5,'51':9,'57':8.5,'61':9.5,'71':8.5,'75':7.5,'91':6,'01':9.5,'搜':9,'99':6,'警':5.5,'履':4,'艇':7};
+const TAC_VPRI={'21':0,'31':0,'11':1,'16':1,'57':1,'71':2,'搜':2,'51':2,'01':2,'75':3,'履':3,'61':4,'41':5,'91':6,'99':6,'警':7,'艇':8};
+const TAC_VGAP=2;
+function tacMPU(inc,B){const d=KIND[inc.k];return d.fac||/warehouse|chemfire|wastefire/.test(inc.k)?10:(B.F>=7||/dept|hosp/.test(inc.k))?8:4.5}
+function tacParkModel(inc,B){
+ const L=B.L,mpu=tacMPU(inc,B),out={front:{},slots:{},mpu};
+ for(const s of TAC_SIDES)out.front[s]=((s==='n'||s==='s')?L.GW:L.GH)*mpu+16;
+ const want={n:[],s:[],w:[],e:[]},fixed={n:[],s:[],w:[],e:[]};
+ for(const u of onScene(inc)){if(u.st!=='work')continue;const q=B.sq.find(x=>x.u===u.id);
+  let s=q?(q.tmv>0?q.tgt:q.tside):B.arr;if(!s||!B.sd[s]||!B.sd[s].road)s=B.arr;
+  const it={u,len:TAC_VLEN[u.code]||8,pri:TAC_VPRI[u.code]??5,s,ghost:!!(q&&q.tmv>0)};
+  if(q&&q.ty==='ladder'&&q.lside&&q.task!=='idle'&&q.tside===q.lside&&q.lf!==undefined&&!q.tmv){
+   const hz=q.lside==='n'||q.lside==='s';let o=0;
+   if(!(q.lf>=B.F||q.task==='roof'||q.task==='vvent')){const n=L.N[q.lc];o=hz?(n.gx+n.gw/2-L.GW/2)*mpu:(n.gy+n.gh/2-L.GH/2)*mpu}
+   it.s=q.lside;it.at=o;fixed[it.s].push(it);continue}
+  want[s].push(it)}
+ for(const s of TAC_SIDES){const F=out.front[s],A=-F/2,Z=F/2,rows=B.sd[s].road&&B.sd[s].big?2:1,occ=[[],[]];let over=0;
+  const free=(r,a,b)=>a>=A&&b<=Z&&occ[r].every(([x,y])=>b+TAC_VGAP<=x||a>=y+TAC_VGAP);
+  const put=(it,r,a)=>{occ[r].push([a,a+it.len]);out.slots[it.u.id]={s,row:r,o:a+it.len/2,len:it.len,ghost:it.ghost,off:0,d:0}};
+  for(const it of fixed[s])put(it,0,Math.max(A,Math.min(Z-it.len,it.at-it.len/2)));
+  want[s].sort((a,b)=>a.pri-b.pri||a.u.id-b.u.id);
+  for(const it of want[s]){let done=false;
+   for(let r=0;r<rows&&!done;r++)for(let d=0;d<=F&&!done;d+=.5)for(const sg of[1,-1]){const a=-it.len/2+sg*d;if(free(r,a,a+it.len)){put(it,r,a);done=true;break}}
+   if(!done){over+=it.len+TAC_VGAP;out.slots[it.u.id]={s,off:1,d:over,len:it.len,ghost:it.ghost}}}}
+ return out}
+// 每秒更新停放模型；新到小組依停車位置設定整裝完成時間（停車整裝約 30 秒，畫面外每 12 公尺再加 1 秒＝現實約 10 秒步行）
+function tacParkStep(inc,B,dt){
+ B.parkT=(B.parkT||0)-dt;if(B.parkT>0&&B.park)return;B.parkT=1;
+ B.park=tacParkModel(inc,B);
+ for(const q of B.sq){const sl=B.park.slots[q.u];
+  q.off=sl&&sl.off?1:0;q.offD=sl&&sl.off?sl.d:0;q.xh=q.off?Math.ceil(q.offD/20):0;
+  if(q.rdy===undefined)q.rdy=S.t+(q.epa?0:3+(q.off?q.offD/12:0))}}
+const tacReady=q=>q.rdy===undefined||S.t>=q.rdy;

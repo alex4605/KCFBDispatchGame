@@ -224,3 +224,15 @@ main.sw.mapc #mapbar button{padding:2px 8px}
 .icsn:disabled{opacity:.45;cursor:not-allowed}
 .icsn.top{width:62%}
 .icsn.staff{width:46%}
+
+/* 戰術畫面：交給轄區分隊善後 */
+button.hand{background:#24463a;border-color:#3f7d66;color:#d9f3e8}
+button.hand:hover{background:#2d5a4a}
+
+/* 戰術側欄分頁 */
+.ttabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:8px 0 4px;position:sticky;top:-1px;background:var(--pnl);padding:4px 0;z-index:2}
+.ttabs button{padding:5px 2px;font-size:12px;display:flex;justify-content:center;align-items:baseline;gap:4px}
+.ttabs button i{font-style:normal;font-size:10px;color:var(--fg3)}
+.ttabs button.on{background:#2a4a6a;border-color:#4a7aa8}
+.ttabs button.on i{color:#cfe2f5}
+.ttabc>.hd.mt:first-child{margin-top:4px}

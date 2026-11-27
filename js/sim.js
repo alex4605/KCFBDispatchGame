@@ -70,7 +70,7 @@ function stepDuties(dt){
  for(let i=S.duties.length-1;i>=0;i--){
   const d=S.duties[i];
   if(d.unit)continue;
-  d.left-=dt;
+  if(!TAC.open)d.left-=dt;            // 戰術畫面開著時公務時限暫停
   if(d.left<=0){S.rep-=3;msg='公務未派遣：'+d.n+'（評鑑 -3）';
    S.duties.splice(i,1);if(sel===d.id)sel=null;
    if(S.rep<=0){S.rep=0;S.over=true}}}

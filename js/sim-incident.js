@@ -36,7 +36,8 @@ function stepIncident(i,dt){
   stepProgress(inc,dt,first,got,tot,cmd,bon,flow,wo,held,atH);
   stepChatter(inc,Kd,dt,first);
   const blsGo=got===0&&inc.pm.cc!==undefined&&onScene(inc).some(u=>u.code==='91'&&(u.st==='work'||u.st==='tx'));
-  if(!((got>0||blsGo)&&wo&&!held&&flow>0))inc.left-=dt*(first?(gm?.35:held?.75:.5):1);
+  // 玩家在戰術畫面親自指揮時，其他案件的時限暫停（時間視為無限），回到戰略層才繼續倒數
+  if(!((got>0||blsGo)&&wo&&!held&&flow>0)&&!tacFrozen(inc))inc.left-=dt*(first?(gm?.35:held?.75:.5):1);
   }
   if(inc.work>=inc.dur&&!inc.wrap&&first&&inc.phs[inc.phs.length-1]!=='到院交接'){
    inc.wrap=6+tot*1.6;

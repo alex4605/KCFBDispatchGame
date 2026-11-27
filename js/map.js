@@ -471,6 +471,10 @@ function roadPass(c,x0,x1,y0,y1){
  if(c>=34){ctx.fillStyle='rgba(230,228,220,.32)';
   for(const g of[RGK.CITY,RGK.TWN,RGK.CNTY,RGK.PROV]){const L=buck[g];if(!L)continue;
    for(const [x,y,k,ds] of L){if(ds.length<3)continue;if(!(inCity(x,y)||RTOWN.some(t=>Math.hypot(x-t.c[0],y-t.c[1])<=t.r+1)))continue;
+    // 兩條路並排（相鄰兩向之間的對角格也是路）不是真正的路口
+    let wide=false;for(const d1 of ds)for(const d2 of ds){if(d1>=d2||DIR[d1][0]===-DIR[d2][0]&&DIR[d1][1]===-DIR[d2][1])continue;
+     const a=x+DIR[d1][0]+DIR[d2][0],b=y+DIR[d1][1]+DIR[d2][1];if(a>=0&&b>=0&&a<N&&b<N&&surf(K(a,b)))wide=true}
+    if(wide)continue;
     const s=sty(k),hw=c*s.w/2,cx=x*c+c/2,cy=y*c+c/2;
     for(const d of ds){const along=c*.36;
      for(let i=-2;i<=2;i++){const o=i*hw/2.6;

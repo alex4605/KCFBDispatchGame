@@ -55,6 +55,8 @@ const tacHas=inc=>inc.k==='forest'?!!(inc.tac||inc.wf&&wfWuiTodo(inc.wf).length)
 // 時間尺度：場內動作（移動、氣瓶、火勢）約以 1:10 模擬（1 秒＝現實 10 秒）。
 // spd 為戰術畫面開著時的時間倍率：0.2／0.3／0.5／1 分別等於現實時間的 1:2／1:3／1:5／1:10，預設 1:3
 const TAC_RT=10,TAC_SPDS=[.2,.3,.5,1];
+// 戰術畫面開著時，其他案件的時限暫停
+const tacFrozen=inc=>TAC.open&&inc.id!==TAC.id;
 const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.3,autoPause:true,ms:[]};
 const TAC_AIR=110; // 滿瓶可在室內作業的秒數
 const TAC_LADR={'21':10,'31':7}; // 雲梯可達樓層數
@@ -607,6 +609,8 @@ function tacSquad(inc,B,q,dt,eff){
   if(!prot&&cl.h>.6&&q.ty!=='robot'&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'&&!q.mt){
    radio(inc,q.cs,tacNm(B,q.f,q.c)+'溫度過高，無水線掩護，撤退！');q.prev=null;q.task='exit';q.tf=-1;q.tc=0}
   if(q.hp<.3){tacDown(inc,B,q,'高溫受困');return}}
+ // 停車整裝（畫面外的車另加步行時間）完成前，屋外小組可以先下令，但還不會出發
+ if(!inside&&!tacReady(q)){q.nf=q.f;q.nc=q.c;q.mt=0;return}
  // 移動：屋外先移車或繞到入口那側，再進出建物
  if(!inside&&tacOutStep(inc,B,q,dt)){q.nf=q.f;q.nc=q.c;return}
  const ns=tacNext(B,q);
@@ -1113,6 +1117,7 @@ function tacIncident(inc,dt,first,flow){
  const B=inc.tac;
  if(inc.req){inc.reqT-=dt;if(inc.reqT<=0)answer(inc,false,true)}
  tacSync(inc);
+ tacParkStep(inc,B,dt);
  const eff=waterOK(inc)?flow:0;
  tacLines(inc,B,dt);
  for(const x of B.cells)x.wet=0;
@@ -1153,6 +1158,8 @@ function tacIncident(inc,dt,first,flow){
   if(ck<hs.length)out=false}
  // 結案條件：火全滅、受困者都已處置、傷患都已後送（或不治）
  const evac=B.pts.length+onScene(inc).filter(u=>u.load>0).length;
+ // 主要目標達成（火已撲滅、受困者與現場傷患都已處置、沒有洩漏）：可交給轄區分隊善後
+ B.hOK=!B.hoax&&!B.wui&&B.peak>0&&out&&!left&&!B.pts.length&&!(B.leak&&B.leak.on);
  if(out&&!left&&!evac&&!B.cells.some(x=>x.emb)&&!(B.leak&&B.leak.on)){B.doneT+=dt;
   if(B.doneT>=3&&!B.done){B.done=1;
    B.burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;

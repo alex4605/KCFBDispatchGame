@@ -36,7 +36,7 @@ function callsHTML(){
   out.push('<div class="call'+(sel===i.id?' sel':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
    '<div class="row" style="padding:0"><span class="tag" style="background:'+col+';color:'+(i.rev?'#111110':'#eceae3')+'">'+
    (i.rev?(i.nm||d.n)+(i.pm.lvl>1?' '+['','一級','二級','三級','四級'][i.pm.lvl]+'火警':'')+(i.pm.trap?' 困'+i.pm.trap:''):d.cls+'類 · 待確認')+'</span>'+
-   '<span class="mono" style="color:'+(urg?'var(--red)':'var(--fg2)')+'">'+fmt(i.left)+'</span></div>'+
+   '<span class="mono" style="color:'+(urg?'var(--red)':'var(--fg2)')+'">'+(tacFrozen(i)?'⏸ ':'')+fmt(i.left)+'</span></div>'+
    '<div class="sub" style="margin-top:3px">'+esc(i.addr)+' · 同時 '+(i.calls||1)+' 通 · 編組 '+got+'/'+(i.rev?tot:'?')+
    (i.rev&&i.ph>=0?' · '+i.phs[i.ph]:'')+(i.req?' · 待回覆':'')+(KIND[i.k].pol&&i.pol<2?' · 待警方':'')+(KIND[i.k].pow&&i.pow<2?' · 待斷電':'')+
    (i.note?' · '+esc(i.note):'')+'</div></div>')}
