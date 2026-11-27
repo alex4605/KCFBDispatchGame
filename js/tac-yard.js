@@ -1,7 +1,7 @@
 // 戰術指揮：室外場景（資源回收場、加油站）——場區格局、風向、飛火、油料外洩、場區繪製
 // 室外沿用建物的節點模型：堆置區、加油島等是「空間」（room），場內車道是「走廊」（hall）；只有一層、沒有樓梯
 'use strict';
-const TAC_YFU={plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
+const TAC_YFU={grass:.5,reed:.65,shrub:1,shack:1.5,cars:1,plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
 const TAC_WINDN={n:'北',e:'東',s:'南',w:'西',ne:'東北',nw:'西北',se:'東南',sw:'西南'};
 // 風向（風從哪裡吹來）與吹往的單位向量
 function tacWind(){const ks=Object.keys(TAC_WINDN),k=ks[Math.floor(Math.random()*ks.length)];
@@ -24,6 +24,16 @@ function tacYardLay(T,K,L,add,room,cuts,R){
     if(!off&&ya===0&&i===0){k='yoff';off=1}else if(!drum&&R()<.35){k='drum';drum=1}else if(!cyl&&R()<.3){k='cylz';cyl=1}
     const n=room(xs[i],ya,xs[i+1]-xs[i],yb-ya,k);if(k==='yoff')wall(n)}}
   if(!drum){const n=L.N.filter(n=>n.ty==='room'&&n.kind!=='yoff').pop();n.kind='drum'}}
+ else if(T.yard==='grass'){ // 雜草火：空地（草地、灌木，邊上有鐵皮屋與停放的汽車）或河堤（臨河芒草坡、堤頂道路、另一側草坡）
+  L.GH=3;L.GW=3.8+K*.45;
+  if(T.river){const y0=1.05+R()*.25,y1=y0+.42;
+   for(const[ya,yb,riv]of[[0,y0,1],[y1,L.GH,0]]){const xs=cuts(0,L.GW,.7,1.1);for(let i=0;i<xs.length-1;i++){const n=room(xs[i],ya,xs[i+1]-xs[i],yb-ya,riv||R()<.5?'reed':'grass');n.riv=riv}}
+   const hs=cuts(0,L.GW,1,1.6);for(let i=0;i<hs.length-1;i++){const n=lane(hs[i],y0,hs[i+1]-hs[i],y1-y0);n.levee=1}}
+  else{const ys=cuts(0,L.GH,.8,1.1);let sh=0,car=0;
+   for(let j=0;j<ys.length-1;j++){const xs=cuts(0,L.GW,.75,1.15);
+    for(let i=0;i<xs.length-1;i++){let k=R()<.75?'grass':'shrub';
+     if(!sh&&j===ys.length-2&&i===xs.length-2){k='shack';sh=1}else if(!car&&j===ys.length-2&&i===0){k='cars';car=1}
+     const n=room(xs[i],ys[j],xs[i+1]-xs[i],ys[j+1]-ys[j],k);if(k==='shack')wall(n)}}}}
  else{ // 加油站：後排便利商店與地下油槽區，中段遮雨棚下一排加油島，前段車道臨街
   L.GH=3;L.GW=3.6+K*.35;const yb=.95+R()*.2,yi0=yb+.4,yi1=yi0+.75;
   const mw=1.3+R()*.4;wall(room(0,0,mw,yb,'mart'));
@@ -37,11 +47,14 @@ function tacYardLay(T,K,L,add,room,cuts,R){
   L.canopy=[0,yi0-.15,L.GW,yi1-yi0+.3]}}
 // 場區初始化（tacInit 內）：燃料量、露天開口、風向、化學品與洩漏
 function tacYardInit(inc,B,T){
- B.out=1;B.wind=tacWind();
+ B.out=1;B.wind=tacWind();if(T.wild){B.wild=1;if(B.wind.v<.35){B.wind.v=.45;B.wind.ms=3;B.wind.nm=B.wind.nm.replace(/\d+ m/,'3 m')}}
  for(const x of B.cells){const n=B.L.N[x.c];
   if(n.ty==='hall'){x.fu=0;x.v=1;continue}
   x.fu=TAC_YFU[n.kind]||1;if(!n.walled)x.v=1;
-  if(n.kind==='ewaste')x.li=1;if(n.kind==='plastic'||n.kind==='paper')x.deep=1}
+  if(n.kind==='ewaste')x.li=1;if(n.kind==='plastic'||n.kind==='paper')x.deep=1;
+  // 草地：燃料少、燒得快，不需搜索
+  if(T.wild){if(n.kind==='grass'||n.kind==='reed'||n.kind==='shrub')x.gr=1;x.srch=1;x.sl=2}}
+ if(T.wild)return;
  const t=tacTxt(inc);
  if(T.yard==='waste'){
   // 化學桶區：約一半機率有廢液外洩；鋼瓶區有瓦斯鋼瓶
@@ -71,7 +84,7 @@ function tacYardStep(inc,B,dt){
  // 油料外洩：油池擴散到相鄰車道，可被引燃
  if(B.leak&&B.leak.on&&B.chem&&B.chem.fuel)for(const cc of B.L.N[B.leak.c].nb){const y=tacCel(B,0,cc);if(B.L.N[cc].ty==='hall'&&y.fu<.4){y.fu=.4;y.fuel=1;y.pool=1}}}
 // 場區空間名稱：塑膠堆 A、加油島 2、場內車道
-function tacYardNm(B,c){const n=B.L.N[c];if(n.ty==='hall')return n.pool?'車道（油池）':'場內車道';
+function tacYardNm(B,c){const n=B.L.N[c];if(n.ty==='hall')return n.pool?'車道（油池）':n.levee?'堤頂道路':'場內車道';
  const same=B.L.N.filter(m=>m.ty==='room'&&m.kind===n.kind);
  return TAC_RK[n.kind].n+(same.length>1?' '+(n.kind==='island'?same.indexOf(n)+1:String.fromCharCode(65+same.indexOf(n))):'')}
 // 繪製：場區地面與圍籬
@@ -105,6 +118,13 @@ function tacYardCell(g,G,B,n,x,r,T){
   for(let i=0;i<2;i++){g.fillStyle=dark?'#1e1c19':'#c8332c';g.fillRect(r[0]+r[2]*.3,r[1]+r[3]*(.2+i*.4),r[2]*.4,r[3]*.18)}}
  else if(k==='tank'){for(let i=0;i<3;i++){g.strokeStyle=dark?'#1e1c19':'#9a958a';g.lineWidth=2;g.beginPath();g.arc(r[0]+r[2]*(.25+i*.25),r[1]+r[3]*.5,t*.08,0,TAU);g.stroke()}
   g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText('地下油槽注油口',r[0]+r[2]/2,r[1]+r[3]-4)}
+ else if(x.brk){g.fillStyle='#4a3a2a';g.fillRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);g.strokeStyle='rgba(160,130,90,.5)';g.lineWidth=1;for(let i=1;i<6;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/6,r[1]+3);g.lineTo(r[0]+r[2]*i/6,r[1]+r[3]-3);g.stroke()}
+  g.fillStyle='#e9c85a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('防火線',r[0]+r[2]/2,r[1]+r[3]/2)}
+ else if(k==='grass'||k==='reed'||k==='shrub'){if(burnt){g.fillStyle='#161412';g.fillRect(r[0],r[1],r[2],r[3]);for(let i=0;i<10;i++){g.fillStyle='rgba(120,115,105,.35)';g.fillRect(r[0]+r[2]*rnd(),r[1]+r[3]*rnd(),3,2)}}
+  else{g.fillStyle=k==='reed'?'#4a4a2c':k==='shrub'?'#2e4028':'#3b4a2a';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle=k==='reed'?'#9a9a5a':k==='shrub'?'#4e6a3a':'#6a7a3a';g.lineWidth=1;
+   const nn=k==='shrub'?10:28;for(let i=0;i<nn;i++){const tx=r[0]+r[2]*rnd(),ty=r[1]+r[3]*rnd();if(k==='shrub'){g.fillStyle='#3e5a32';g.beginPath();g.arc(tx,ty,t*.06,0,TAU);g.fill()}else{g.beginPath();g.moveTo(tx,ty);g.lineTo(tx-2,ty-(k==='reed'?9:5));g.moveTo(tx,ty);g.lineTo(tx+2,ty-(k==='reed'?8:4));g.stroke()}}}}
+ else if(k==='shack'){g.fillStyle=dark?'#1a1816':'#5a6268';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(200,205,210,.35)';g.lineWidth=1;for(let yy=r[1]+10;yy<r[1]+r[3]-8;yy+=5){g.beginPath();g.moveTo(r[0]+7,yy);g.lineTo(r[0]+r[2]-7,yy);g.stroke()}}
+ else if(k==='cars'){for(let i=0;i<3;i++){g.fillStyle=dark?'#1e1c19':['#6a7a8a','#8a6a5a','#5a5a5a'][i];scRR(g,r[0]+r[2]*(.1+i*.3),r[1]+r[3]*.25,r[2]*.22,r[3]*.5,3);g.fill()}}
  else if(k==='wash'){g.strokeStyle='rgba(125,179,232,.3)';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/5,r[1]+4);g.lineTo(r[0]+r[2]*i/5,r[1]+r[3]-4);g.stroke()}}
  g.strokeStyle='rgba(190,185,170,.18)';g.lineWidth=1;g.strokeRect(r[0]+1,r[1]+1,r[2]-2,r[3]-2)}
 // 繪製：遮雨棚、化學品危害區、風向
@@ -136,3 +156,44 @@ function tacHazDraw(g,G,B,vf){
  if(B.leak&&B.leak.on&&B.leak.f===vf){const r=G.r(B.leak.c),pl=.5+.5*Math.sin(S.t*6);
   g.strokeStyle='rgba(160,110,220,'+(.5+.5*pl).toFixed(2)+')';g.lineWidth=2;g.beginPath();g.arc(r[0]+r[2]/2,r[1]+r[3]*.7,8+pl*6,0,TAU);g.stroke();
   g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.fuel?'油料外洩':'洩漏源',r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
+// 河堤：臨河那側改為水域（不能停車、沒有入口）
+function tacYardPost(inc,B,T){
+ if(!T.river)return;
+ const rv=B.L.N.filter(n=>n.riv);if(!rv.length)return;
+ const top=rv.reduce((a,n)=>a+n.gy+n.gh/2,0)/rv.length<B.L.GH/2,rs=top?'n':'s';
+ B.sd[rs]={road:0,big:false,nm:'水域'};B.riv=rs;
+ B.ents=B.ents.filter(e=>e.side!==rs);
+ if(B.arr===rs){B.arr=B.ents.length?B.ents[0].side:tacOpp(rs,'n')?'n':'s'}
+ if(B.hyd&&B.hyd.side===rs)B.hyd.side=B.arr}
+// 野火小組：撲打（打火拍、背負式水袋）、開設防火線
+function tacWildCan(B,q,k,c){
+ if(k!=='beat'&&k!=='brk')return'';
+ if(!B.wild)return'只有野火現場使用';
+ if(q.ty==='ladder'||q.ty==='robot')return'此組無法執行';
+ const n=B.L.N[c];if(!n||n.ty!=='room'||n.walled)return'請點選草地';
+ if(k==='brk'&&tacCel(B,0,c).h>.05)return'已在燃燒，無法開設防火線';
+ return''}
+function tacWildTask(inc,B,q,k,cl,dt,cmd){
+ if(k==='beat'){
+  if(cl.h<.02){const nx=tacNear(B,0,q.c,x=>x.gr&&x.h>.02&&x.h<.6&&!B.sq.some(y=>y!==q&&y.task==='beat'&&y.tc===x.c));
+   if(nx!==null){q.tc=nx;return}q.task='idle';radio(inc,q.cs,'附近火線已撲滅。');return}
+  if(cl.h>.6){q.hp-=dt*.02;if(!q.btW){q.btW=1;radio(inc,q.cs,tacNm(B,0,q.c)+'火勢太猛，無法撲打，後撤！')}q.task='idle';return}
+  q.btW=0;cl.h=Math.max(0,cl.h-dt*.04*(q.n/3)*cmd);if(cl.h<.02){cl.h=0;cl.dw=1}return}
+ if(k==='brk'){
+  if(cl.h>.1){q.task='idle';radio(inc,q.cs,'火已燒到'+tacNm(B,0,q.c)+'，停止開設防火線撤離。');return}
+  q.wk+=dt;if(q.wk>=(q.ty==='resc'?15:25)){q.wk=0;cl.fu=0;cl.brk=1;q.task='idle';radio(inc,q.cs,tacNm(B,0,q.c)+'防火線開設完成。');tacEvt(inc,B,'milestone','開設防火線：'+tacNm(B,0,q.c))}}}
+// 野火 AI：撲打低矮火勢、在火頭下風處開設防火線、鐵皮屋周界防護
+function tacWildAI(inc,B,free,take,spare){
+ const fr=B.cells.filter(x=>x.gr&&x.h>.05);
+ // 沒有水線可用的幫浦組也會拿打火拍撲打
+ for(const q of free.slice()){if((q.ty==='pump'&&(spare>0||q.line))||q.ty==='ladder'||q.ty==='robot'||q.epa)continue;
+  // 防火線開在火頭下風「隔一區」：太近會來不及完成
+  const hot=new Set(fr.map(x=>x.c)),near=new Set();for(const x of fr)for(const o of B.L.N[x.c].nb)if(tacWF(B,x.c,o)>1.2)near.add(o);
+  const ah=fr.length>=2?B.cells.find(y=>y.gr&&y.fu>0&&y.h<.02&&!y.brk&&!hot.has(y.c)&&!near.has(y.c)&&!B.L.N[y.c].nb.some(o=>hot.has(o))&&
+   B.L.N[y.c].nb.some(o=>near.has(o)&&tacWF(B,o,y.c)>1.1)&&!B.sq.some(z=>z.task==='brk'&&z.tc===y.c)):null;
+  if(ah&&tacOrder(inc,q,'brk',0,ah.c,1)){take(q);continue}
+  const sm=fr.filter(x=>x.h<.5&&!B.sq.some(y=>y!==q&&y.task==='beat'&&y.tc===x.c)).sort((a,b)=>a.h-b.h)[0];
+  if(sm&&tacOrder(inc,q,'beat',0,sm.c,1)){take(q);continue}}
+ const sh=B.L.N.find(n=>n.kind==='shack');
+ if(sh&&spare>0&&!(B.shT>S.t)&&!B.sq.some(q=>q.task==='guard'&&q.tc===sh.c)&&tacCel(B,0,sh.c).h<.3&&sh.nb.concat(sh.wl).some(o=>tacCel(B,0,o).h>.2)){
+  const p=free.find(q=>q.ty==='pump'&&!q.line);if(p&&tacOrder(inc,p,'guard',0,sh.c,1)){take(p);B.shT=S.t+30;radio(inc,p.cs,'鐵皮屋周界防護，阻止草火延燒建物。')}}}

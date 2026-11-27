@@ -12,6 +12,7 @@ const TAC_GRP=[
  ['排煙',[['vent','破窗排煙','V','打破窗戶建立排煙開口（缺氧火場突然開口可能爆燃）'],['hydro','水霧排煙','W','開窗後以水霧把煙帶出窗外（需水線）'],
   ['ppv','正壓排煙','P','在入口架送風機，沿送風路徑把煙推向開口'],['npv','負壓排煙','N','在窗口架排風機把煙抽出，不會灌空氣助長火勢'],
   ['vvent','垂直排煙','J','在頂樓房間正上方屋頂開孔，排出熱煙、避免閃燃'],['roof','屋頂排煙','O','開啟頂樓樓梯間的排煙口']]],
+ ['野火',[['beat','撲打','','以打火拍、背負式水袋撲打低矮火線（火勢猛烈時無法靠近）'],['brk','防火線','','在還沒燒到的草地清除可燃物，開設防火線阻斷延燒']]],
  ['化災',[['ident','化物辨識','I','化災組或化災應變隊偵檢，辨識洩漏的化學品並劃設危害區'],['plug','止漏','Z','到洩漏源止漏（化災應變隊最快）；加油站為關閉緊急遮斷閥'],
   ['ppeF','消防衣','','換回消防衣帽鞋（耐火，不防化學品）'],['ppeC','C級','','濾毒罐與防濺衣：每人都有、不耗氣，但不耐火、不能進濃煙缺氧或高濃度區'],
   ['ppeB','B級','','空氣呼吸器＋防濺衣：每輛化災車 2 套'],['ppeA','A級','','氣密全身防護：每輛化災車 1 套']]],
@@ -21,7 +22,7 @@ const TAC_GRP=[
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令
-const TAC_NEEDT={ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
@@ -354,7 +355,7 @@ function drawTac(){
      g.fillStyle='#7a4a9a';g.beginPath();g.ellipse(vx,vy,t*.07,t*.03,0,0,TAU);g.fill();
      g.fillStyle='#d9bfae';g.beginPath();g.arc(vx+t*.08,vy,t*.025,0,TAU);g.fill()}
     if(x.vic&&(T*2)%1<.6){g.fillStyle='#ff5a4a';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='bottom';g.fillText('受困 '+x.vic,r[0]+r[2]*.18,r[1]+r[3]*.64)}
-    if(!x.vic){g.fillStyle=x.sl>=2?'rgba(93,202,165,.75)':'rgba(233,161,59,.75)';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText(x.sl>=2?'次搜✓':'初搜',r[0]+4,r[1]+4)}
+    if(!x.vic&&!B.wild){g.fillStyle=x.sl>=2?'rgba(93,202,165,.75)':'rgba(233,161,59,.75)';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText(x.sl>=2?'次搜✓':'初搜',r[0]+4,r[1]+4)}
     if(x.sl===1&&x.s2>0&&x.s2<1){g.fillStyle='rgba(93,202,165,.85)';g.fillRect(r[0]+4,r[1]+r[3]-6,(r[2]-8)*x.s2,3)}}
    else{
     if(x.srch>0){g.fillStyle='rgba(125,179,232,.85)';g.fillRect(r[0]+4,r[1]+r[3]-6,(r[2]-8)*x.srch,3)}
@@ -815,7 +816,7 @@ function tacBotHTML(inc){
    dis=!!why&&!/高度|道路|窗|地下|樓梯|搜索|頂樓|房間/.test(why)}
   return'<button data-tord="'+o[0]+'" title="'+esc(o[3])+'"'+(TAC.ord===o[0]?' class="on"':'')+(dis?' disabled':'')+'>'+o[1]+' <span class="sub">'+o[2]+'</span></button>'};
  h+='<div class="tords"><span class="trow">需指定目標</span>';
- for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
+ for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
  h+='</div><div class="tords"><span class="trow">立即執行</span>';
  for(const gp of TAC_GRP)for(const o of gp[1])if(!TAC_NEEDT[o[0]]&&(gp[0]!=='化災'||hzOn))h+=btn(o);
  h+='<button data-tord="evac" style="border-color:var(--red);margin-left:auto">全員撤出</button></div>';

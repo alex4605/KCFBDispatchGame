@@ -53,6 +53,8 @@ function tacHazStep(inc,B,q,dt){
   if(q.ppe==='F'&&q.n0){q.n=q.n0;q.n0=0}
   radio(inc,q.cs,'換裝完成（'+TAC_PPE[q.ppe].n+'）。')}return true}
  if(q.task==='decon'){q.wk+=dt;if(q.wk>=25){q.wk=0;q.cont=0;q.task='idle';radio(inc,q.cs,'除污完成，人員可再派遣。')}return true}
+ // 野火：露天作業不背空氣呼吸器，但濃煙中會受傷
+ if(B.wild&&tacIn(q)){q.air=1;const x=tacCel(B,q.f,q.c);if(x.s>.55){q.hp-=dt*.008;if(!q.smW){q.smW=1;radio(inc,q.cs,'濃煙中作業，沒有空氣呼吸器，人員嗆傷，往上風處移動！')}}else q.smW=0}
  const lv=q.ppe||'F',P=TAC_PPE[lv];
  if(!tacIn(q)){
   // 受污染的小組：除污站開設後自動前往除污
