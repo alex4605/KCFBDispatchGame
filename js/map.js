@@ -82,6 +82,7 @@ function draw(){
   if(c>=13){ctx.fillStyle='#eceae3';ctx.font='500 '+(c*.3)+'px '+FONT;ctx.fillText('公',x,y)}
   if(sel===d.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
    ctx.beginPath();ctx.arc(x,y,c*.66,0,TAU);ctx.stroke();ctx.setLineDash([])}}
+ wfDrawMap(ctx,c);
  for(const inc of S.inc){
   const d=KIND[inc.k];
   if(inc.rev&&d.w&&inc.hp&&inc.hy&&inc.hooked&&!inc.tender){

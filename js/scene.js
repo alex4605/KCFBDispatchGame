@@ -16,6 +16,7 @@ function drawScene(){
  if(!inc){if(wrap.style.display!=='none')wrap.style.display='none';applySwap();return}
  if(wrap.style.display==='none'){wrap.style.display='block';sizeScene()}
  applySwap();
+ if(inc.wf){wfScene(inc,sctx);return}
  const g=sctx,d=KIND[inc.k],crew=onScene(inc);
  const dayT=(S.t%200)/200;
  const nf=Math.max(0,Math.min(1,(dayT-.55)/.15)-Math.min(1,Math.max(0,(dayT-.9)/.08)));

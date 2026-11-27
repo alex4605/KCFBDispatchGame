@@ -26,6 +26,7 @@ function detailHTML(){
    inc.z==='water'?'水岸邊':'市區道路')+' · '+(inc.bigOK?'大型車可進場':'僅小型車可進場')+'</div>';
  if(tacHas(inc))h+='<div class="row" style="padding:6px 0 2px"><button data-tac="1" class="tacbtn"'+(tacOK(inc)?'':' disabled')+'>⚔ 進入戰術指揮</button>'+
   '<span class="sub">'+(inc.tac?(TAC.open?'':'現場由 AI 指揮官依戰術模型處置'):tacOK(inc)?'親自指揮各小組；期間由戰略 AI 代理派遣':'首車到場回報後可進入')+'</span></div>';
+ if(inc.wf)h+=wfPanel(inc);
  h+=logHTML(inc);
  if(inc.rev)h+=detailRevealed(inc,d,fw);
  // 外部支援與線上指導

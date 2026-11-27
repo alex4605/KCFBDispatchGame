@@ -17,6 +17,8 @@ function stepIncident(i,dt){
   stepAgencies(inc,Kd,dt,first);
   // 已進入戰術指揮的建物火災：進度由 tactics.js 的樓層平面模型決定
   if(inc.tac)tacIncident(inc,dt,first,flow);
+  // 山林火警：到場後由山火作戰圖（wildfire.js）決定進度
+  else if(inc.k==='forest'&&inc.rev)wfIncident(inc,dt,first);
   else{
   const waitPol=Kd.pol&&inc.pol<2&&inc.ph>=1,waitPow=Kd.pow&&inc.pow<2&&inc.ph>=1;
   const tacHold=Kd.tac&&inc.clr>0&&inc.ph>=(Kd.clrPh!==undefined?Kd.clrPh:3);
