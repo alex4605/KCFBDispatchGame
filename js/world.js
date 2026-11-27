@@ -281,6 +281,8 @@ function reset(){
   spawn:10,dspawn:90,nst:12,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&(TR[k]===7?Math.random()<.14:!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05)))S.hyd.push([x,y])}
+ // 消防訓練中心：火災模擬屋前的道路固定有一支消防栓
+ if(SCHOOL&&!S.hyd.some(h=>h[0]===SCHOOL.x[0]&&h[1]===SCHOOL.x[1]))S.hyd.push(SCHOOL.x.slice());
  const roster=[
   [0,'11','16','71','71','99'],
   [1,'11','16','71','99'],

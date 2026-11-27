@@ -68,6 +68,8 @@ function trainStart(lv){
  const inc=makeInc('mfire',SCHOOL.burn,SCHOOL.x,'city',true,{ax:SCHOOL.x[0],ay:SCHOOL.x[1]});
  inc.train=lv;inc.nm='消防學校訓練（'+L.n.split('：')[0]+'）';inc.addr='楠梓消防學校訓練場';inc.pay=0;inc.pen=0;inc.left=inc.max=99999;
  inc.pm.trap=L.trap;inc.pm.special=false;inc.calls=1;
+ // 教學用的火勢較小：燃燒面積與火警分級壓低
+ inc.pm.area=Math.min(inc.pm.area||40,40+lv*15);inc.pm.lvl=1;
  inc.log=[{w:'台',s:'消防學校'+L.n+'：'+L.brief,t:0},{w:'台',s:'本關由訓練假想單位「高雄分隊」（新進人員組成的菜鳥救災團隊）出動，車輛為訓練中心的除役消防車。',t:0}];
  TRAIN.inc=inc.id;TRAIN.lv=lv;
  // 訓練假想單位：高雄11、高雄12…（新進人員；車輛為除役消防車），訓練結束即解散

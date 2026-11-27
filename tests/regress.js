@@ -56,9 +56,11 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
   ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
  if(which==='all'||which==='school'){const {p,errs}=await page(b);
-  const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);let t=0;for(;t<400&&!TAC.open;t++){step(.05);trainStep()}
-   const inc=S.inc.find(i=>i.id===TRAIN.inc),B=inc&&inc.tac;if(!B)return{lock,noTac:1};
-   for(;t<30000&&TRAIN.inc;t++){step(.05);trainStep();if(t%40===0)for(const q of B.sq){if(q.ty!=='pump'||!tacReady(q)||q.task==='attack')continue;const h=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>b.h-a.h)[0];if(h)tacOrder(inc,q,'attack',h.f,h.c,1)}}
-   return{lock,pass1:TRAIN.pass[0],extra:onScene(inc).length}});
-  ok('消防學校第一關（未通過前鎖定戰術指揮）',r.lock&&r.pass1&&!errs.length,r);await p.close()}
+  // 確定性測試：訓練隊出動並自動進入戰術畫面後，直接撲滅火勢，驗證目標判定、通過、解散與解鎖流程
+  const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);
+   const inc=S.inc.find(i=>i.id===TRAIN.inc),crew=onScene(inc).map(u=>u.cs);let t=0;for(;t<400&&!TAC.open;t++){step(.05);trainStep()}
+   const B=inc.tac;if(!B)return{lock,crew,noTac:1};
+   for(let i=0;i<40;i++){step(.05);trainStep()}for(const x of B.cells){x.h=0;x.emb=0}for(let i=0;i<40&&TRAIN.inc;i++){step(.05);trainStep()}
+   return{lock,crew,open:TAC.open,pass1:TRAIN.pass[0],trainee:S.units.filter(u=>u.trainee&&!u.gone).length,msg}});
+  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^高雄/.test(c))&&!errs.length,r);await p.close()}
  await b.close();console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)})();
