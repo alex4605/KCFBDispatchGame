@@ -8,7 +8,7 @@ const RTOWN=[{n:'旗山',r:5},{n:'美濃',r:4},{n:'大樹',r:4},{n:'林園',r:5}
 // 高屏溪：靠近地圖東緣（以東為屏東，只留一條邊），北段往西偏入山區
 const riverX=y=>OX+178-Math.max(0,OY+60-y)*.35+3*Math.sin((y-OY)/9)+1.2*Math.sin((y-OY)/3.7);
 const mtnEdge=x=>OY+36+5*Math.sin((x-OX)/6.5)+(x-OX>=133?Math.min(x-OX-133,24)*2.6:0);   // 這條線以北為山區；越往東山區越往南延伸（到茂林一帶為止，以南為溪岸平原）
-const seaEdge=x=>OY+141+2*Math.sin((x-OX)/6)+Math.sin((x-OX)/2.3);
+const seaEdge=x=>OY+141+2.4*Math.sin((x-OX)/11)+1*Math.sin((x-OX)/5.5);   // 南側海岸線（平滑起伏）
 function ruralTerrain(){
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){
   if(inCity(x,y))continue;
@@ -120,6 +120,12 @@ function ruralRoads(){
  rroad(cityEntry(edgeX(92),CITY-1),T['林園'],2,.12,RGK.CNTY,'縣188'); // 大寮—林園
  rroad(T['林園'],T['大樹'],2,.18,RGK.CNTY,'縣186');                   // 沿高屏溪的縣道
  rroad(cityEntry(CITY-1,CITY-1),[100,112],2,.2,RGK.TWN);
+ // 南高雄（小港、大寮、林園）稍微加密：市區南緣往海邊的鄉道與沿海道路
+ rroad(cityEntry(edgeX(40),CITY-1),[44,133],2,.2,RGK.TWN,'高25');
+ rroad(cityEntry(edgeX(72),CITY-1),[70,134],2,.2,RGK.TWN,'高26');
+ rroad([44,133],[70,134],2,.15,RGK.TWN,'沿海路');
+ rroad([70,134],T['林園'],2,.12,RGK.TWN);
+ rroad(cityEntry(edgeX(100),CITY-1),[108,126],2,.2,RGK.TWN);
  rroad(T['旗山'],[156,104],2,.2,RGK.TWN,'高30');                      // 旗山往東南到溪岸平原
  rroad(T['大樹'],[166,120],2,.2,RGK.TWN,'高37');                      // 大樹往東南的鄉道
  rroad(T['美濃'],[150,72],2,.2,RGK.TWN);
