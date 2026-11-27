@@ -9,6 +9,7 @@ function detailHTML(){
  // 提示列固定輸出（無訊息時隱藏），避免它出現或消失時把後面的節點整排往後擠、打斷輸入中的欄位
  const mm='<div class="note"'+(msg?'':' hidden')+'>'+esc(msg)+'</div>';
  if(selU){const u=S.units.find(x=>x.id===selU);if(u)return mm+unitHTML(u)}
+ const mr=(S.mr||[]).find(x=>x.id===sel);if(mr)return mrHTML(mr,mm);
  const dy=S.duties.find(x=>x.id===sel);
  if(dy)return dutyDetailHTML(dy,mm);
  const inc=S.inc.find(x=>x.id===sel);
@@ -24,8 +25,9 @@ function detailHTML(){
  h+='<div class="sub" style="margin-top:4px">動線：'+
   (inc.z==='hiway'?'國道，須由交流道進入':inc.z==='forest'?'山區產業道路，大型車禁入':
    inc.z==='water'?'水岸邊':'市區道路')+' · '+(inc.bigOK?'大型車可進場':'僅小型車可進場')+'</div>';
- if(TACK[inc.k])h+='<div class="row" style="padding:6px 0 2px"><button data-tac="1" class="tacbtn"'+(tacOK(inc)?'':' disabled')+'>⚔ 進入戰術指揮</button>'+
+ if(tacHas(inc))h+='<div class="row" style="padding:6px 0 2px"><button data-tac="1" class="tacbtn"'+(tacOK(inc)?'':' disabled')+'>'+(inc.k==='forest'?'⚔ 建物防護戰術':'⚔ 進入戰術指揮')+'</button>'+
   '<span class="sub">'+(inc.tac?(TAC.open?'':'現場由 AI 指揮官依戰術模型處置'):tacOK(inc)?'親自指揮各小組；期間由戰略 AI 代理派遣':'首車到場回報後可進入')+'</span></div>';
+ if(inc.wf)h+=wfPanel(inc);
  h+=logHTML(inc);
  if(inc.rev)h+=detailRevealed(inc,d,fw);
  // 外部支援與線上指導

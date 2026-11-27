@@ -16,6 +16,7 @@ function drawScene(){
  if(!inc){if(wrap.style.display!=='none')wrap.style.display='none';applySwap();return}
  if(wrap.style.display==='none'){wrap.style.display='block';sizeScene()}
  applySwap();
+ if(inc.wf){wfScene(inc,sctx);return}
  const g=sctx,d=KIND[inc.k],crew=onScene(inc);
  const dayT=(S.t%200)/200;
  const nf=Math.max(0,Math.min(1,(dayT-.55)/.15)-Math.min(1,Math.max(0,(dayT-.9)/.08)));
@@ -125,6 +126,7 @@ function drawScene(){
  scPolice(inc,g,d,c,X,Y,cx,cy);
  // ===== 台電工程車與人員（斷電確認後到場） =====
  scPowerTruck(inc,g,c,X,Y,cx,cy);
+ scEpaTruck(inc,g,c,X,Y,cx,cy);
  // 照明燈塔
  scLightTower(g,crew,nf,c,X,Y,cx,cy);
  // 視野外車輛的邊緣指標

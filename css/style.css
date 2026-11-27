@@ -186,3 +186,20 @@ main.sw.mapc #mapbar button{padding:2px 8px}
 @keyframes mdn{50%{background:#ff9d92}}
 .tords .trow{font-size:11px;color:var(--fg2);align-self:center;margin-right:4px;min-width:64px}
 @media (max-width:1100px){.tboard{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.thint{font-size:12px;color:var(--fg);background:rgba(125,179,232,.08);border-left:3px solid var(--blu);padding:4px 7px;margin-bottom:3px;border-radius:3px}
+.tspd{display:flex;gap:2px;align-items:center;font-size:11px;color:var(--fg3)}.tspd button{padding:3px 6px}
+/* 結案報告 */
+#tacRep{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
+#tacRep[hidden]{display:none}
+#tacRep .rbox{width:min(720px,94vw);max-height:88vh;overflow:auto;background:var(--pnl);border:1px solid var(--line2);border-radius:12px;padding:16px}
+.rgrade{font-size:42px;font-weight:700;color:var(--amb);display:flex;align-items:baseline;gap:10px}.rgrade span{font-size:14px;color:var(--fg2);font-weight:400}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.rrow{display:grid;grid-template-columns:70px 1fr 34px;gap:6px;align-items:center;font-size:12px;padding:3px 0}.rrow .tbar{width:100%}
+.rev div{display:grid;grid-template-columns:52px 1fr;gap:6px;font-size:12px;padding:2px 0;border-bottom:1px solid var(--line)}
+@media (pointer:coarse){#tac button{min-height:34px;padding:6px 10px}.mtag{font-size:12px}}
+@media (max-width:640px){.rgrid{grid-template-columns:1fr}}
+/* 化災：化災組、化災應變隊卡片顏色與防護等級標籤 */
+.mtag.ty-hazmat .mh{background:#2f8f6a}.mtag.ty-epa .mh{background:#7f77dd}
+.mtag .ppe{font-style:normal;font-size:10px;padding:0 4px;margin-right:4px;border-radius:3px;background:#3d5a80;color:#fff}
+.mtag .ppe.cont{background:#a8362f}
+.mtag.ty-med .mh{background:#5dcaa5;color:#111}

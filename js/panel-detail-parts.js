@@ -127,6 +127,11 @@ function dExternal(inc){
  h+=inc.pow===0?'<button data-ext="pow">通報台電斷電</button>':
   inc.pow===1?'<span class="tag" style="background:var(--amb)">台電處理中 '+Math.ceil(inc.powT)+' 秒</span>':
   '<span class="tag" style="background:var(--grn)">已確認斷電</span>';
+ h+=maHTML(inc);
+ if(EPA_K(inc.k))h+=!inc.epa?'<button data-ext="epa">請求環保署化災應變隊</button>':
+  inc.epa===1?'<span class="tag" style="background:#7f77dd">化災隊集結中 '+fmt(inc.epaT)+'</span>':
+  inc.epa===2?'<span class="tag" style="background:#7f77dd">化災隊前往中 '+Math.ceil(inc.epaT)+' 秒</span>':'<span class="tag" style="background:var(--grn)">化災隊已到場</span>';
+ if(EPA_K(inc.k)&&!inc.epa)h+='<span class="sub">化災應變隊集結約 5～8 分鐘，精通化物辨識、止漏與除污</span>';
  if(Kx.defl&&!inc.defl)h+='<button data-defl="1">轉報'+Kx.defl+'</button>';
  if(Kx.police)h+='<span class="sub">本案由警方轉報，現場已有警力</span>';
  if(Kx.pol&&inc.pol<2)h+='<span class="sub">此類案件須警方到場才能繼續處置</span>';
@@ -222,7 +227,7 @@ function dIndividual(inc){
   else btn='<button data-send="'+u.id+'"'+(o.ok?' class="on"':'')+'>出動</button>';
   const cov=sg.filter(g=>match(g,u)).map(g=>g.l.replace('（ALS）',''));
   const needALS=u.code==='91'&&!o.ok&&o.near&&sg.some(g=>g.als);
-  h+='<div class="row"><span class="mono">'+u.cs+' <span class="sub">'+SPOT[u.si].n+' · '+CODE[u.code].n+
+  h+='<div class="row"><span class="mono">'+u.cs+' <span class="sub">'+stName(u)+' · '+CODE[u.code].n+
    (cov.length?' · 可補 '+cov[0]+(cov.length>1?' 等 '+cov.length+' 項':''):
     needALS?' · <span style="color:var(--amb)">此案需 ALS，請以 ALS 編組出動</span>':'')+' · '+
    (unreach?'—':o.e+' 秒')+'</span></span>'+btn+'</div>'});

@@ -10,7 +10,9 @@ function spawnDuty(){
  S.duties.push({id:uid++,n:t.n,code:t.c,dur:t.d,pay:t.p,x:c[0],y:c[1],ax:a[0],ay:a[1],
   left:75,unit:null,run:0,addr:pick(RDN)+'路'})}
 function match(g,u){
- if(!g.items||!g.items.length)return g.c.indexOf(u.code)>=0&&(!g.als||u.tp);
+ // 特搜醫療組只支援 USAR 編組，不擔任一般救護
+ if(u.code==='99'&&g.k!=='usar')return false;
+ if(!g.items||!g.items.length)return(g.c.indexOf(u.code)>=0||(u.usar&&g.c.indexOf('搜')>=0))&&(!g.als||u.tp);
  const set=eqSet(u);
  for(const i of g.items)if(!set.has(i))return false;
  return true}
@@ -180,7 +182,7 @@ function send(inc,u,mode){
 function nearest(inc,codes,als){
  let best=null,bd=INF;
  for(const u of S.units){
-  if(u.st!=='idle'||codes.indexOf(u.code)<0)continue;
+  if(u.st!=='idle'||(codes.indexOf(u.code)<0&&!(u.usar&&codes.indexOf('搜')>=0)))continue;
   if(als&&u.code==='91'&&tpFree(u.si)<=0)continue;
   const e=etaTo(u,inc);if(e===null||e>=bd)continue;bd=e;best=u}
  return best}
@@ -237,6 +239,8 @@ function toHosp(u){
  return{h:r.h,p:r.h?chase(baseF(r.h,0),u):null}}
 function home(u){
  unpark(u);u.lead=false;
+ // 跨縣市支援車隊：任務結束直接返回原縣市（離開轄區）
+ if(u.ma){u.gone=1;u.inc=null;u.st='idle';u.path=[];return}
  const p=chase(baseF(SPOT[u.si],modeOf(u.code)),u);
  u.path=p||[];u.st='back';u.turn=0}
 function release(inc,ok){
@@ -297,7 +301,7 @@ function unpark(u){u.slot=null;u.arm=null;u.parked=0;u.ox=0;u.oy=0}
 function arrive(u){
  u.st='work';u.at=S.t;
  if(u.lead){const ic=S.inc.find(i=>i.id===u.inc);
-  if(ic)radio(ic,u.cs,SPOT[u.si].n+'分隊帶隊官隨車到場，率隊進入內圈作業。')}
+  if(ic)radio(ic,u.cs,stName(u).replace(/分隊.*$/,'')+'分隊帶隊官隨車到場，率隊進入內圈作業。')}
  const inc=S.inc.find(i=>i.id===u.inc);if(!inc)return;
  if(!inc.rev)reveal(inc,u);else radio(inc,u.cs,'到達現場，加入編組。');
  if(u.code==='91'){

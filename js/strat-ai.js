@@ -14,9 +14,13 @@ function stratAI(dt){
   if(d.pow&&inc.pow===0){inc.pow=1;inc.powT=30+Math.random()*30;
    radio(inc,'受理','（AI 代理）已通報台電，預估 '+Math.ceil(inc.powT)+' 秒完成斷電。')}
   if(d.pol&&inc.pol===0)callPol(inc);
+  // 化災案件：通報環保署化災應變隊（加油站除外，多半不需要）
+  if(EPA_K(inc.k)&&inc.k!=='gasstn'&&!inc.epa&&inc.rev)epaCall(inc,1);
   // 派遣：火警先派分級編組，其餘依需求補足（已派出未到的車也算在內，不會重複派）
   if(!onScene(inc).length&&d.cls==='火警'&&!d.wild&&!d.road&&!(inc.al|0)){sendLv(inc,(inc.calls||1)>=4?2:1);reindex()}
   auto(inc);reindex()}
+ // 外縣市支援請求：轄區案件不多、待命車足夠時代為派遣
+ for(const r of S.mr||[])if(!r.sent&&S.inc.length<=3&&mrPick(r)){mrSend(r);msg='（AI 代理）'+msg}
  // 公務勤務：指派最近的同車種待命車
  for(const dd of S.duties){
   if(dd.unit)continue;

@@ -12,7 +12,7 @@
  <span class="brand">高雄市消防局<span>勤務指揮中心 CAD</span></span>
  <span class="chip"><i>日</i><b id="hDay">1</b><i>時</i><b id="hClock">00:00</b></span>
  <span class="chip"><i>經費</i><b id="hMoney">$0</b></span>
- <span class="chip"><i>評鑑</i><b id="hRep">100</b></span>
+ <span class="chip" title="評鑑累積制：結案與成功的戰術指揮會增加，評鑑越高加得越少；歸零即失去指揮權"><i>評鑑</i><b id="hRep">100</b></span>
  <span class="chip"><i>分數</i><b id="hScore">0</b></span>
  <span class="chip"><i>待命</i><b id="hIdle">0</b></span>
  <span class="sp"></span>
@@ -42,6 +42,7 @@
  </div>
 </main>
 </div>
+<div id="tacRep" hidden></div>
 <div id="tac" hidden>
  <div id="tacTop"></div>
  <div id="tacMid"><canvas id="tcv"></canvas><div id="tacSide"></div></div>
@@ -61,9 +62,15 @@
 <script src="js/dispatch.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/sim-incident.js"></script>
+<script src="js/epa.js"></script>
+<script src="js/wildfire.js"></script>
+<script src="js/mutual.js"></script>
 <script src="js/tactics.js"></script>
 <script src="js/tac-site.js"></script>
 <script src="js/tac-ops.js"></script>
+<script src="js/tac-cmd.js"></script>
+<script src="js/tac-haz.js"></script>
+<script src="js/tac-yard.js"></script>
 <script src="js/strat-ai.js"></script>
 <script src="js/map.js"></script>
 <script src="js/scene-kit.js"></script>

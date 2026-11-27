@@ -82,6 +82,7 @@ function draw(){
   if(c>=13){ctx.fillStyle='#eceae3';ctx.font='500 '+(c*.3)+'px '+FONT;ctx.fillText('公',x,y)}
   if(sel===d.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
    ctx.beginPath();ctx.arc(x,y,c*.66,0,TAU);ctx.stroke();ctx.setLineDash([])}}
+ wfDrawMap(ctx,c);
  for(const inc of S.inc){
   const d=KIND[inc.k];
   if(inc.rev&&d.w&&inc.hp&&inc.hy&&inc.hooked&&!inc.tender){
@@ -115,7 +116,7 @@ function draw(){
   if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
    ctx.beginPath();ctx.arc(cx,cy,rad*1.6,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  for(const u of S.units){
-  if(u.st==='idle'||u.st==='oos')continue;
+  if(u.st==='idle'||u.st==='oos'||u.st==='away')continue;
   const cx=(u.x+.5+(u.ox||0))*c,cy=(u.y+.5+(u.oy||0))*c;
   const wk=K(Math.round(u.x),Math.round(u.y)),afloat=!RD[wk]&&TR[wk]===1;
   ctx.save();ctx.translate(cx,cy);ctx.rotate(u.hd||0);
@@ -142,4 +143,5 @@ function draw(){
    const tw=ctx.measureText(lb).width+6;
    ctx.fillStyle='rgba(0,0,0,.8)';rr(cx-tw/2,cy+c*.21,tw,c*.31,3);ctx.fill();
    ctx.fillStyle='#e6e3db';ctx.fillText(lb,cx,cy+c*.37)}}
+  epaDraw(ctx,c);
  ctx.restore()}

@@ -80,6 +80,8 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
  else if(MCMAP[k]){
   const ci2=pick(MCMAP[k]),M2=MED[ci2];
   inc.pm.cc=ci2;inc.pm.als=M2.lv>=1;inc.pm.ohca=M2.lv===2}
+ // 戰術指揮會依報案內容調整建物，先選定這次的報案對話
+ if(!inc.pm.sc&&typeof TAC_VAR!=='undefined'&&TAC_VAR[k]&&d.dlg)inc.pm.sc=pick(d.dlg);
  if(d.defl)inc.pm.special=Math.random()<.4;
  if(inc.pm.special&&(k==='bee'||k==='animal')){
   inc.nm=k==='bee'?'蜂螫傷救護':'動物咬傷救護';

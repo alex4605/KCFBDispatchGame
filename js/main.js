@@ -34,7 +34,7 @@ function ui(){
  const hs=S.day+'|'+Math.floor(S.t)+'|'+S.money+'|'+Math.round(S.rep)+'|'+S.score;
  if(hs!==hud){hud=hs;
   $('hDay').textContent=S.day;$('hClock').textContent=fmt(S.t);
-  $('hMoney').textContent='$'+S.money;$('hRep').textContent=Math.round(S.rep);
+  $('hMoney').textContent='$'+S.money;$('hRep').textContent=Math.round(S.rep)+(S.repLast&&S.t-S.repLast.t<4?' +'+S.repLast.g.toFixed(1):'');
   $('hScore').textContent=S.score;
   let fr=0;for(let i=0;i<S.nst;i++)fr+=S.ix.idle[i];
   $('hIdle').textContent=fr+'/'+S.units.length}
@@ -80,10 +80,13 @@ document.addEventListener('keydown',e=>{
  e.preventDefault();const i=ids.indexOf(sel);
  selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
 document.body.addEventListener('click',e=>{
- const b=e.target.closest('[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
+ const b=e.target.closest('[data-mrsend],[data-mrno],[data-ma],[data-wfpri],[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
  if(!b)return;
  msg='';
  const D=b.dataset;
+ if(D.mrsend){const r=(S.mr||[]).find(x=>x.id===+D.mrsend);if(r)mrSend(r);dirty();return}
+ if(D.mrno){S.mr=(S.mr||[]).filter(x=>x.id!==+D.mrno);sel=null;msg='已婉拒支援請求';dirty();return}
+ {const wi=S.inc.find(x=>x.id===sel);if(wi&&wfClick(wi,D)){dirty();return}}
  if(b.id==='rs'){reset();bgScale=0;dirty();return}
  if(D.shopclose){shopOn=false;$('shop').classList.remove('open');sh='';return}
  if(D.hire){if(S.money>=2500){S.money-=2500;S.tp[shopSt]++}dirty();return}
@@ -142,8 +145,10 @@ document.body.addEventListener('click',e=>{
    inc.log.push({w:'台',s:line,t:T});
    inc.log.push({w:'民',s:'好，我照做。',t:T+2})}
   dirty();return}
+ if(D.ma){maCall(inc,D.ma);dirty();return}
  if(D.ext){
   if(D.ext==='pol')callPol(inc);
+  if(D.ext==='epa')epaCall(inc);
   if(D.ext==='pow'&&inc.pow===0){inc.pow=1;inc.powT=30+Math.random()*30;
    radio(inc,'受理','已通報台電，預估 '+Math.ceil(inc.powT)+' 秒完成斷電。')}
   dirty();return}
@@ -223,14 +228,15 @@ function size(){
  if(document.getElementById('scenewrap').style.display!=='none')sizeScene()}
 window.addEventListener('resize',()=>{size();if(TAC.open)sizeTac()});
 // 雙擊現場畫面進入戰術指揮
-scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&TACK[inc.k]){tacOpen(inc);dirty()}});
+scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)){tacOpen(inc);dirty()}});
 size();reset();size();
 let faults=0;
 let frameN=0;
 function loop(ts){
  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
  try{
-  if(!paused)step(dt);
+  // 戰術畫面開著時整體時間放慢（戰略與戰術共用同一個時鐘）
+  if(!paused)step(dt*(TAC.open?TAC.spd:1));
   if(TAC.open)drawTac();
   else{draw();if((++frameN&1)===0)drawScene()}
   uiT+=dt;if(uiT>.28){uiT=0;ui();if(TAC.open)tacUI()}

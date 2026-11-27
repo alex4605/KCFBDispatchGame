@@ -16,7 +16,9 @@ function stepIncident(i,dt){
   const flow=stepWater(inc,dt,first);
   stepAgencies(inc,Kd,dt,first);
   // 已進入戰術指揮的建物火災：進度由 tactics.js 的樓層平面模型決定
-  if(inc.tac)tacIncident(inc,dt,first,flow);
+  // 山林火警：到場後由山火作戰圖（wildfire.js）決定進度；建物防護戰術場景同時進行
+  if(inc.k==='forest'&&inc.rev){wfIncident(inc,dt,first);if(inc.tac)tacIncident(inc,dt,first,flow)}
+  else if(inc.tac)tacIncident(inc,dt,first,flow);
   else{
   const waitPol=Kd.pol&&inc.pol<2&&inc.ph>=1,waitPow=Kd.pow&&inc.pow<2&&inc.ph>=1;
   const tacHold=Kd.tac&&inc.clr>0&&inc.ph>=(Kd.clrPh!==undefined?Kd.clrPh:3);
@@ -112,6 +114,7 @@ function stepWater(inc,dt,first){
 // 外部單位：警方到場、台電斷電、高危情境淨空的倒數與通報
 function stepAgencies(inc,Kd,dt,first){
   if(inc.pol===1){inc.polT-=dt;if(inc.polT<=0){inc.pol=2;radio(inc,'110','警方已到場，現場由警方協助管制。')}}
+  epaStep(inc,dt);
   if(inc.pow===1){inc.powT-=dt;if(inc.powT<=0){inc.pow=2;radio(inc,'台電','台電回報該區已停電，確認無電壓。')}}
   if(Kd.tac&&inc.clr>0&&first){
    inc.clr-=dt;
@@ -143,7 +146,7 @@ function stepProgress(inc,dt,first,got,tot,cmd,bon,flow,wo,held,atH){
    if(inc.phs[inc.ph]==='到院交接')for(const u of onScene(inc))if(u.st==='give'||u.st==='clean'){atHosp=true;break}
    let ratio=atHosp?1:Math.pow(got/tot,1.35);
    if(!atHosp&&ratio<.3&&inc.pm.cc!==undefined&&onScene(inc).some(u=>u.code==='91'&&(u.st==='work'||u.st==='tx')))ratio=.3;
-   inc.work+=dt*ratio*cmd*bon*flow*(inc.slow||1)*(inc.dai&&inc.dai!=='none'?1.18:1);
+   inc.work+=dt*ratio*cmd*bon*flow*(inc.slow||1)*(inc.epa===3?1.25:1)*(inc.dai&&inc.dai!=='none'?1.18:1);
    let txing=false;for(const u of onScene(inc))if(u.st==='tx'){txing=true;break}
    if(txing&&!atH){
     const capW=inc.dur*(inc.phs.length-1)/inc.phs.length-0.001;
@@ -193,10 +196,10 @@ function closeIncident(inc,i){
  const Kd=KIND[inc.k];
    let bonus=0,tail='';
    if(inc.pm.ohca){
-    if(inc.dai==='cpr'){bonus+=500;S.money+=500;S.score+=80;S.rep=Math.min(100,S.rep+2)}
+    if(inc.dai==='cpr'){bonus+=500;S.money+=500;S.score+=80;repGain(2)}
     else{S.rep-=3;tail='；OHCA 未實施 DA-CPR，預後不佳（評鑑 -3）'}}
    if(Kd.hoax&&!inc.tac){const u0=onScene(inc)[0];radio(inc,u0?u0.cs:'現場','查證完畢，查無火煙與傷患，研判為'+(inc.pm.mal?'惡作劇謊報，建議轉報 110 究辦':'善意誤報')+'。')}
    if(Kd.hoax&&inc.pm.mal&&inc.pol===2){bonus+=600;S.money+=600;S.score+=60}
-   S.money+=inc.pay;S.score+=Math.round(inc.pay/10);S.solved++;S.rep=Math.min(100,S.rep+1);
+   S.money+=inc.pay;S.score+=Math.round(inc.pay/10);S.solved++;repGain(1+(KIND[inc.k].lv||0)*.5);
    msg='結案：'+(inc.nm||Kd.n)+' '+inc.addr+'（+$'+(inc.pay+bonus)+'）'+tail;
    release(inc,1);S.inc.splice(i,1);if(sel===inc.id)sel=null}
