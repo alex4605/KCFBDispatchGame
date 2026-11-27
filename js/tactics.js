@@ -48,6 +48,7 @@ const tacTxt=inc=>{const sc=inc.pm&&inc.pm.sc;return Array.isArray(sc)?sc.slice(
 function tacVar(inc){const T=Object.assign({},TACK[inc.k]),t=tacTxt(inc);
  for(const v of TAC_VAR[inc.k]||[])if(v[0].test(t))Object.assign(T,v[1]);
  if(inc.k==='forest'&&inc.wf)T.fdir=wfFireDir(inc); // 建物防護：林地朝向作戰圖上火的來向
+ if(inc.tfl)T.f=inc.tfl;                              // 地標超高層（85 大樓、50 層大樓）
  return T}
 // 此案件是否適用戰術指揮（氣爆只有建物那種報案才適用）
 const tacHas=inc=>inc.k==='forest'?!!(inc.tac||inc.wf&&wfWuiTodo(inc.wf).length):!!TACK[inc.k]&&(!TACK[inc.k].only||!!tacVar(inc).ok);
