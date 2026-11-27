@@ -75,7 +75,7 @@ function tacHints(inc,B){
  if(B.spk&&B.spk.ok&&B.sp&&!B.sp.on&&Object.keys(B.spk.fl).length)add(2,'撒水頭已動作：送水口加壓可增強撒水效果。');
  // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
  const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
- if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
+ if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間門控，把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
  const st=B.L.N.filter(n=>n.ty==='stair');
  if(st.length>1&&B.of>B.bf&&B.atkS&&B.atkS.size&&B.atkS.size<st.length){const ev=st.find(n=>!B.atkS.has(n.c));
   add(3,'水線走'+(st.findIndex(n=>B.atkS.has(n.c))+1)+'號梯（攻擊梯，防火門被水帶卡住會進煙），'+(st.indexOf(ev)+1)+'號梯維持關門作為避難梯。')}
@@ -158,7 +158,7 @@ function tacFDStep(inc,B,dt){
  B.atkS=new Set();
  for(const q of B.sq)if(q.line&&tacIn(q)&&q.f>B.bf&&q.lent){const p=tacPath(B,tacEF(B,q.lent),q.lent.c,q.f,q.c);
   for(let i=1;i<p.length;i++)if(p[i][0]!==p[i-1][0]){B.atkS.add(p[i][1]);break}}}
-// 侷限火勢關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
+// 門控關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
 function tacFDClose(B,key){const d=B.fd.get(key);if(!d)return true;if(d.t==='gone')return false;d.t='auto';B.fdO.delete(key);return true}
 // ===== 氣體偵測（五用氣體偵測器：O₂、LEL、CO、H₂S、HCN）=====
 const TAC_GAS=[['o2','O₂','%'],['lel','LEL','%'],['co','CO','ppm'],['h2s','H₂S','ppm'],['hcn','HCN','ppm']];

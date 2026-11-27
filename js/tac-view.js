@@ -5,9 +5,9 @@ let tW=800,tH=500,tTopH='',tSideH='',tBotH='';
 // 指令列：依類別分組；[代碼, 名稱, 快捷鍵, 說明]
 const TAC_GRP=[
  ['水線',[['attack','入室攻擊','A','帶水線進入火點射水'],['sky','車頂砲塔','','幫浦車車頂砲塔（朝天瞄）從車旁經窗口大流量射水（1F～3F、窗戶面向道路），快速降溫、壓制火勢，也可作為快速過渡攻擊；用水量是一般水線的兩倍（占兩條水線），壓制後自動轉入室攻擊；室內有小組時會把熱煙蒸汽壓回去'],['trans','過渡射水','E','先從 1F、2F 窗外射水降溫，再自動轉入室攻擊'],
-  ['guard','周界防護','H','守住一個空間不讓火延燒進來；點鄰棟則為鄰棟周界防護'],['confine','侷限火勢','F','到火點旁關門，減緩延燒與濃煙擴散'],
+  ['cover','周界防護','H','只針對鄰接的建築物：點選鄰棟那一側，幫浦車停在相鄰道路對鄰棟外牆射水，防止延燒過去（室外場景可點要保護的建物）'],['confine','侷限火勢','F','帶水線到火點附近的房間，對本室與相鄰房間射水降溫、濕潤，阻止火勢延燒過來（需幫浦組水線）'],
   ['overhaul','殘火處理','Q','翻搜餘燼並澆熄，避免復燃；有餘燼未處理不會結案']]],
- ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）或房門（點房間）'],['dctrl','門控進入','K','守在入口（點道路）或門邊（點空間）控制開度，阻斷進氣路徑']]],
+ ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）或房門（點房間）'],['dctrl','門控進入','K','破壞進入時同步控制門：點道路為入口（上鎖會先破壞，再守門控制開度）；點空間則到門邊把通往火點的門關上並控住，阻斷進氣路徑']]],
  ['搜救',[['search','初期搜索','S','快速掃過，濃煙中可能漏人'],['search2','次級搜索','D','徹底翻找，找出初搜遺漏的人'],['gas','氣體偵測','Y','以五用氣體偵測器量測 O₂、LEL、CO、H₂S、HCN'],['roofres','屋頂救援','U','上屋頂帶回避難民眾']]],
  ['排煙',[['vent','破窗排煙','V','打破窗戶建立排煙開口（缺氧火場突然開口可能爆燃）'],['hydro','水霧排煙','W','開窗後以水霧把煙帶出窗外（需水線）'],
   ['ppv','正壓排煙','P','在入口架送風機，沿送風路徑把煙推向開口'],['npv','負壓排煙','N','在窗口架排風機把煙抽出，不會灌空氣助長火勢'],
@@ -20,13 +20,13 @@ const TAC_GRP=[
  ['調度',[['move','移動','G','移到指定位置待命'],['rit','RIT','R','於入口待命，MAYDAY 時入室救援'],['exit','撤出','X','撤出建物'],
   ['truck','移車','T','把車移到另一側道路'],['stand','送水口加壓','C','接連結送水管送水口，各樓層出水口可用']]]];
 // 指令的 Emoji
-const TAC_EMO={attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'🚪',overhaul:'🧯',force:'🪓',dctrl:'✋',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofresc:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令
-const TAC_NEEDT={sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
@@ -943,9 +943,10 @@ function tacClick(inc,B,hit,e,x,y){
   if(side&&B.exp[side]!==undefined&&!B.sd[side].road)k=q.ty==='pump'?'cover':'';
   else if(side&&k!=='truck'&&k!=='cover'&&k!=='guard'&&k!=='force'&&k!=='dctrl')k=tacIn(q)?'exit':(q.ty==='pump'||q.ty==='ladder')&&side!==q.tside?'truck':q.ty==='vent'?'ppv':k;
   if(k==='guard'&&side)k='cover';
+  if(k==='cover'&&!side&&B.out&&f>=0)k='guard'; // 室外場景：點要保護的建物
   if(!k){if(!i)msg='點鄰棟可下令幫浦組做鄰棟周界防護';return}
   if((k==='truck'||k==='cover')&&!side){if(!i)msg=k==='truck'?'移車請點選建物外的道路':'鄰棟周界防護請點選鄰棟那一側';return}
-  if(TAC_NEEDT[k]&&k!=='truck'&&k!=='cover'&&!((k==='force'||k==='dctrl')&&side)&&f<0){if(!i)msg='請點選建物內的房間';return}
+  if(TAC_NEEDT[k]&&k!=='truck'&&k!=='cover'&&k!=='guard'&&!((k==='force'||k==='dctrl')&&side)&&f<0){if(!i)msg='請點選建物內的房間';return}
   if(tacOrder(inc,q,k,f,c,i>0,side))ok++});
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
