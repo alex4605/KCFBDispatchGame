@@ -33,6 +33,7 @@ function spawn(){
  const pickKind=()=>{for(let t2=0;t2<6;t2++){const kk=pick(pool);const r2=KIND[kk].rare;
   if(!r2||Math.random()<Math.min(1,r2*4.2))return kk}return 'ems'};
  const k=pickKind();
+ {const li=lmkSpawn(k);if(li)return li}
  return makeInc(k,c,a,z,bigOK,probe)}
 // 建立一件案件並加入進線列表（spawn 與消防學校訓練共用）；c 為災點格、a 為臨路進場格
 function makeInc(k,c,a,z,bigOK,probe){
@@ -49,7 +50,7 @@ function makeInc(k,c,a,z,bigOK,probe){
   clr:d.tac?(d.clrT?d.clrT[0]+Math.random()*(d.clrT[1]-d.clrT[0]):40+Math.random()*35):0,
   lines:0,dry:0,hook:0,hooked:0,burst:0,burstT:45};
 if(d.road){inc.x=a[0];inc.y=a[1]}
- inc.addr=z==='hiway'?hwName(c[0],c[1])+' '+(10+Math.floor(Math.random()*300))+'K':
+ inc.addr=LMK_NEXT?LMK_NEXT.n+(LMK_NEXT.sub?'（'+LMK_NEXT.sub+'）':''):z==='hiway'?hwName(c[0],c[1])+' '+(10+Math.floor(Math.random()*300))+'K':
   z==='forest'?'山區產業道路 '+(1+Math.floor(Math.random()*30))+'K':
   !inCity(c[0],c[1])?ruralAddr(c[0],c[1]):
   pick(RDN)+(Math.random()<.5?'路':'街')+(1+Math.floor(Math.random()*500))+'號';

@@ -27,6 +27,8 @@ const MA_RESC=['collapse','majorind','gasblast','slide','mrescue','aircraft','tr
 // 三級火警才能請求（有火警分級的看分級，其他火警看案類等級）；署特搜、輪值 Strike Force 另可支援重大救助
 function maLvl3(inc){const d=KIND[inc.k];if(d.cls!=='火警')return false;return(inc.pm.lvl!==undefined?inc.pm.lvl:d.lv||0)>=3}
 const maOK=(inc,key)=>!!inc.rev&&(maLvl3(inc)||((key==='nfa'||key==='sf')&&MA_RESC.includes(inc.k)));
+// 行動指揮車（MCV）在場：才能協調跨縣市支援單位
+const maMCV=inc=>onScene(inc).some(u=>u.code==='指'&&u.st==='work');
 const maAny=inc=>Object.keys(MA_DEF).some(k=>maOK(inc,k));
 const maName=k=>k==='sf'?'輪值 USAR（'+maRot()[0]+'）':MA_DEF[k].n;
 const maGrp=k=>k==='sf'?'輪值特搜':MA_DEF[k].grp||MA_DEF[k].n;
@@ -38,6 +40,7 @@ function maCall(inc,key){
  const D=MA_DEF[key];inc.ma=inc.ma||{};
  if(inc.ma[key]){msg=maName(key)+'已在支援中';return false}
  if(!maOK(inc,key)){msg=key==='nfa'||key==='sf'?'僅支援三級火警或重大救助案件':'三級火警才能請求跨縣市支援';return false}
+ if(!maMCV(inc)){msg='需有行動指揮車（MCV）到場，才能協調跨縣市支援單位（可派「呼叫行動指揮車」）';return false}
  if(S.rep-D.cost<5){msg='評鑑不足（需 '+D.cost+'，且請求後須保留 5 以上）';return false}
  // 輪值 Strike Force：由本日輪值縣市的分隊組成（3 個以上分隊取 3 個；單一分隊時另加救助車）
  let us=D.us,from=D.from,prep=D.prep,fx=D.fx,nm=D.n;

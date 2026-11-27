@@ -48,11 +48,13 @@ function ui(){
    dh=c;morph($('detail'),c);
    const nb=$('logbox');
    if(nb&&follow)nb.scrollTop=nb.scrollHeight}}
+ {const rp=$('roster');if(rosterOn){const e=rosterHTML();if(e!==rsh){rsh=e;morph(rp,e)}rp.classList.add('open')}else{if(rp.classList.contains('open'))rp.classList.remove('open');rsh=''}}
  const sp=$('shop');
  if(shopOn){const e=shopHTML();if(e!==sh){sh=e;morph(sp,e)}sp.classList.add('open')}
  else if(sh){sp.classList.remove('open');sh=''}}
 function center(o){cam.x=(o.x+.5)*cell()-cw/2;cam.y=(o.y+.5)*cell()-ch/2;clamp()}
-function dirty(){lh=rh=dh=sh=''}
+
+function dirty(){lh=rh=dh=sh=rsh=''}
 document.body.addEventListener('click',e=>{
  const f=e.target.closest('[data-fold]');
  if(f){const k=f.dataset.fold;FOLD[k]=!FOLD[k];dirty();ui();return}
@@ -80,7 +82,7 @@ document.addEventListener('keydown',e=>{
  e.preventDefault();const i=ids.indexOf(sel);
  selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
 // 指揮中心面板的按鈕：點擊時依 data-* 屬性分派。新增按鈕屬性時要加進 MAIN_CLICK（tests/regress.js lint 會檢查）
-const MAIN_CLICK=['mrsend','mrno','ma','wfpri','wfu','wfauto','wfheli','wfcrew','wfhs','wfcs','sel','u','uc','oos','ret','duty','pkg','note','auto','rc','send','req','ext','dai','defl','stand','tac','buy','hire','newst','shopclose','gosch','train','trainstop','trainskip'];
+const MAIN_CLICK=['mrsend','mrno','ma','wfpri','wfu','wfauto','wfheli','wfcrew','wfhs','wfcs','sel','u','uc','oos','ret','duty','pkg','note','auto','rc','send','req','ext','dai','defl','stand','tac','buy','hire','newst','shopclose','rosterclose','gosch','train','trainstop','trainskip'];
 const MAIN_CLICK_SEL=MAIN_CLICK.map(k=>'[data-'+k+']').join(',')+',#rs';
 document.body.addEventListener('click',e=>{
  const b=e.target.closest(MAIN_CLICK_SEL);
@@ -91,6 +93,7 @@ document.body.addEventListener('click',e=>{
  if(D.mrno){S.mr=(S.mr||[]).filter(x=>x.id!==+D.mrno);sel=null;msg='已婉拒支援請求';dirty();return}
  {const wi=S.inc.find(x=>x.id===sel);if(wi&&wfClick(wi,D)){dirty();return}}
  if(b.id==='rs'){reset();bgScale=0;dirty();return}
+ if(D.rosterclose){rosterOn=false;rsh='';return}
  if(D.shopclose){shopOn=false;$('shop').classList.remove('open');sh='';return}
  if(D.hire){if(S.money>=2500){S.money-=2500;S.tp[shopSt]++}dirty();return}
  if(D.buy){const c=D.buy;if(S.money>=CODE[c].c){S.money-=CODE[c].c;addU(shopSt,c)}dirty();return}
@@ -98,7 +101,8 @@ document.body.addEventListener('click',e=>{
   const i=S.nst++;addU(i,'11');addU(i,'11');addU(i,'11');addU(i,'91');addU(i,'41');
   // 鄉間分隊另配越野警備車；新設分隊的第一輛幫浦車為新式 CAFS
   if(SABS[SPOT[i].n]||SABSN[SPOT[i].n])addU(i,'43');
-  const nu=S.units.find(u=>u.si===i&&u.code==='11');if(nu)nu.cafs=1}dirty();return}
+  const nu=S.units.find(u=>u.si===i&&u.code==='11');if(nu)nu.cafs=1;
+  mcvBrigades()}dirty();return}
  if(D.u){selU=+D.u;const u=S.units.find(x=>x.id===selU);if(u&&u.st!=='idle')center(u);dirty();return}
  if(D.uc){selU=null;dirty();return}
  if(D.oos){const u=S.units.find(x=>x.id===+D.oos);if(u&&u.st==='idle'){u.st='oos';u.oosT=60}dirty();return}
@@ -190,6 +194,7 @@ document.body.addEventListener('input',e=>{
 document.body.addEventListener('change',e=>{if(e.target.id==='selSt'){shopSt=+e.target.value;sh=''}});
 $('btnPause').onclick=e=>{paused=!paused;e.target.textContent=paused?'繼續':'暫停'};
 $('btnShop').onclick=()=>{shopOn=!shopOn;sh=''};
+$('btnRoster').onclick=()=>{rosterOn=!rosterOn;rsh=''};
 $('btnFs').onclick=()=>{
  if(document.fullscreenElement)document.exitFullscreen();
  else document.documentElement.requestFullscreen().catch(()=>{})};

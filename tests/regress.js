@@ -38,6 +38,10 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
     const full=[[A.x[0],A.x[1]],...pa];for(let i=1;i<full.length-1;i++){const k=K(...full[i]),kp=K(...full[i-1]),kn=K(...full[i+1]);
      if(HWL[k]&&(RD[kp]===4&&RD[kn]&&RD[kn]!==4&&RD[kn]!==7&&!HWL[kn]||RD[kn]===4&&RD[kp]&&RD[kp]!==4&&RD[kp]!==7&&!HWL[kp]))bad++}}
    return{un,bad,routes:ROUTES.length}});
+  // 救護車在國道（含高架層）上要能找到醫院
+  const hw=await p.evaluate(()=>{const bad=[];for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);if(!HWL[k]&&RD[k]!==4)continue;
+   const t=toHosp({x,y,code:'91'});if(!t.h||!t.p)bad.push([x,y])}return bad});
+  ok('國道上的救護車可到醫院',!hw.length,hw.slice(0,5));
   ok('所有分隊可達',!r.un.length,r.un);ok('國道不在交會格轉換層',!r.bad,r);ok('地圖無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='normal'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{S.day=4;for(let i=0;i<12000;i++){step(.05);if(i%50===0){reindex();for(const inc of S.inc)if(!onScene(inc).length)auto(inc)}}
@@ -52,9 +56,9 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
   const r=await p.evaluate(()=>{const k='mfire';S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POOL[z][lv]=[k];for(const z in POOLB)for(const lv in POOLB[z])POOLB[z][lv]=[k];
    for(let i=0;i<9&&!S.inc.length;i++)spawn();const inc=S.inc[0];sendLv(inc,2);reindex();auto(inc);let n=0;while(!inc.rev&&n<20000){step(.05);n++}
    tacInit(inc);const B=inc.tac;let t=0;for(;t<24000&&!B.hOK&&S.inc.includes(inc);t++)step(.05);if(!B.hOK)return{skip:1};
-   tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<6000&&S.inc.includes(inc);t2++)step(.05);
+   tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).filter(u=>!(u.load>0)).length;let t2=0;for(;t2<12000&&S.inc.includes(inc);t2++)step(.05);
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
-  ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
+  ok('交給轄區分隊善後',r.skip||(r.left<=1&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
  if(which==='all'||which==='dispatch'){const {p,errs}=await page(b);
   // 限定派遣：一般火警不派特一特二與機場消防隊；呼叫特一只派特一；呼叫機場消防派機消
   const r=await p.evaluate(()=>{S.spawn=999;const mk=k=>{S.inc=[];for(const zz in POOL)for(const lv in POOL[zz])POOL[zz][lv]=[k];for(const zz in POOLB)for(const lv in POOLB[zz])POOLB[zz][lv]=[k];for(let i=0;i<40&&!S.inc.length;i++)spawn();return S.inc[0]};
@@ -72,5 +76,5 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    const B=inc.tac;if(!B)return{lock,crew,noTac:1};
    for(let i=0;i<40;i++){step(.05);trainStep()}for(const x of B.cells){x.h=0;x.emb=0}for(let i=0;i<40&&TRAIN.inc;i++){step(.05);trainStep()}
    return{lock,crew,open:TAC.open,pass1:TRAIN.pass[0],trainee:S.units.filter(u=>u.trainee&&!u.gone).length,msg}});
-  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^高雄/.test(c))&&!errs.length,r);await p.close()}
+  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^訓中/.test(c))&&!errs.length,r);await p.close()}
  await b.close();console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)})();

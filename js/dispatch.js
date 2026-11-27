@@ -242,7 +242,9 @@ function auto(inc){
 // 後送醫院：取車程最短者；面板顯示與實際後送共用
 function hospFor(x,y){
  let b=null,bd=INF;
- for(const h of HOSP){const dd=baseF(h,0).D[K(x,y)];if(dd<bd){bd=dd;b=h}}
+ const k=K(x,y);
+ for(const h of HOSP){const D=baseF(h,0).D;let dd=D[k];if(dd===INF&&HWL[k])dd=D[NN+HLI[k]];   // 車在高架上：看高架層的距離
+  if(dd<bd){bd=dd;b=h}}
  return{h:b,d:bd}}
 function toHosp(u){
  const r=hospFor(Math.round(u.x),Math.round(u.y));

@@ -30,6 +30,7 @@ function crewOf(u){
  if(u.code==='91')return u.crew||2;
  if(u.code==='搜')return 5;
  if(u.code==='41')return 2;
+ if(u.code==='指')return 4;
  if(u.code==='艇')return 3;
  return 3}
 const KIT={

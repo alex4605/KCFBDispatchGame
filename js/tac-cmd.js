@@ -75,7 +75,7 @@ function tacHints(inc,B){
  if(B.spk&&B.spk.ok&&B.sp&&!B.sp.on&&Object.keys(B.spk.fl).length)add(2,'撒水頭已動作：送水口加壓可增強撒水效果。');
  // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
  const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
- if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
+ if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間門控，把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
  const st=B.L.N.filter(n=>n.ty==='stair');
  if(st.length>1&&B.of>B.bf&&B.atkS&&B.atkS.size&&B.atkS.size<st.length){const ev=st.find(n=>!B.atkS.has(n.c));
   add(3,'水線走'+(st.findIndex(n=>B.atkS.has(n.c))+1)+'號梯（攻擊梯，防火門被水帶卡住會進煙），'+(st.indexOf(ev)+1)+'號梯維持關門作為避難梯。')}
@@ -100,7 +100,7 @@ function tacReport(inc,B){
  sc.resc=B.vtot?Math.max(0,Math.min(100,B.tx/B.vtot*100-B.lost*15)):100;
  // 安全
  const v=B.viol||{};
- sc.safe=Math.max(0,100-(B.mdN||0)*20-B.lodd*60-(v.noRit?15:0)-(v.noAcc?10:0)-(B.bdN||0)*15-(B.foN||0)*8);
+ sc.safe=Math.max(0,100-(B.mdN||0)*20-B.lodd*60-(v.noRit?15:0)-(v.noAcc?10:0)-(v.earlyV?5:0)-(B.bdN||0)*15-(B.foN||0)*8);
  // 財損：燒毀比例、延燒鄰棟、復燃
  const rooms=B.cells.filter(x=>x.ty==='room').length,burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
  sc.loss=Math.max(0,100-burnt/Math.max(1,rooms)*120-Object.keys(B.expL).length*25-(B.rkN||0)*5-(B.cz?25:0));
@@ -108,7 +108,8 @@ function tacReport(inc,B){
  const notes=[];
  if(v.noRit)notes.push('有小組入室時尚未編成 RIT');
  if(v.noAcc)notes.push('入室時尚未設置人員管制板，無法掌握氣量');
- if(B.bdN)notes.push('發生爆燃 '+B.bdN+' 次：缺氧火場應先射水降溫再開口');
+ if(B.bdN)notes.push('發生爆燃 '+B.bdN+' 次：悶燒缺氧的空間應採門控進入、先射水降溫再開口');
+ if(v.earlyV)notes.push('過早排煙：火點還沒有水線壓制就開口或送風，火勢因進氣變大');
  if(B.foN)notes.push('有小組在閃燃現場 '+B.foN+' 次');
  if(B.rkN)notes.push('殘火復燃 '+B.rkN+' 次');
  if(Object.keys(B.expL).length)notes.push('火勢延燒至鄰棟');
@@ -158,7 +159,7 @@ function tacFDStep(inc,B,dt){
  B.atkS=new Set();
  for(const q of B.sq)if(q.line&&tacIn(q)&&q.f>B.bf&&q.lent){const p=tacPath(B,tacEF(B,q.lent),q.lent.c,q.f,q.c);
   for(let i=1;i<p.length;i++)if(p[i][0]!==p[i-1][0]){B.atkS.add(p[i][1]);break}}}
-// 侷限火勢關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
+// 門控關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
 function tacFDClose(B,key){const d=B.fd.get(key);if(!d)return true;if(d.t==='gone')return false;d.t='auto';B.fdO.delete(key);return true}
 // ===== 氣體偵測（五用氣體偵測器：O₂、LEL、CO、H₂S、HCN）=====
 const TAC_GAS=[['o2','O₂','%'],['lel','LEL','%'],['co','CO','ppm'],['h2s','H₂S','ppm'],['hcn','HCN','ppm']];
@@ -206,7 +207,7 @@ function tacHandoff(inc,B){
  const keep=pumps[0]||wk[0]||on[0];  // 還在路上的車也一併返隊
  for(const u of on){if(u===keep||u.load>0)continue;u.inc=null;home(u)}
  reindex();
- for(const x of B.cells)x.emb=0;               // 餘燼由轄區分隊處理
+ for(const x of B.cells){x.emb=0;x.pre=0;if(x.h<.1){x.h=0;x.ovh=1}}   // 餘燼與殘餘熱由轄區分隊處理
  B.handed=keep?keep.cs:'轄區分隊';B.doneT=3;
  radio(inc,'指揮官','火勢撲滅、人員都已處置，現場交由'+B.handed+'殘火處理善後，其餘車輛返隊。');
  tacEvt(inc,B,'milestone','交由 '+B.handed+' 善後');
