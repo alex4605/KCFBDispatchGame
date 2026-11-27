@@ -135,10 +135,12 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 /* 戰術畫面 */
 #tac{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}
 #tac[hidden]{display:none}
-#tacTop{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:7px 12px;background:var(--pnl);border-bottom:1px solid var(--line);flex:none}
+#tacTop{display:flex;flex-wrap:nowrap;align-items:center;gap:9px;padding:7px 12px;overflow:hidden;white-space:nowrap;background:var(--pnl);border-bottom:1px solid var(--line);flex:none}
 #tacTop .tt{font-size:15px;color:var(--amb)}
 #tacTop .strat{font-size:12px;color:var(--blu)}
-#tacTop .tmsg{font-size:12px;color:var(--amb)}
+#tacTop .tmsg{font-size:12px;color:var(--amb);min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+#tacTop .tadr{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}#tacTop .strat{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 2 auto}#tacTop>*{flex-shrink:0}#tacTop>.tadr,#tacTop>.tmsg,#tacTop>.strat{flex-shrink:1}
+@media (max-width:900px){#tacTop{flex-wrap:wrap}}
 #tacMid{flex:1;display:flex;min-height:0;gap:6px;padding:6px}
 #tcv{display:block;border-radius:8px;background:#0d1015;touch-action:none;cursor:crosshair}
 #tacSide{width:290px;flex:none;background:var(--pnl);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
