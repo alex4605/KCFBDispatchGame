@@ -442,6 +442,7 @@ function mapLabels(c){
  lb('台 灣 海 峽',5,OY+62,13,'rgba(125,179,232,A)',Math.PI/2);
  lb('台 灣 海 峽',OX+12,OY+128,13,'rgba(125,179,232,A)');
  lb('山　區',OX+128,OY+14,13,'rgba(140,190,140,A)');
+ lb('屏 東',Math.min(N-3,riverX(OY+110)+6),OY+110,13,'rgba(200,200,180,A)',Math.PI/2);
  lb('二 仁 溪',OX+40,3.5,12,'rgba(125,179,232,A)');
  lb('林園工業區',OX+93,OY+131,12,'rgba(200,205,215,A)');
  if(SCHOOL)lb('消防訓練中心',SCHOOL.p[0]+.5,SCHOOL.y0-.6,12,'rgba(190,170,240,A)');

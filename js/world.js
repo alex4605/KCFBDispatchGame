@@ -13,7 +13,7 @@ let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
 // 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
 const SUBX=74,SUBY=86;
 // 北側（岡山、橋頭以北）的郊區帶較寬，約 12 格才過渡到鄉間
-const isSub=(x,y)=>inCity(x,y)?(x-OX>=SUBX||y-OY>=SUBY):(Math.max(OX-x,x-OX-CITY+1,(OY-y)*.75,y-OY-CITY+1)<=9);
+const isSub=(x,y)=>inCity(x,y)?(x-OX>=SUBX||y-OY>=SUBY):(Math.max(OX-x,(x-OX-CITY+1)*.8,(OY-y)*.75,(y-OY-CITY+1)*.8)<=9);
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
 let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[],AP=null;   // AP：機場範圍
