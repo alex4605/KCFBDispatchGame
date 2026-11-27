@@ -212,6 +212,8 @@ scv.addEventListener('wheel',e=>{e.preventDefault();scSetZoom(scZoom*(e.deltaY<0
 cv.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.12:1/1.12))},{passive:false});
 let dg=null;
 cv.addEventListener('pointerdown',e=>{
+ const rb=cv.getBoundingClientRect();
+ if(mapOverlayHit((e.clientX-rb.left)/rb.width*cw,(e.clientY-rb.top)/rb.height*ch)){dg=null;dirty();return}
  fly=null;dg={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,m:0};
  cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'});
 cv.addEventListener('pointermove',e=>{
@@ -227,6 +229,8 @@ cv.addEventListener('pointerup',e=>{
  let best=null,bd=Math.max(1.4,22/c);
  for(const i of S.inc){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
  for(const i of S.duties){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
+ // 地圖現場模式：點到車輛時選取車輛（案件選取不變）
+ if(c>=SC_MAP){const uh=mapUnitHit(x,y);if(uh){selU=uh;dirty();return}}
  sel=best;selU=null;
  const bi=S.inc.find(i=>i.id===best);if(bi&&scMode==='map'&&!bi.wf&&c<SC_MAP)flyTo(bi);
  dirty()});

@@ -112,18 +112,20 @@ function draw(){
  wfDrawMap(ctx,c);
  // 放大到門檻以上：畫面內的案件直接在地圖上畫出現場圖層（車輛、水線、人員、火煙），與現場面板共用繪製
  const live=new Set(),liveU=new Set();
- if(c>=SC_MAP){const X=v=>v*c;
+ // 門檻前 SC_FADE 像素開始淡入，到門檻時完全取代一般標記
+ const fa=Math.max(0,Math.min(1,(c-SC_MAP+SC_FADE)/SC_FADE));
+ if(fa>0){const X=v=>v*c;
   const g=fontCap(ctx,15);
   for(const inc of S.inc){
    if(inc.wf||inc.x<x0-3||inc.x>x1+3||inc.y<y0-3||inc.y>y1+3)continue;
    live.add(inc.id);
    for(const u of onScene(inc))if(u.st!=='idle'&&u.st!=='oos'&&u.st!=='back')liveU.add(u.id);
-   ctx.save();
+   ctx.save();ctx.globalAlpha=fa;
    try{sceneLayers(inc,g,c,X,X,x0,x1,y0,y1,0,true)}catch(e){console.error(e)}
    ctx.restore();ctx.textAlign='center';ctx.textBaseline='middle'}}
  for(const inc of S.inc){
   const d=KIND[inc.k];
-  if(live.has(inc.id)){mapIncTag(inc,d,c,m);continue}
+  if(live.has(inc.id)&&fa>=1){mapIncTag(inc,d,c,m);continue}
   if(inc.rev&&d.w&&inc.hp&&inc.hy&&inc.hooked&&!inc.tender){
    ctx.strokeStyle='rgba(93,202,165,.85)';ctx.lineWidth=Math.max(1.5,m*.12);
    ctx.lineCap='round';ctx.lineJoin='round';
@@ -155,7 +157,7 @@ function draw(){
   if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
    ctx.beginPath();ctx.arc(cx,cy,rad*1.6,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  for(const u of S.units){
-  if(u.st==='idle'||u.st==='oos'||u.st==='away'||liveU.has(u.id))continue;
+  if(u.st==='idle'||u.st==='oos'||u.st==='away'||(fa>=1&&liveU.has(u.id)))continue;
   const cx=(u.x+.5+(u.ox||0))*c,cy=(u.y+.5+(u.oy||0))*c;
   const wk=K(Math.round(u.x),Math.round(u.y)),afloat=!RD[wk]&&TR[wk]===1;
   ctx.save();ctx.translate(cx,cy);ctx.rotate(u.hd||0);
@@ -183,9 +185,16 @@ function draw(){
    ctx.fillStyle='rgba(0,0,0,.8)';rr(cx-tw/2,cy+m*.21,tw,m*.31,3);ctx.fill();
    ctx.fillStyle='#e6e3db';ctx.fillText(lb,cx,cy+m*.37)}}
   epaDraw(ctx,c);
- ctx.restore()}
+ // 地圖現場模式：選取中的車輛外框
+ if(fa>=1&&selU&&liveU.has(selU)){const u=S.units.find(x=>x.id===selU);
+  if(u){const ux=(u.x+.5+(u.ox||0))*c,uy=(u.y+.5+(u.oy||0))*c;
+   ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.arc(ux,uy,c*.48,0,TAU);ctx.stroke();ctx.setLineDash([])}}
+ ctx.restore();
+ EDGE.length=0;
+ if(fa>=1){mapEdgeTags(c,x0,x1,y0,y1);miniMap(c)}
+ const lg=$('legend');if(lg){const v=fa>=1?'none':'';if(lg.style.display!==v)lg.style.display=v}}
 // 地圖現場模式的門檻（每格像素）
-const SC_MAP=56;
+const SC_MAP=56,SC_FADE=14;
 // 現場模式下的案件標籤：案類、報數與受困、作業進度，畫在災點上方
 function mapIncTag(inc,d,c,m){
  const cx=(inc.x+.5)*c,cy=(inc.y+.5)*c-c*1.15;
@@ -221,3 +230,55 @@ function flyStep(ts){
  const c=cell(),wx=fly.x0+(fly.x1-fly.x0)*e,wy=fly.y0+(fly.y1-fly.y0)*e;
  cam.x=wx*c-cw/2;cam.y=wy*c-ch/2;clamp();
  if(k>=1)fly=null}
+// 畫面外案件的邊緣指標（地圖現場模式）：貼在畫面邊緣指向案件，點按飛過去
+const EDGE=[];
+function mapEdgeTags(c,x0,x1,y0,y1){
+ const mx=cw/2,my=ch/2,pad=22;
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const inc of S.inc){
+  const sx=(inc.x+.5)*c-cam.x,sy=(inc.y+.5)*c-cam.y;
+  if(sx>-c*.5&&sx<cw+c*.5&&sy>-c*.5&&sy<ch+c*.5)continue;
+  const dx=sx-mx,dy=sy-my,k=Math.min((mx-pad)/Math.max(1e-6,Math.abs(dx)),(my-pad)/Math.max(1e-6,Math.abs(dy)));
+  const ex=mx+dx*k,ey=my+dy*k,d=KIND[inc.k],col=inc.rev?d.col:C.unk,a=Math.atan2(dy,dx);
+  ctx.save();ctx.translate(ex,ey);ctx.rotate(a);ctx.fillStyle=col;
+  ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(9,-6);ctx.lineTo(9,6);ctx.closePath();ctx.fill();ctx.restore();
+  ctx.fillStyle='rgba(10,10,9,.85)';ctx.beginPath();ctx.arc(ex,ey,12,0,TAU);ctx.fill();
+  ctx.strokeStyle=sel===inc.id?'#fff':col;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#eceae3';ctx.font='600 12px '+FONT;ctx.fillText(inc.rev?d.ch:'？',ex,ey+.5);
+  ctx.font='500 10px '+FONT;const lb=inc.rev?d.n:'未到場',tw=ctx.measureText(lb).width+6,ly=ey+(ey>ch-40?-22:22);
+  ctx.fillStyle='rgba(10,10,9,.8)';rr(ex-tw/2,ly-7,tw,14,3);ctx.fill();ctx.fillStyle='#b9b5ac';ctx.fillText(lb,ex,ly);
+  EDGE.push({x:ex,y:ey,id:inc.id})}}
+// 全市縮圖（地圖現場模式右下角）：顯示目前視野與各案件，點按移動視野
+const MINI={cv:null,key:'',x:0,y:0,s:0};
+function miniMap(c){
+ const s=Math.min(150,Math.max(96,Math.min(cw,ch)*.22)),x=cw-s-12,y=ch-s-12;
+ MINI.x=x;MINI.y=y;MINI.s=s;
+ const key=s+','+dpr+','+S.mapV;
+ if(MINI.key!==key){MINI.key=key;const mc=MINI.cv||(MINI.cv=document.createElement('canvas'));
+  mc.width=Math.round(s*dpr);mc.height=Math.round(s*dpr);const g=mc.getContext('2d'),q=s*dpr/N;
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++){const k=K(i,j),tt=TR[k];
+   g.fillStyle=RD[k]?'#3a3a35':tt===1?'#14324a':tt===2?'#1c3322':tt===3?'#263040':tt===4?'#26282c':'#1c1c1a';
+   g.fillRect(i*q,j*q,q+.5,q+.5)}}
+ ctx.fillStyle='rgba(10,10,9,.85)';rr(x-4,y-4,s+8,s+8,6);ctx.fill();
+ ctx.drawImage(MINI.cv,x,y,s,s);
+ const q=s/N;
+ for(const inc of S.inc){const d=KIND[inc.k];ctx.fillStyle=inc.rev?d.col:C.unk;
+  ctx.beginPath();ctx.arc(x+(inc.x+.5)*q,y+(inc.y+.5)*q,sel===inc.id?4:2.6,0,TAU);ctx.fill();
+  if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke()}}
+ ctx.strokeStyle='#fff';ctx.lineWidth=1.2;
+ ctx.strokeRect(x+cam.x/c*q,y+cam.y/c*q,Math.max(3,cw/c*q),Math.max(3,ch/c*q));
+ ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;ctx.strokeRect(x-.5,y-.5,s+1,s+1)}
+// 地圖現場模式的點按判定：縮圖（回傳 true 表示已處理）與邊緣指標
+function mapOverlayHit(sx,sy){
+ if(cell()<SC_MAP)return false;
+ if(MINI.s&&sx>=MINI.x-4&&sx<=MINI.x+MINI.s+4&&sy>=MINI.y-4&&sy<=MINI.y+MINI.s+4){
+  const c=cell(),q=MINI.s/N,wx=Math.max(0,Math.min(N,(sx-MINI.x)/q)),wy=Math.max(0,Math.min(N,(sy-MINI.y)/q));
+  fly=null;cam.x=wx*c-cw/2;cam.y=wy*c-ch/2;clamp();return true}
+ for(const e of EDGE)if(Math.hypot(sx-e.x,sy-e.y)<16){selInc(e.id);return true}
+ return false}
+// 地圖現場模式點選車輛：回傳最近的現場車輛 id
+function mapUnitHit(x,y){
+ let best=null,bd=.5;
+ for(const u of S.units){if(u.st==='idle'||u.st==='oos'||u.st==='away')continue;
+  const d=Math.hypot(u.x+.5+(u.ox||0)-x,u.y+.5+(u.oy||0)-y);if(d<bd){bd=d;best=u.id}}
+ return best}
