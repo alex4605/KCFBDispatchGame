@@ -717,7 +717,7 @@ function tacSideHTML(inc){
   if(B.wind)h+=rw('風向',B.wind.nm);
   h+='</div>'}
  else if(B.wind)h+='<div class="hd mt">風向</div><div class="twater"><div class="row"><span>'+B.wind.nm+'</span><span class="sub">順風延燒快、會飛火</span></div>'+
-  (B.wui?'<div class="row"><span>外圍山火</span><span>'+(B.wh>.05?'<b style="color:var(--red)">逼近中 '+Math.round(B.wh*100)+'%</b>':'已過境')+'</span></div><div class="row"><span>民宅</span><span>'+(B.homeLost?'<b style="color:var(--red)">燒毀 '+B.homeLost+' 棟</b>':'安全')+'</span></div>':'')+'</div>';
+  (B.wui?'<div class="row"><span>外圍山火'+(B.fside?'（'+TAC_SDN[B.fside]+'側）':'')+'</span><span>'+(B.wh>.05?'<b style="color:var(--red)">逼近中 '+Math.round(B.wh*100)+'%</b>':'已過境')+'</span></div><div class="row"><span>民宅</span><span>'+(B.homeLost?'<b style="color:var(--red)">燒毀 '+B.homeLost+' 棟</b>':'安全')+'</span></div>':'')+'</div>';
  // 結構與設施
  h+='<div class="hd mt">結構與設施</div><div class="twater">';
  if(!B.hoax){const dm=Math.min(1,B.dmg||0);h+='<div class="row"><span>結構受損（穩定度'+(inc.pm.stab||'—')+'）</span><span>'+Math.round(dm*100)+'% <span class="tbar"><i style="width:'+Math.round(dm*100)+'%;background:'+(dm>=.8?'var(--red)':dm>=.5?'var(--amb)':'var(--grn)')+'"></i></span></span></div>';

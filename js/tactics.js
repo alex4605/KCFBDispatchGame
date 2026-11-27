@@ -47,6 +47,7 @@ const TAC_VAR={
 const tacTxt=inc=>{const sc=inc.pm&&inc.pm.sc;return Array.isArray(sc)?sc.slice(0,2).join(' '):''};
 function tacVar(inc){const T=Object.assign({},TACK[inc.k]),t=tacTxt(inc);
  for(const v of TAC_VAR[inc.k]||[])if(v[0].test(t))Object.assign(T,v[1]);
+ if(inc.k==='forest'&&inc.wf)T.fdir=wfFireDir(inc); // 建物防護：林地朝向作戰圖上火的來向
  return T}
 // 此案件是否適用戰術指揮（氣爆只有建物那種報案才適用）
 const tacHas=inc=>inc.k==='forest'?!!(inc.tac||inc.wf&&wfWuiTodo(inc.wf).length):!!TACK[inc.k]&&(!TACK[inc.k].only||!!tacVar(inc).ok);
@@ -181,8 +182,12 @@ function tacLayout(T,K,kind,two){
   // 五層以上：走廊另一端設第二座安全梯（兩方向避難）
   if(two){coreL(L.GW,y0,y1,cv==='single'?top:!top);L.GW+=SW}}
  // 隨機鏡射：同一種格局也會左右、上下顛倒（樓梯、入口、房間朝向都會不同）
- if(R()<.5){for(const n of N)n.gx=L.GW-n.gx-n.gw;if(L.canopy)L.canopy[0]=L.GW-L.canopy[0]-L.canopy[2]}
- if(R()<.5){for(const n of N)n.gy=L.GH-n.gy-n.gh;if(L.canopy)L.canopy[1]=L.GH-L.canopy[1]-L.canopy[3]}
+ // 建物防護：格局以林地在北建立，再依火的來向轉向（東西向時轉置），另一軸仍隨機鏡射
+ const fd=T.yard==='wui'?T.fdir||'n':null;
+ if(fd==='e'||fd==='w'){for(const n of N){[n.gx,n.gy]=[n.gy,n.gx];[n.gw,n.gh]=[n.gh,n.gw]}[L.GW,L.GH]=[L.GH,L.GW]}
+ const mx=fd?fd==='e'||((fd==='n'||fd==='s')&&R()<.5):R()<.5,my=fd?fd==='s'||((fd==='e'||fd==='w')&&R()<.5):R()<.5;
+ if(mx){for(const n of N)n.gx=L.GW-n.gx-n.gw;if(L.canopy)L.canopy[0]=L.GW-L.canopy[0]-L.canopy[2]}
+ if(my){for(const n of N)n.gy=L.GH-n.gy-n.gh;if(L.canopy)L.canopy[1]=L.GH-L.canopy[1]-L.canopy[3]}
  // 鄰接：共用邊長度超過 0.25 才算相鄰
  const E=1e-6,ov=(a,b)=>{
   if(Math.abs(a.gx+a.gw-b.gx)<E||Math.abs(b.gx+b.gw-a.gx)<E)return Math.min(a.gy+a.gh,b.gy+b.gh)-Math.max(a.gy,b.gy);

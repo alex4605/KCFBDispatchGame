@@ -223,3 +223,11 @@ function wfClick(inc,D){
   if(!a.task)a.task=u&&wfPump(u)?'water':'brk';
   return true}
  return false}
+// 建物防護場景的林地方向：從受威脅的民宅格看，附近燃燒中的火格（越猛、越近權重越大）在哪一側
+function wfFireDir(inc){
+ const W=inc.wf;if(!W)return null;const k=wfWuiTodo(W)[0];if(k===undefined)return null;
+ const hx=(k/N)|0,hy=k%N;let sx=0,sy=0,sw=0;
+ for(const c of W.F.values()){const d=Math.hypot(c.x-hx,c.y-hy);if(d>5||d<.5)continue;const w=(c.h+.1)/d;sx+=(c.x-hx)*w;sy+=(c.y-hy)*w;sw+=w}
+ if(!sw){for(const c of W.F.values()){sx+=c.x-hx;sy+=c.y-hy;sw++}}
+ if(!sw){sx=W.o[0]-hx;sy=W.o[1]-hy}
+ return tacDirOf(sx,sy)}

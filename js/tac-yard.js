@@ -147,10 +147,13 @@ function tacYardTop(g,G,B,T){
   for(let k=0;k<4;k++){const ph=(T*.25+k/4+n.c*.17)%1,d=ph*t*2.2;
    g.fillStyle='rgba(70,70,74,'+((1-ph)*.45*x.h).toFixed(3)+')';g.beginPath();g.arc(r[0]+r[2]/2+B.wind.d[0]*d,r[1]+r[3]/2+B.wind.d[1]*d,t*(.12+ph*.3),0,TAU);g.fill()}}
  // 建物防護：外圍山火逼近的方向（林地那側）
- if(B.wui&&B.fside&&B.wh>.03){const s=B.fside,a=Math.min(1,B.wh),pl=.6+.4*Math.sin(T*3);
-  const r=s==='n'?[G.bx,G.by-28,G.bw,22]:[G.bx,G.by+G.bh+6,G.bw,22];
-  const gr=g.createLinearGradient(0,r[1],0,r[1]+r[3]);gr.addColorStop(s==='n'?0:1,'rgba(255,90,30,'+(.6*a*pl).toFixed(2)+')');gr.addColorStop(s==='n'?1:0,'rgba(255,90,30,0)');
-  g.fillStyle=gr;g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='#ffb08a';g.font='600 11px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('外圍山火逼近 '+Math.round(a*100)+'%',r[0]+r[2]/2,r[1]+r[3]/2)}
+ if(B.wui&&B.fside&&B.wh>.03){const s=B.fside,a=Math.min(1,B.wh),pl=.6+.4*Math.sin(T*3),hz=s==='n'||s==='s';
+  const r=s==='n'?[G.bx,G.by-28,G.bw,22]:s==='s'?[G.bx,G.by+G.bh+6,G.bw,22]:s==='w'?[G.bx-28,G.by,22,G.bh]:[G.bx+G.bw+6,G.by,22,G.bh];
+  const out=s==='n'||s==='w'?0:1,gr=hz?g.createLinearGradient(0,r[1],0,r[1]+r[3]):g.createLinearGradient(r[0],0,r[0]+r[2],0);
+  gr.addColorStop(out,'rgba(255,90,30,'+(.6*a*pl).toFixed(2)+')');gr.addColorStop(1-out,'rgba(255,90,30,0)');
+  g.fillStyle=gr;g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='#ffb08a';g.font='600 11px '+FONT;g.textAlign='center';g.textBaseline='middle';
+  const lb='外圍山火自'+TAC_SDN[s]+'側逼近 '+Math.round(a*100)+'%';
+  if(hz)g.fillText(lb,r[0]+r[2]/2,r[1]+r[3]/2);else{g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(s==='w'?-Math.PI/2:Math.PI/2);g.fillText(lb,0,0);g.restore()}}
  // 風向標
  if(B.wind){const cx=G.bx+G.bw-28,cy=G.by-34,W=B.wind;g.save();g.translate(cx,cy);
   g.fillStyle='rgba(12,12,11,.8)';g.beginPath();g.arc(0,0,18,0,TAU);g.fill();
@@ -174,9 +177,11 @@ function tacHazDraw(g,G,B,vf){
 function tacYardPost(inc,B,T){
  if(T.wui){ // 建物防護：道路在聚落那側，林地那側不能停車，兩側是產業道路（大型車禁入）
   const rd=B.L.N.filter(n=>n.lane),fo=B.L.N.filter(n=>n.kind==='forest');
-  const rs=rd.reduce((a,n)=>a+n.gy,0)/rd.length>B.L.GH/2?'s':'n',fs=tacOpp(rs,'n')?'n':'s';
-  B.sd={n:null,e:null,s:null,w:null};B.sd[rs]={road:2,big:true,nm:'道路'};B.sd[fs]={road:0,big:false,nm:'林地'};
-  for(const s of['e','w'])B.sd[s]={road:5,big:false,nm:'產業道路'};
+  // 林地那側：林地區塊重心相對場區中心的方向；道路在對側，另兩側是產業道路
+  const cx=fo.reduce((a,n)=>a+n.gx+n.gw/2,0)/fo.length-B.L.GW/2,cy=fo.reduce((a,n)=>a+n.gy+n.gh/2,0)/fo.length-B.L.GH/2;
+  const fs=tacDirOf(cx,cy),rs={n:'s',s:'n',e:'w',w:'e'}[fs];
+  B.sd={};B.sd[rs]={road:2,big:true,nm:'道路'};B.sd[fs]={road:0,big:false,nm:'林地'};
+  for(const s of TAC_SIDES)if(!B.sd[s])B.sd[s]={road:5,big:false,nm:'產業道路'};
   B.arr=rs;B.exp={};B.ents=TAC_SIDES.filter(s=>B.sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s]}));B.fside=fs;
   if(!inc.hy||inc.tender)B.hyd=null;else B.hyd={side:rs,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)};
   return}
@@ -206,6 +211,9 @@ function tacWildTask(inc,B,q,k,cl,dt,cmd){
   q.wk+=dt;if(q.wk>=(q.ty==='resc'?15:25)){q.wk=0;cl.fu=0;cl.brk=1;q.task='idle';radio(inc,q.cs,tacNm(B,0,q.c)+'防火線開設完成。');tacEvt(inc,B,'milestone','開設防火線：'+tacNm(B,0,q.c))}}}
 // 野火 AI：撲打低矮火勢、在火頭下風處開設防火線、鐵皮屋周界防護
 function tacWildAI(inc,B,free,take,spare){
+ // 周界防護的建物已無威脅（周邊沒有火、外圍山火已過）：收線，讓水線給攻擊組
+ for(const q of B.sq){if(q.task!=='guard'||q.tf<0)continue;const n=B.L.N[q.tc];if(!n.walled)continue;
+  if(!n.nb.concat(n.wl).some(o=>tacCel(B,0,o).h>.05)&&tacCel(B,0,q.tc).h<.05&&(!B.wui||B.wh<.1)){q.task='idle';radio(inc,q.cs,tacNm(B,0,q.tc)+'周邊已無火勢，收線待命。')}}
  const fr=B.cells.filter(x=>x.gr&&x.h>.05);
  // 沒有水線可用的幫浦組也會拿打火拍撲打
  for(const q of free.slice()){if((q.ty==='pump'&&(spare>0||q.line))||q.ty==='ladder'||q.ty==='robot'||q.epa)continue;
