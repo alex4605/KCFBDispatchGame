@@ -10,7 +10,7 @@ const MA_DEF={
  nfa:{n:'內政部消防署特種搜救隊',cs:'署搜',grp:'署特搜',cost:12,prep:360,from:'n',fx:'特搜 2、救助車 1、消防機器人 1（重型破壞、倒塌搜救、侷限空間）',
   us:[['搜','署搜'],['搜','署搜'],['71','署搜'],['履','署搜']]},
  sf:{n:'輪值 USAR Strike Force',cs:'輪值特搜',cost:12,rot:1}};
-// 輪值支援單位：重大災害時由該縣市負責支援 USAR 能量；每日輪替
+// 輪值支援單位：重大災害時由該縣市負責支援 USAR 能量；每週（7 個遊戲日）輪替
 const MA_ROT=[
  ['臺北市',['民權'],'n',900],['新北市',['南雅','德音','慈福','秀峰','大埔'],'n',900],['桃園市',['一搜','二搜','三搜','四搜'],'n',840],
  ['臺中市',['大誠','國光','西屯','搜救犬隊'],'n',600],['臺南市',['大橋','歸仁','關廟','仁德','龍崎'],'n',300],
@@ -18,7 +18,8 @@ const MA_ROT=[
  ['彰化縣',['林厝','彰化東區'],'n',560],['南投縣',['竹山','埔里','南投'],'n',600],['雲林縣',['公園','虎尾','四湖'],'n',480],
  ['嘉義縣市',['東區','蘭潭','祥和','雙福','三和'],'n',420],['屏東縣',['特搜'],'e',240],['宜蘭縣',['馬賽','冬山'],'n',1020],
  ['花蓮縣',['特搜','自強','仁里'],'e',960],['臺東縣',['特搜'],'e',780]];
-const maRot=()=>MA_ROT[(S.day-1)%MA_ROT.length];
+const maWeek=()=>Math.floor((S.day-1)/7)+1;
+const maRot=()=>MA_ROT[(maWeek()-1)%MA_ROT.length];
 // 輪值單位的呼號：一搜等本身就是特搜分隊；「特搜」冠縣市名；其餘為分隊名加「搜」
 const maRotCs=(cty,st)=>st==='特搜'?cty.slice(0,2)+'特搜':/搜$/.test(st)?st:/隊$/.test(st)?cty.slice(0,2)+st:st+'搜';
 // 署特搜另可支援的重大救助案件
@@ -68,7 +69,7 @@ function maStat(inc,key){const us=S.units.filter(u=>u.ma===key&&u.inc===inc.id);
 function maHTML(inc){
  let h='';
  for(const k in MA_DEF){if(!maOK(inc,k))continue;const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
-  const tip=k==='sf'?'本日輪值：'+maRot()[0]+'（'+maRot()[1].join('、')+'）；集結約 '+Math.round(maRot()[3]/60)+' 分鐘':D.fx+'；集結約 '+Math.round(D.prep/60)+' 分鐘';
+  const tip=k==='sf'?'第 '+maWeek()+' 週輪值：'+maRot()[0]+'（'+maRot()[1].join('、')+'）；集結約 '+Math.round(maRot()[3]/60)+' 分鐘':D.fx+'；集結約 '+Math.round(D.prep/60)+' 分鐘';
   h+=st?'<span class="tag" style="background:#3d5a80">'+(k==='sf'?'輪值特搜':D.cs)+'支援：'+(maStat(inc,k)||'已返隊')+'</span>':
    '<button data-ma="'+k+'" title="'+esc(tip)+'"'+(S.rep-D.cost<5?' disabled':'')+'>請求'+maName(k)+'支援（評鑑 -'+D.cost+'）</button>'}
  return h}
