@@ -122,8 +122,15 @@ function airportDetail(x,y,k,px,py,c){
  if(cp===11){ctx.strokeStyle='rgba(240,200,80,.55)';ctx.lineWidth=Math.max(1,c*.025);ctx.beginPath();ctx.moveTo(px,py+c/2);ctx.lineTo(px+c,py+c/2);ctx.stroke();
   return}
  // 跑道之間的草地；滑行道（跑道中間一列）與圍籬
- const mid=Math.round((A.y0+A.y1)/2);
- if(y===mid&&x>A.x0+4){ctx.fillStyle='#2e2f33';ctx.fillRect(px,py+c*.25,c+.6,c*.5);ctx.fillStyle='rgba(240,200,80,.55)';ctx.fillRect(px,py+c*.49,c+.6,Math.max(1,c*.025))}
+ // 塔台、貨運站、修護棚廠、油庫
+ if(cp===12){ctx.fillStyle='#55595f';ctx.beginPath();ctx.arc(px+c/2,py+c/2,c*.32,0,TAU);ctx.fill();ctx.fillStyle='#8fc0e8';ctx.beginPath();ctx.arc(px+c/2,py+c/2,c*.2,0,TAU);ctx.fill();
+  ctx.strokeStyle='#2a2c30';ctx.lineWidth=1;for(let a=0;a<8;a++){ctx.beginPath();ctx.moveTo(px+c/2,py+c/2);ctx.lineTo(px+c/2+Math.cos(a*.785)*c*.2,py+c/2+Math.sin(a*.785)*c*.2);ctx.stroke()}return}
+ if(cp===19){ctx.fillStyle='#5a6068';ctx.fillRect(px,py+c*.1,c+.6,c*.8);ctx.fillStyle='rgba(255,255,255,.1)';for(let i=0;i<4;i++)ctx.fillRect(px+c*(.1+i*.22),py+c*.1,c*.04,c*.8);
+  ctx.fillStyle='#6b5a3a';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.12+i*.28),py+c*.92,c*.2,c*.06);return}
+ if(cp===20){ctx.fillStyle='#6a6e74';ctx.fillRect(px,py+c*.06,c+.6,c*.88);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=Math.max(1,c*.02);
+  for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(px,py+c*.06+i*c*.147);ctx.lineTo(px+c,py+c*.06+i*c*.147);ctx.stroke()}return}
+ if(cp===21){for(const [a,b] of[[.3,.3],[.7,.3],[.3,.7],[.7,.7]]){ctx.fillStyle='#d8d6cc';ctx.beginPath();ctx.arc(px+c*a,py+c*b,c*.16,0,TAU);ctx.fill();ctx.strokeStyle='#8a8a84';ctx.lineWidth=1;ctx.stroke()}
+  ctx.strokeStyle='rgba(240,80,60,.5)';ctx.strokeRect(px+c*.06,py+c*.06,c*.88,c*.88);return}
  if(x===A.x0||x===A.x1||y===A.y0||y===A.y1){ctx.strokeStyle='rgba(200,200,190,.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();
   if(x===A.x0){ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+c)}if(x===A.x1){ctx.moveTo(px+c-1,py);ctx.lineTo(px+c-1,py+c)}
   if(y===A.y0){ctx.moveTo(px,py+1);ctx.lineTo(px+c,py+1)}if(y===A.y1){ctx.moveTo(px,py+c-1);ctx.lineTo(px+c,py+c-1)}ctx.stroke();ctx.setLineDash([])}}
@@ -445,6 +452,8 @@ RSTY[RGK.IND]={w:.32,col:'#5e5442',cl:'',ed:''};
 RSTY[RGK.PATH]={w:.24,col:'#3f3d37',cl:'',ed:''};
 RSTY[RGK.UND]={w:.56,col:'#2b2a25',cl:'',ed:''};
 RSTY[RGK.RAMP]={w:.46,col:'#676050',cl:'',ed:''};
+RSTY[RGK.TWY]={w:.66,col:'#2f3034',cl:'t',ed:''};     // 滑行道：深色道面、黃色中線、藍色邊燈
+RSTY[RGK.AIRS]={w:.4,col:'#4a4a46',cl:'',ed:''};      // 機場聯絡道
 const CITY_MAIN={w:.78,col:'#4a4943',cl:'w',ed:''};
 const isHW=k=>RD[k]===4||HWL[k]||RD[k]===7&&HG[k];
 const surf=k=>RD[k]&&RD[k]!==4;
@@ -477,7 +486,7 @@ function roadPass(c,x0,x1,y0,y1){
     if(isHW(nk)&&(fam(HG[nk])===fam(HG[k])||RD[k]===7||RD[nk]===7))ds.push(i)}
    hd.push([x,y,k,ds])}}
  ctx.lineCap='butt';ctx.lineJoin='round';
- const order=[RGK.PATH,RGK.IND,RGK.TWN,RGK.CITY,RGK.UND,RGK.CNTY,RGK.PROV,RGK.RAMP];
+ const order=[RGK.PATH,RGK.IND,RGK.AIRS,RGK.TWY,RGK.TWN,RGK.CITY,RGK.UND,RGK.CNTY,RGK.PROV,RGK.RAMP];
  // 路面
  for(const g of order){const L=buck[g];if(!L)continue;
   for(const [x,y,k,ds] of L){const s=sty(k);ctx.strokeStyle=s.col;ctx.lineWidth=Math.max(c<6?1:1.2,c*s.w);roadSeg(x*c,y*c,c,ds,1)}}
@@ -487,8 +496,11 @@ function roadPass(c,x0,x1,y0,y1){
    const hz=ds.some(d=>DIR[d][0]);if(hz){ctx.fillRect(x*c,y*c+c/2-w-1,c+.6,1.5);ctx.fillRect(x*c,y*c+c/2+w,c+.6,1.5)}else{ctx.fillRect(x*c+c/2-w-1,y*c,1.5,c+.6);ctx.fillRect(x*c+c/2+w,y*c,1.5,c+.6)}}}
  // 標線
  if(c>=20){ctx.lineCap='butt';
-  for(const g of[RGK.CITY,RGK.CNTY,RGK.PROV]){const L=buck[g];if(!L)continue;
-   for(const [x,y,k,ds] of L){const s=sty(k);if(!s.cl||ds.length>2)continue;
+  for(const g of[RGK.CITY,RGK.CNTY,RGK.PROV,RGK.TWY]){const L=buck[g];if(!L)continue;
+   for(const [x,y,k,ds] of L){const s=sty(k);if(!s.cl||ds.length>2&&s.cl!=='t')continue;
+    if(s.cl==='t'){ctx.setLineDash([]);ctx.strokeStyle='rgba(240,200,80,.75)';ctx.lineWidth=Math.max(1,c*.025);roadSeg(x*c,y*c,c,ds);
+     if(c>=34&&(x+y)%2===0){ctx.fillStyle='#4a8aff';for(const o of[-.32,.32]){const hz=ds.some(d=>DIR[d][0]);ctx.beginPath();ctx.arc(x*c+c/2+(hz?0:o*c),y*c+c/2+(hz?o*c:0),Math.max(1,c*.03),0,TAU);ctx.fill()}}
+     continue}
     if(s.cl==='w'){ctx.strokeStyle='rgba(230,228,220,.45)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.18,c*.16]);roadSeg(x*c,y*c,c,ds)}
     else if(s.cl==='y'){ctx.strokeStyle='rgba(225,190,90,.6)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.22,c*.12]);roadSeg(x*c,y*c,c,ds)}
     else{ctx.setLineDash([]);ctx.strokeStyle='rgba(225,190,90,.7)';ctx.lineWidth=Math.max(1,c*.05);roadSeg(x*c,y*c,c,ds);

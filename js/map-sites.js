@@ -56,31 +56,24 @@ function hospSite(H,c){
 // 機場：航廈登機門與空橋、停機坪上的飛機、塔台、滑行道連接線、跑道編號
 function airportSite(c,x0,x1,y0,y1){
  const A=AP;if(!A||A.x1<x0||A.x0>x1||A.y1<y0||A.y0>y1)return;
- const my=Math.round((A.y0+A.y1)/2),runs=[];for(let y=A.y0;y<=A.y1;y++)if(RUN[K(A.x0+3,y)]||RUN[K(A.x0+6,y)])runs.push(y);
- // 滑行道：停機坪東側往南北接到兩條跑道
- const tx=(A.x0+5)*c;ctx.strokeStyle='#2e2f33';ctx.lineWidth=c*.45;
- for(const ry of runs){ctx.beginPath();ctx.moveTo(tx,(my+.5)*c);ctx.lineTo(tx,(ry+.5)*c);ctx.stroke()}
- ctx.strokeStyle='rgba(240,200,80,.6)';ctx.lineWidth=Math.max(1,c*.025);
- for(const ry of runs){ctx.beginPath();ctx.moveTo(tx,(my+.5)*c);ctx.lineTo(tx,(ry+.5)*c);ctx.stroke()}
- // 跑道編號
+ const X=i=>(A.x0+i)*c,Y=j=>(A.y0+j)*c;
+ // 跑道編號與跑道中線燈
  ctx.fillStyle='rgba(240,240,232,.85)';ctx.font='700 '+Math.max(10,c*.3)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
- runs.forEach((ry,i)=>{ctx.save();ctx.translate((A.x0+1.6)*c,(ry+.5)*c);ctx.rotate(Math.PI/2);ctx.fillText(i?'09L':'09R',0,0);ctx.restore();
-  ctx.save();ctx.translate((A.x1-.4)*c,(ry+.5)*c);ctx.rotate(-Math.PI/2);ctx.fillText(i?'27R':'27L',0,0);ctx.restore()});
- // 航廈：登機門、空橋與飛機（停機坪）
- const ty0=my-3,ty1=my+3;
- for(let y=ty0;y<=ty1;y++){const gx=(A.x0+3)*c,gy=(y+.5)*c;
-  ctx.fillStyle='#8a8f96';ctx.fillRect(gx-c*.1,gy-c*.05,c*.42,c*.1);                     // 空橋
-  if(hsh(K(A.x0,y),5)>.25){ctx.save();ctx.translate(gx+c*.85,gy);ctx.fillStyle='#e6e8ea';
-   ctx.beginPath();ctx.ellipse(0,0,c*.48,c*.07,0,0,TAU);ctx.fill();                            // 機身（機頭朝航廈）
-   ctx.beginPath();ctx.moveTo(-c*.05,0);ctx.lineTo(c*.12,-c*.42);ctx.lineTo(c*.22,-c*.42);ctx.lineTo(c*.12,0);ctx.lineTo(c*.22,c*.42);ctx.lineTo(c*.12,c*.42);ctx.closePath();ctx.fill();
-   ctx.beginPath();ctx.moveTo(c*.36,0);ctx.lineTo(c*.46,-c*.15);ctx.lineTo(c*.5,-c*.15);ctx.lineTo(c*.46,0);ctx.lineTo(c*.5,c*.15);ctx.lineTo(c*.46,c*.15);ctx.closePath();ctx.fill();
-   ctx.fillStyle=['#1a5aa8','#c8332c','#2a8a5a'][hsh(K(A.x0,y),6)*3|0];ctx.fillRect(c*.42,-c*.02,c*.08,c*.04);ctx.restore()}}
- ctx.fillStyle='rgba(10,10,9,.75)';ctx.font='600 11px '+FONT;ctx.fillText('',0,0);
- // 塔台：航廈北端
- const ox=(A.x0+1.5)*c,oy=(ty0-1.2)*c;ctx.fillStyle='#55595f';ctx.beginPath();ctx.arc(ox,oy,c*.28,0,TAU);ctx.fill();
- ctx.fillStyle='#8fc0e8';ctx.beginPath();ctx.arc(ox,oy,c*.18,0,TAU);ctx.fill();ctx.strokeStyle='#2a2c30';ctx.lineWidth=1;ctx.stroke();
- ctx.fillStyle='rgba(10,10,9,.75)';const lb='高雄國際機場';const tw=ctx.measureText(lb).width+10;rr((A.x0+A.x1)/2*c-tw/2,A.y0*c+4,tw,15,3);ctx.fill();
- ctx.fillStyle='#e8dca8';ctx.fillText(lb,(A.x0+A.x1)/2*c,A.y0*c+11.5)}
+ AL.runways.forEach((r,i)=>{ctx.save();ctx.translate(X(AL.rx[0])+c*1.5,Y(r)+c/2);ctx.rotate(Math.PI/2);ctx.fillText(i?'09L':'09R',0,0);ctx.restore();
+  ctx.save();ctx.translate(X(AL.rx[1])-c*.5,Y(r)+c/2);ctx.rotate(-Math.PI/2);ctx.fillText(i?'27R':'27L',0,0);ctx.restore()});
+ // 登機門與空橋、停機坪上的客機
+ for(let j=AL.apron[2];j<=AL.apron[3];j+=2){const gx=X(AL.apron[0]),gy=Y(j)+c/2;
+  ctx.fillStyle='#8a8f96';ctx.fillRect(gx-c*.1,gy-c*.05,c*.5,c*.1);
+  if(hsh(K(A.x0,A.y0+j),5)>.2){ctx.save();ctx.translate(gx+c*1.35,gy);ctx.fillStyle='#e6e8ea';
+   ctx.beginPath();ctx.ellipse(0,0,c*.85,c*.11,0,0,TAU);ctx.fill();
+   ctx.beginPath();ctx.moveTo(-c*.1,0);ctx.lineTo(c*.2,-c*.75);ctx.lineTo(c*.38,-c*.75);ctx.lineTo(c*.22,0);ctx.lineTo(c*.38,c*.75);ctx.lineTo(c*.2,c*.75);ctx.closePath();ctx.fill();
+   ctx.beginPath();ctx.moveTo(c*.62,0);ctx.lineTo(c*.78,-c*.26);ctx.lineTo(c*.86,-c*.26);ctx.lineTo(c*.8,0);ctx.lineTo(c*.86,c*.26);ctx.lineTo(c*.78,c*.26);ctx.closePath();ctx.fill();
+   ctx.fillStyle=['#1a5aa8','#c8332c','#2a8a5a'][hsh(K(A.x0,A.y0+j),6)*3|0];ctx.fillRect(c*.72,-c*.03,c*.14,c*.06);ctx.restore()}}
+ // 設施名稱（中倍率以上）
+ const lab=(s,i,j)=>{ctx.font='600 11px '+FONT;const tw=ctx.measureText(s).width+10;ctx.fillStyle='rgba(10,10,9,.75)';rr(X(i)-tw/2,Y(j)-8,tw,15,3);ctx.fill();ctx.fillStyle='#e8dca8';ctx.fillText(s,X(i),Y(j))};
+ lab('高雄國際機場 航廈',(AL.term[0]+AL.term[1]+1)/2,AL.term[2]-.6);
+ lab('塔台',AL.tower[0]+.5,AL.tower[1]-.3);
+ lab('貨運站',(AL.cargo[0]+AL.cargo[1]+1)/2,AL.cargo[2]-.4);lab('修護棚廠',(AL.hangar[0]+AL.hangar[1]+1)/2,AL.hangar[2]-.4);lab('油庫',(AL.fuel[0]+AL.fuel[1]+1)/2,AL.fuel[2]-.4)}
 function siteOverlay(c,x0,x1,y0,y1){
  airportSite(c,x0,x1,y0,y1);
  for(const H of HOSP){if(H.p[0]>x1+1||H.p[0]+(H.w||1)<x0-1||H.p[1]>y1+1||H.p[1]+(H.h||1)<y0-1)continue;hospSite(H,c)}

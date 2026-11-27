@@ -7,8 +7,8 @@ const CROP=new Uint8Array(N*N),CANAL=new Uint8Array(N*N);
 // HWL：此格有「高速公路層」從地面道路／水面上方（高架）或下方（地下道）交錯通過，兩層不互通
 // HG：此格高速公路的等級（RGK.HWE 高架國道、RGK.HWG 平面國道、RGK.EXP 快速道路），RG：地面道路等級，RGF：生成時指定的等級
 const HWL=new Uint8Array(N*N),HG=new Uint8Array(N*N),RG=new Uint8Array(N*N),RGF=new Uint8Array(N*N);
-const RGK={HWE:1,HWG:2,RAMP:3,EXP:4,UND:5,PROV:6,CNTY:7,CITY:8,TWN:9,IND:10,PATH:11};
-const RGN=['','高速公路（高架）','高速公路（平面）','高速公路匝道','快速道路','地下道','省道','縣道','市道','鄉道','產業道路','小徑'];
+const RGK={HWE:1,HWG:2,RAMP:3,EXP:4,UND:5,PROV:6,CNTY:7,CITY:8,TWN:9,IND:10,PATH:11,AIRS:12,TWY:13};
+const RGN=['','高速公路（高架）','高速公路（平面）','高速公路匝道','快速道路','地下道','省道','縣道','市道','鄉道','產業道路','小徑','機場聯絡道','滑行道'];
 let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
 // 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
 const SUBX=74,SUBY=86;
@@ -94,7 +94,6 @@ function build(){
  for(let x=Math.round(13*MF);x<Math.round(19*MF);x++)for(let y=Math.round(28*MF);y<Math.round(33*MF);y++)if(TR[K(x,y)]!==1)TR[K(x,y)]=3;
  // 機場：東南跑道與停機坪
  for(let x=Math.round(45*MF);x<Math.round(60*MF);x++)for(let y=Math.round(43*MF);y<Math.round(58*MF);y++)TR[K(x,y)]=4;
- for(let y of[Math.round(46*MF),Math.round(52*MF)])for(let x=Math.round(46*MF);x<Math.round(59*MF);x++)RUN[K(x,y)]=1;
  // 郊區：市區外圍零星農地（以 4×4 區塊決定，成片）
  for(let x=0;x<CITY;x++)for(let y=0;y<CITY;y++){const k=K(x,y);if(!isSub(x,y)||TR[k])continue;
   const b=Math.sin((x>>2)*12.9898+(y>>2)*78.233)*43758.5453%1;if(Math.abs(b)<.3)TR[k]=5}
@@ -112,7 +111,7 @@ function build(){
   for(let x=ax0;x<=ax1;x++)for(let y=ay0;y<=ay1;y++)RD[K(x,y)]=0;
   for(let x=ax0-1;x<=ax1+1;x++)for(const y of[ay0-1,ay1+1])if(TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
   for(let y=ay0-1;y<=ay1+1;y++)for(const x of[ax0-1,ax1+1])if(x<CITY&&TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
-  const my=Math.round((ay0+ay1)/2);RD[K(ax0,my)]=2;RD[K(ax0+1,my)]=2}
+  airportLayout()}
  // 橋樑：部分幹道跨河；只跨窄水道（連續水面 5 格以內、兩岸都是陸地），不往海裡鋪
  const bridge=(cells)=>{let i=0;while(i<cells.length){if(TR[cells[i]]!==1){i++;continue}let j=i;while(j<cells.length&&TR[cells[j]]===1)j++;
    if(i>0&&j<cells.length&&j-i<=5)for(let q=i;q<j;q++)RD[cells[q]]=6;i=j}};
@@ -155,7 +154,7 @@ function build(){
  ruralRoads();
  pruneIslands();
  // 分隊與醫院
- SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:n==='機場'&&AP?[AP.x0,AP.y0+2]:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
+ SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:n==='機場'&&AP?[AP.x0+AL.arff[0],AP.y0+AL.arff[1]]:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
@@ -174,7 +173,7 @@ function build(){
  // 隨機拆除路段製造繞路，保持全網連通
  for(let i=0;i<Math.round(260*MF*MF);i++){
   const x=1+Math.floor(Math.random()*(CITY-2)),y=1+Math.floor(Math.random()*(CITY-2)),k=K(x,y),c=RD[k];
-  if(!c||c>=4||prot[k]||HG[k])continue;
+  if(!c||c>=4||prot[k]||HG[k]||TR[k]===4)continue;   // 機場內的滑行道與聯絡道不拆
   RD[k]=0;if(!oneComponent())RD[k]=c}
  for(let k=0;k<N*N;k++)SH[k]=Math.random();
  for(const s of places){
