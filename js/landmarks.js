@@ -2,7 +2,7 @@
 // 各佔 1～2 格，放在相關分隊附近、臨一般道路或幹道的空地
 'use strict';
 let LMK=[];const LMKC=new Map();   // LMKC：格 → {m:地標, i}
-let THSR=[];                       // 高架高鐵經過的格（由高鐵站往北到地圖邊緣）
+let THSR=[],LMK_NEXT=null;          // LMK_NEXT：正在建立的地標案件（makeInc 用來寫地址）                       // 高架高鐵經過的格（由高鐵站往北到地圖邊緣）
 const LMK_DEF=[
  {k:'tra',n:'高雄車站',sub:'地下化車站',w:2,h:1,near:['苓雅',0,-9],col:'#3f5a74',ic:'🚉'},
  {k:'hsr',n:'高鐵左營站',sub:'高架車站',w:2,h:1,near:['左營',2,-4],col:'#c8732c',ic:'🚄'},
@@ -84,3 +84,16 @@ function drawTHSR(c,x0,x1,y0,y1){
   ctx.strokeStyle='#9a9a94';ctx.lineWidth=Math.max(1.5,c*.28);ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(qx,qy);ctx.stroke();
   if(c>=14){ctx.strokeStyle='rgba(60,60,58,.8)';ctx.lineWidth=Math.max(1,c*.02);for(const o of[-.06,.06]){ctx.beginPath();ctx.moveTo(px+o*c,py);ctx.lineTo(qx+o*c,qy);ctx.stroke()}}}
  ctx.restore()}
+// 地標專屬案件：抽到的案類若適合某類地標，約三成機率改發生在該地標（地址寫地標名稱）
+const LMK_KIND={tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
+ dept:['deptfire','lift','crowd','faint','smoke'],mart:['deptfire','lift','faint','choke','carfire'],edu:['sport','faint','hypervent','brawl','kidfever','poolgas']};
+function lmkFor(k){const ms=LMK.filter(m=>LMK_KIND[m.k]&&LMK_KIND[m.k].includes(k)&&!S.inc.some(i=>i.lm===m.n+m.x0));return ms.length?pick(ms):null}
+function lmkSpawn(k){
+ const m=Math.random()<.35&&lmkFor(k);if(!m)return null;
+ const cc=pick(m.cells),aa=nbRoad(cc[0],cc[1])||m.cells.map(q=>nbRoad(q[0],q[1])).find(Boolean);if(!aa)return null;
+ LMK_NEXT=m;let inc=null;try{inc=makeInc(k,cc,aa,zoneOf(cc[0],cc[1]),true,{ax:aa[0],ay:aa[1]})}finally{LMK_NEXT=null}
+ if(!inc)return null;
+ inc.lm=m.n+m.x0;
+ if(k==='deptfire'&&m.k==='mart')inc.nm='量販店火警';
+ if(m.k==='tra'&&k==='smoke')inc.nm='地下車站濃煙';
+ return inc}
