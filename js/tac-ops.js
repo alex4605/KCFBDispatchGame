@@ -138,12 +138,38 @@ const tacAmbFree=(inc,B)=>onScene(inc).filter(u=>u.code==='91'&&u.st==='work'&&!
 const TAC_ASK=[
  {k:'who',q:'裡面還有人嗎？在哪裡？'},{k:'fire',q:'火是從哪裡燒起來的？'},{k:'gas',q:'裡面有瓦斯桶或危險物品嗎？'},
  {k:'lock',q:'門有沒有鎖？有鑰匙嗎？'},{k:'layout',q:'樓上住幾戶？樓梯在哪？'}];
-function tacCivInit(inc,B){B.civ={n:1+(Math.random()<.5?1:0),asked:{},until:S.t+240}}
+function tacCivInit(inc,B){B.civ={n:1+(Math.random()<.5?1:0),asked:{},until:S.t+240,log:null}}
+// 現場民眾的身分（依建物用途）
+function tacCivWho(inc){const k=inc.k;
+ return /nursing|hospfire/.test(k)?'護理人員':/fact|warehouse|chemfire|tinfire|wastefire|majorind|gasstn/.test(k)?'員工':/dept|market/.test(k)?'店員':/dorm/.test(k)?'移工':/hifire|skyscraper/.test(k)?'管理員':'住戶'}
+// 進入戰術畫面時，民眾先主動描述火場基本狀況（像 119 報案通話）；之後的詢問也接在同一段對話
+function tacCivOpen(inc,B){
+ if(!B.civ||B.civ.log)return;
+ const L=B.civ.log=[],who=tacCivWho(inc),say=s=>{L.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},
+  me=s=>{L.push({w:'場',s});inc.log.push({w:'場',s:'（現場指揮官）'+s,t:S.t-inc.t0})};
+ me('我是消防隊現場指揮官，裡面的狀況可以跟我說嗎？');
+ if(B.hoax){say('我只是聞到燒焦味，有人說'+tacFlr(B,B.hint>=0?B.hint:B.of)+'在冒煙，我自己沒看到火。');me('收到，我們會逐層查證，請先在外面等。');return}
+ const f=Math.random()<.85?B.of:Math.max(B.bf,Math.min(B.F-1,B.of+(Math.random()<.5?-1:1)));
+ const st=B.cells.filter(x=>x.ty==='stair'&&x.s>.3).length;
+ let s=(f<B.bf?'地下室':tacFlr(B,f))+'在燒，'+(B.cells.some(x=>x.h>.5)?'看得到火光，':'')+(st?'樓梯間都是煙，':'煙很大，')+'我是從'+(f>B.bf?'樓梯':'門口')+'跑出來的。';
+ say(s);
+ say(B.vtot>0?(Math.random()<.65?'裡面好像還有人沒出來！拜託快一點！':'我不確定大家有沒有都出來。'):(Math.random()<.8?'我們這邊的人都出來了。':'不知道樓上還有沒有人。'));
+ if(B.gas!==undefined&&Math.random()<.35)say('廚房好像有瓦斯桶，要小心。');
+ me('收到，請先退到警戒線外，有其他狀況再告訴我們。');
+ B.civ.next=S.t+5}
+// 對談自動進行：指揮官每隔約 6 秒依序追問下一個問題（不需玩家按按鈕），民眾離開或問完為止
+function tacCivStep(inc,B){
+ if(!tacCivOn(B))return;
+ if(!B.civ.log){tacCivOpen(inc,B);return}
+ if(S.t<(B.civ.next||0))return;
+ const a=TAC_ASK.find(x=>!B.civ.asked[x.k]);if(!a)return;
+ tacAsk(inc,B,a.k);B.civ.next=S.t+6}
 const tacCivOn=B=>B.civ&&S.t<B.civ.until&&Object.keys(B.civ.asked).length<TAC_ASK.length;
 function tacAsk(inc,B,k){
  if(!tacCivOn(B)||B.civ.asked[k])return;B.civ.asked[k]=1;
- const say=s=>inc.log.push({w:'民',s:'（現場民眾）'+s,t:S.t-inc.t0}),Q=TAC_ASK.find(x=>x.k===k).q;
- inc.log.push({w:'場',s:'（現場指揮官）'+Q,t:S.t-inc.t0});
+ tacCivOpen(inc,B);
+ const who=tacCivWho(inc),say=s=>{B.civ.log.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},Q=TAC_ASK.find(x=>x.k===k).q;
+ B.civ.log.push({w:'場',s:Q});inc.log.push({w:'場',s:'（現場指揮官）'+Q,t:S.t-inc.t0});
  if(k==='who'){
   const rs=B.cells.filter(x=>x.ty==='room'&&x.vic+x.hid>0),told=[];
   for(const x of rs)if(Math.random()<.75){x.rep=1;told.push(tacNm(B,x.f,x.c))}

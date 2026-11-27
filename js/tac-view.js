@@ -772,8 +772,12 @@ function tacSideHTML(inc){
  h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
   return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';
  // 現場民眾
- if(tacCivOn(B)){h+='<div class="hd mt">現場民眾（'+B.civ.n+' 人，可詢問屋內資訊）</div><div class="tasks">';
-  for(const a of TAC_ASK)if(!B.civ.asked[a.k])h+='<button data-task="'+a.k+'">'+a.q+'</button>';h+='</div>'}
+ // 現場民眾：對談紀錄（進場時民眾先描述火場基本狀況），下方為還沒問過的問題
+ if(B.civ&&(tacCivOn(B)||B.civ.log)){if(tacCivOn(B))tacCivOpen(inc,B);
+  h+='<div class="hd mt">現場'+tacCivWho(inc)+(tacCivOn(B)?'（'+B.civ.n+' 人，可詢問屋內資訊）':'（已離開）')+'</div><div class="civlog">';
+  for(const l of(B.civ.log||[]).slice().reverse())h+='<div class="'+(l.w==='民'?'cm':'cf')+'"><b>'+(l.w==='民'?tacCivWho(inc):'指揮官')+'</b>'+esc(l.s)+'</div>';
+  h+='</div>';
+  if(tacCivOn(B)&&TAC_ASK.some(a=>!B.civ.asked[a.k]))h+='<div class="sub">指揮官持續詢問中…</div>'}
  // ===== 分頁：水線 =====
  h+='\u0001wt';
  // 水源與水線

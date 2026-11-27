@@ -244,3 +244,10 @@ button.hand:hover{background:#2d5a4a}
 .trlv{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--pnl2)}
 .trlv.ok{border-color:#3f7d66;background:rgba(93,202,165,.08)}
 .trlv .sub{margin-top:4px;line-height:1.5}
+
+/* 戰術側欄：現場民眾對談 */
+.civlog{display:flex;flex-direction:column-reverse;gap:5px;margin:4px 0 6px;max-height:220px;overflow:auto}
+.civlog div{font-size:12px;line-height:1.5;padding:5px 8px;border-radius:8px;max-width:92%}
+.civlog b{display:block;font-size:10px;font-weight:600;opacity:.7;margin-bottom:1px}
+.civlog .cm{background:rgba(233,161,59,.12);border:1px solid rgba(233,161,59,.3);color:#f0dcc0;align-self:flex-start}
+.civlog .cf{background:rgba(125,179,232,.12);border:1px solid rgba(125,179,232,.3);color:#d6e6f6;align-self:flex-end}

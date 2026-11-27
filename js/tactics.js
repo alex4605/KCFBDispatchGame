@@ -327,13 +327,13 @@ function tacInit(inc){
  // 化工廠：約三分之二有化學品洩漏（起火層的廠區或倉庫）
  if(inc.k==='chemfire'&&Math.random()<.65){B.chem=pick(TAC_CHEM);const ks=rooms.filter(c=>/machine|store/.test(L.N[c].kind));B.leak={f:of,c:ks.length?pick(ks):oc,on:1}}
  const prog=Math.min(.8,inc.work/inc.dur);
- const nIgn=T.hoax||T.nofire?0:T.cook||T.ext||T.roofF?1:T.blast||T.wui?2:Math.max(1,Math.min(R,Math.round((inc.pm.area||60)/55)));
+ const nIgn=T.hoax||T.nofire?0:T.cook||T.ext||T.roofF?1:T.blast||T.wui?2:Math.max(1,Math.min(R,Math.round((inc.pm.area||60)/100)));
  const cand=[];
  for(let f=of;f<Math.min(F,of+2);f++)for(const c of rooms)cand.push([tacGd(B,c,oc)+(f-of)*1.6+(L.N[c].win===L.N[oc].win?0:.5),f,c]);
  cand.sort((a,b)=>a[0]-b[0]);
  for(let i=0;i<Math.min(nIgn,cand.length);i++){
   const x=tacCel(B,cand[i][1],cand[i][2]);
-  x.h=Math.max(.12,(.62-i*.08)*(.75+.25*load)*(1-prog)+Math.random()*.1);x.s=Math.min(1,x.h*.9);
+  x.h=Math.max(.12,(.62-i*.2)*(.75+.25*load)*(1-prog)+Math.random()*.1);x.s=Math.min(1,x.h*.9);
   if(T.cook){x.h=.3+Math.random()*.25;x.s=.8;x.o2=17}
   // 離火未熄：門窗緊閉的悶燒，含氧低、煙濃，開門有爆燃風險
   if(T.away){x.h=.25+Math.random()*.1;x.s=.95;x.o2=12.5}
@@ -377,6 +377,8 @@ function tacInit(inc){
   const r=Math.random(),t=B.poor?(r<.35?'gone':r<.65?'wedge':'auto'):(r<.07?'wedge':r<.4&&T.lay!=='house'?'mag':'auto');
   const key=tacDK(B,f,n.c,o);B.fd.set(key,{t,f,s:n.c,o});if(t==='auto')B.cd.add(key)}
  for(let f=0;f<F;f++)for(const n of L.N)if(n.ty==='room'&&!n.small&&Math.random()<.15)for(const o of n.nb)if(L.N[o].ty!=='room')B.lk.add(tacDK(B,f,n.c,o));
+ // 分戶住宅的戶門平常是關著的（避難的住戶約兩成會沒關門）：火與煙經戶門外洩慢很多，直到有人開門或門被燒穿
+ for(let f=0;f<F;f++)for(const n of L.N)if(n.uent&&Math.random()<.8)for(const o of n.nb)if(L.N[o].ty!=='room')B.cd.add(tacDK(B,f,n.c,o));
  // 瓦斯桶：民宅與煮食不慎常見（多在廚房）
  if(!T.hoax&&Math.random()<(T.gas||(inc.k==='mfire'||inc.k==='cook'?.45:.2))){const ks=rooms.filter(c=>/kitchen|store|stall|machine/.test(L.N[c].kind));
   if(ks.length){B.gas=pick(ks);B.gasF=Math.max(bf,Math.min(F-1,of+tacRint(-1,1)))}}
@@ -862,7 +864,8 @@ function tacFire(inc,B,dt){
    if(flow&&x.f<=B.bf+1)ox+=.2;
    if(nd.nb.some(o=>dcN.has(x.f*W+o)))ox-=.3;
    ox=Math.max(.05,ox)*Math.max(.15,Math.min(1.1,(x.o2-9)/11));
-   if(!x.wet)x.h=Math.min(1,x.h+dt*(.006+.03*x.h*(1-x.h*.5))*ox*B.fk*x.fk*(x.dw?.35:1));
+   // 成長：初期（起火後幾分鐘）較慢，火勢大了才加速
+   if(!x.wet)x.h=Math.min(1,x.h+dt*(.0035+.026*x.h*(1-x.h*.5))*ox*B.fk*x.fk*(x.dw?.35:1));
    x.fu=Math.max(0,x.fu-dt*x.h*.0028*(x.gr?4:1))}
   else if(x.fu<=0)x.h=Math.max(0,x.h-dt*.02);
   x.s=Math.min(1,x.s+dt*x.h*.09);
@@ -876,14 +879,20 @@ function tacFire(inc,B,dt){
   if(nd.atr&&x.f+1<F&&x.h>.3)dh[(x.f+1)*W+x.c]+=dt*.01*(x.h-.3);
   if(x.h>.45&&!x.wet){
    // 經門延燒較快、隔牆較慢；有窗的房間經外牆往上層延燒（開窗更快）
-   for(const cc of tacNb(B,x.f,x.c)){const nb=B.cells[x.f*W+cc];if(nb.fu>0)dh[x.f*W+cc]+=dt*(tacShut(B,x.f,x.c,cc)?.004:.011)*(x.h-.4)*(nb.wet?.2:1)*(B.wind?tacWF(B,x.c,cc):1)*(nb.gr?2.5:1)}
-   for(const cc of nd.wl){if(x.f<B.bf&&nd.nbO&&nd.nbO.includes(cc))continue;const nb=B.cells[x.f*W+cc];if(nb.fu>0)dh[x.f*W+cc]+=dt*(B.thin?.012:.005)*(B.out&&B.L.N[cc].walled?.45:1)*(x.h-.4)*(nb.wet?.2:1)}
-   if(x.f+1<F){const up=B.cells[(x.f+1)*W+x.c];if(up.fu>0)dh[(x.f+1)*W+x.c]+=dt*(nd.win&&x.f>=B.bf?.008:x.f<B.bf?.0012:.004)*(x.h-.45)*(1+x.v*1.6)}}}
+   for(const cc of tacNb(B,x.f,x.c)){const nb=B.cells[x.f*W+cc];if(nb.fu<=0)continue;const sh=tacShut(B,x.f,x.c,cc);
+    dh[x.f*W+cc]+=dt*(sh?.0012:.006)*(x.h-.45)*(nb.wet?.2:1)*(B.wind?tacWF(B,x.c,cc):1)*(nb.gr?2.5:1);
+    // 關著的門持續受熱會被燒穿（約 60 秒，現實約 10 分鐘）
+    if(sh&&x.h>.7){const key=tacDK(B,x.f,x.c,cc),bt=B.dbt||(B.dbt={});bt[key]=(bt[key]||0)+dt;
+     if(bt[key]>60&&B.cd.has(key)){B.cd.delete(key);radio(inc,'安全官',tacNm(B,x.f,x.c)+'通往'+tacNm(B,x.f,cc)+'的門被燒穿，火勢擴大！')}}}
+   for(const cc of nd.wl){if(x.f<B.bf&&nd.nbO&&nd.nbO.includes(cc))continue;const nb=B.cells[x.f*W+cc];if(nb.fu>0)dh[x.f*W+cc]+=dt*(B.thin?.01:.003)*(B.out&&B.L.N[cc].walled?.45:1)*(x.h-.4)*(nb.wet?.2:1)}
+   // 往上層：主要經外牆窗口（開窗更快）；樓板延燒很慢
+   if(x.f+1<F){const up=B.cells[(x.f+1)*W+x.c];if(up.fu>0)dh[(x.f+1)*W+x.c]+=dt*(nd.win&&x.f>=B.bf?.004:x.f<B.bf?.0008:.0015)*(x.h-.5)*(1+x.v*2)}}}
  for(let i=0;i<dh.length;i++)if(dh[i]>0){const x=B.cells[i];
   // 室外有牆的建物：外牆受熱要累積到一定程度才會起燃（周界防護射水會讓預熱下降）
-  if(B.out&&x.h<.02&&B.L.N[x.c].walled){x.pre=(x.pre||0)+dh[i]*(x.wet?.2:1);if(x.pre<.08)continue}
+  // 未起火的格子要先累積受熱才會起燃（室外有牆的建物門檻更高，周界防護射水會讓預熱下降）
+  if(x.h<.02){x.pre=(x.pre||0)+dh[i]*(x.wet?.2:1);if(x.pre<(B.out&&B.L.N[x.c].walled?.08:.05))continue}
   x.h=Math.min(1,Math.max(x.h,.02)+dh[i])}
- if(B.out)for(const x of B.cells)if(x.pre>0&&x.wet)x.pre=Math.max(0,x.pre-dt*.01)
+ for(const x of B.cells)if(x.pre>0&&x.h<.02)x.pre=Math.max(0,x.pre-dt*(x.wet?.01:.0005))
  // 煙：同層經門交換（含樓梯間），樓梯間往上竄
  for(let f=0;f<F;f++)for(const n of B.L.N)for(const cc of tacNb(B,f,n.c)){if(cc<n.c)continue;
   const a=B.cells[f*W+n.c],b=B.cells[f*W+cc],m=(a.s-b.s)*dt*(tacShut(B,f,n.c,cc)?.04:.25);a.s-=m;b.s+=m}
@@ -1130,6 +1139,7 @@ function tacIncident(inc,dt,first,flow){
  if(inc.req){inc.reqT-=dt;if(inc.reqT<=0)answer(inc,false,true)}
  tacSync(inc);
  tacParkStep(inc,B,dt);
+ tacCivStep(inc,B);
  const eff=waterOK(inc)?flow:0;
  tacLines(inc,B,dt);
  for(const x of B.cells)x.wet=0;

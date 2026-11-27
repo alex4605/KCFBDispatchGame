@@ -200,10 +200,10 @@ function tacStaff(inc,B,dt){
 // 主要目標達成後（B.hOK），留轄區（離現場最近的分隊）一輛幫浦車做殘火處理，其餘車輛返隊；照常結案與計分，畫面回到指揮中心
 function tacHandoff(inc,B){
  if(!B.hOK||B.done)return;
- const on=onScene(inc).filter(u=>u.st==='work');
+ const on=S.units.filter(u=>u.inc===inc.id),wk=on.filter(u=>u.st==='work');
  const dist=u=>{const s=SPOT[u.si];return s?Math.hypot(s.p[0]-inc.x,s.p[1]-inc.y):1e9};
- const pumps=on.filter(u=>CODE[u.code].cap&&u.code!=='61'&&!u.ma).sort((a,b)=>dist(a)-dist(b));
- const keep=pumps[0]||on[0];
+ const pumps=wk.filter(u=>CODE[u.code].cap&&u.code!=='61'&&!u.ma).sort((a,b)=>dist(a)-dist(b));
+ const keep=pumps[0]||wk[0]||on[0];  // 還在路上的車也一併返隊
  for(const u of on){if(u===keep||u.load>0)continue;u.inc=null;home(u)}
  reindex();
  for(const x of B.cells)x.emb=0;               // 餘燼由轄區分隊處理

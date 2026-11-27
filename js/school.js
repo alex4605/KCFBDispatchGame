@@ -2,7 +2,7 @@
 // 訓練案件建在學校訓練場，由楠梓分隊（不足時就近）的車直接到場；訓練期間不進新案件、其他案件時限暫停，不影響評鑑與經費
 'use strict';
 const SCHOOL_ID=-7;
-// SCHOOL：{x0,y0,w,h,cells,set, p:園區中心, burn:火災模擬屋格, x:模擬屋臨路格, side:臨路側}
+// SCHOOL：{x0,y0,w,h,cells,set, p:園區中心, burn:火災模擬屋格, x:模擬屋臨路格, side:臨路側}（園區 2×2 格）
 let SCHOOL=null;
 // 園區設施（CROP 代碼）：13 訓練塔、14 教室與宿舍、15 操場、16 報廢消防車停車場、17 火災模擬屋
 const SCH_N={13:'訓練塔',14:'教室與宿舍',15:'操場',16:'報廢消防車停車場',17:'火災模擬屋'};
@@ -25,12 +25,13 @@ const TRAIN_LV=[
   goals:[['開設指揮站',(inc,B)=>!!B.st.icp],['指派安全官',(inc,B)=>!!B.role.safety],['編成 RIT',(inc,B)=>B.sq.some(q=>q.task==='rit'||q.task==='ritgo')||!!B.trRit],
    ['救出受困者並送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]}];
 const tacFireOut=B=>B.peak>0&&!B.cells.some(x=>x.h>.05);
-// 地圖生成後：在楠梓分隊附近找一塊沒有道路、一側臨一般道路或幹道的陸地，設訓練中心園區（6×5，找不到就 5×4、4×3）
+// 地圖生成後：在楠梓分隊附近找一塊沒有道路、一側臨一般道路或幹道的 2×2 陸地，設訓練中心園區
+// 前排（臨路）：除役消防車停車場、火災模擬屋；後排：操場、訓練塔
 function placeSchool(){
  SCHOOL=null;const s=SPOT.find(x=>x.n==='楠梓');if(!s||!s.p)return;
  const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&(TR[k]===0||TR[k]===5)&&!inFacility(x,y)&&!SPOT.some(z=>z.p&&z.p[0]===x&&z.p[1]===y)};
  const road=(x,y)=>{const r=cls(x,y);return r===2||r===3};
- for(const [W,H] of[[6,5],[5,6],[5,4],[4,5],[4,3]]){let best=null,bd=1e9;
+ for(const [W,H] of[[2,2]]){let best=null,bd=1e9;
   for(let x0=s.p[0]-26;x0<=s.p[0]+26;x0++)for(let y0=s.p[1]-26;y0<=s.p[1]+26;y0++){
    const d=Math.hypot(x0+W/2-s.p[0],y0+H/2-s.p[1]);if(d>=bd)continue;
    let ok=true;for(let i=0;i<W&&ok;i++)for(let j=0;j<H;j++)if(!land(x0+i,y0+j)){ok=false;break}
