@@ -12,7 +12,7 @@ const RGN=['','高速公路（高架）','高速公路（平面）','高速公�
 let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
 // 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
 const SUBX=74,SUBY=86;
-const isSub=(x,y)=>inCity(x,y)?(x>=SUBX||y>=SUBY):(Math.max(x-CITY+1,y-CITY+1)<=9);
+const isSub=(x,y)=>inCity(x,y)?(x-OX>=SUBX||y-OY>=SUBY):(Math.max(OX-x,x-OX-CITY+1,OY-y,y-OY-CITY+1)<=9);
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
 let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[],AP=null;   // AP：機場範圍
@@ -63,17 +63,20 @@ function grid(){
  if(RC[RC.length-1]!==CITY-1)RC.push(CITY-1);
  for(let y=0,i=0;y<CITY;y+=sr[i++%sr.length])RR.push(y);
  if(RR[RR.length-1]!==CITY-1)RR.push(CITY-1)}
-const inCity=(x,y)=>x<CITY&&y<CITY;
+const inCity=(x,y)=>x>=OX&&y>=OY&&x<OX+CITY&&y<OY+CITY;
 function inFacility(x,y){
- for(let i=0;i<SPOT.length;i++)if(SPOT[i].p[0]===x&&SPOT[i].p[1]===y)return true;
+ for(let i=0;i<SPOT.length;i++)if(SPOT[i].p&&SPOT[i].p[0]===x&&SPOT[i].p[1]===y)return true;
  for(const h of HOSP)for(const q of (h.cells||[h.p]))if(q[0]===x&&q[1]===y)return true;
+ if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.p[0]===x&&SCHOOL.p[1]===y)return true;
  return false}
 function build(){
+ OX=0;OY=0;RTOWN.forEach((t,i)=>t.c=RTOWN0[i].slice());
  grid();RD.fill(0);TR.fill(0);RUN.fill(0);HWL.fill(0);HG.fill(0);RG.fill(0);RGF.fill(0);ROUTES=[];
  // 水域：蜿蜒河道 + 西南港灣
  for(let y=0;y<CITY;y++){const c=(9+4.5*Math.sin(y/7.5/MF)+1.5*Math.sin(y/3.1/MF))*MF;
   for(let x=0;x<CITY;x++)if(Math.abs(x-c)<1.8)TR[K(x,y)]=1}
- for(let x=0;x<Math.round(17*MF);x++)for(let y=Math.round(55*MF);y<N;y++)TR[K(x,y)]=1;
+ // 西南海面：市區以南沿海岸線往東南延伸（海岸線略有起伏）
+ for(let y=Math.round(55*MF);y<N;y++){const cx=Math.round(17*MF)+(y>=CITY?3*Math.sin(y/7)+(y-CITY)*.18:0);for(let x=0;x<cx;x++)TR[K(x,y)]=1}
  // 市中心運河（愛河型）：由河道向東南蜿蜒
  for(let x=Math.round(14*MF);x<Math.round(40*MF);x++){
   const cy=Math.round(34*MF+3*Math.sin(x/5));
@@ -99,8 +102,8 @@ function build(){
   if(TR[k]===1)return;                      // 水域不鋪路
   RD[k]=TR[k]===2?5:c};                     // 山林一律降為產業道路
  // 山林裡只保留少數棋盤道路（每 4 條留 1 條），其餘不鋪
- // 郊區街廓較大：次要道路只留每 4 條 1 條
- const keep=(i,x,y)=>(TR[K(x,y)]!==2||i%4===0)&&(!isSub(x,y)||i%2===1||i%4===0);
+ // 郊區街廓較大：次要道路只留每 4 條 1 條；山林裡不鋪棋盤道路（另以幾條蜿蜒道路進山）
+ const keep=(i,x,y)=>TR[K(x,y)]!==2&&(!isSub(x,y)||i%2===1||i%4===0);
  for(let i=0;i<RC.length;i++)for(let y=0;y<CITY;y++)if(keep(i,RC[i],y))set(RC[i],y,i%2?3:2);
  for(let i=0;i<RR.length;i++)for(let x=0;x<CITY;x++)if(keep(i,x,RR[i]))set(x,RR[i],i%2?3:2);
  // 機場：場內不鋪路，外圍一圈環場道路，西側航廈有連外道路
@@ -110,11 +113,11 @@ function build(){
   for(let x=ax0-1;x<=ax1+1;x++)for(const y of[ay0-1,ay1+1])if(TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
   for(let y=ay0-1;y<=ay1+1;y++)for(const x of[ax0-1,ax1+1])if(x<CITY&&TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
   const my=Math.round((ay0+ay1)/2);RD[K(ax0,my)]=2;RD[K(ax0+1,my)]=2}
- // 橋樑：部分幹道跨河
- for(let i2=1;i2<RR.length;i2+=2){const y=RR[i2];
-  for(let x=0;x<CITY;x++)if(TR[K(x,y)]===1&&x>2)RD[K(x,y)]=6}
- for(let i2=2;i2<RC.length;i2+=3){const x=RC[i2];
-  for(let y=0;y<CITY;y++)if(TR[K(x,y)]===1&&x>2&&y<Math.round(55*MF))RD[K(x,y)]=6}
+ // 橋樑：部分幹道跨河；只跨窄水道（連續水面 5 格以內、兩岸都是陸地），不往海裡鋪
+ const bridge=(cells)=>{let i=0;while(i<cells.length){if(TR[cells[i]]!==1){i++;continue}let j=i;while(j<cells.length&&TR[cells[j]]===1)j++;
+   if(i>0&&j<cells.length&&j-i<=5)for(let q=i;q<j;q++)RD[cells[q]]=6;i=j}};
+ for(let i2=1;i2<RR.length;i2+=2){const y=RR[i2],a=[];for(let x=0;x<CITY;x++)a.push(K(x,y));bridge(a)}
+ for(let i2=2;i2<RC.length;i2+=3){const x=RC[i2],a=[];for(let y=0;y<CITY;y++)a.push(K(x,y));bridge(a)}
  // 國道：南北 + 東西，交會處互通
  FX=Math.round(41*MF);FY=RR[Math.round(9*MF)]+2;
  // 國道一號止於市區南緣；國道十號向東延伸到旗山。市區內高架（地面道路從橋下通過），郊區與鄉間為平面（交叉道路走地下道）
@@ -130,12 +133,7 @@ function build(){
  for(const x of rampX){if(TR[K(x,FY)]===1)continue;ramp(x,FY);
   if(!RD[K(x,FY-1)])RD[K(x,FY-1)]=2;if(!RD[K(x,FY+1)])RD[K(x,FY+1)]=2}
  ramp(FX,FY);                                   // 國一與國十系統交流道
- // 山區加幾條蜿蜒產業道路
- for(let b=0;b<3;b++){
-  let x=Math.round(46*MF)+b*6,y=RR[Math.round(6*MF)];
-  for(let s=0;s<30&&y>0&&x>0&&x<N-1;s++){
-   if(TR[K(x,y)]!==1&&RD[K(x,y)]!==4&&!HG[K(x,y)])RD[K(x,y)]=RD[K(x,y)]||5;
-   y--;if(Math.random()<.45)x+=Math.random()<.5?1:-1}}
+ // 山區道路改在 ruralRoads() 以成本路徑鋪設（少數幾條，連到聚落或幹道，不留死路）
  // 巷弄
  for(let i=0;i<150;i++){
   const hz=Math.random()<.5,a=(hz?RC:RR)[Math.floor(Math.random()*(hz?RC:RR).length)],
@@ -157,13 +155,13 @@ function build(){
  ruralRoads();
  pruneIslands();
  // 分隊與醫院
- SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
+ SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
   return{n,p:[px,py],w,h:h2,cells}});
  spreadStations();
- const places=SPOT.concat(HOSP);
+ const places=SPOT.filter(s=>s.p).concat(HOSP);
  const prot=new Uint8Array(N*N);
  for(const s of places){
   if(!s.cells&&TR[K(s.p[0],s.p[1])]===1)s.p[0]+=2;
@@ -187,9 +185,15 @@ function build(){
     if(x>=N)break;if(TR[K(x,y)]!==1&&!RD[K(x,y)])RD[K(x,y)]=2;e=nbRoad(s.p[0],s.p[1])}}
   s.x=e||s.p}
  pruneIslands();
+ // 整體位移，補上北側郊區鄉間與西側海面，再設置北側分隊
+ shiftWorld(SHX,SHY);
+ extendNorth();
+ pruneIslands();
+ for(const s of SPOT)if(!s.x){const e=nbRoad(s.p[0],s.p[1]);s.x=e||s.p}
  roadGrades();
  indexLayers();
- ruralDetail()}
+ ruralDetail();
+ placeSchool()}
 // 鋪高速公路：遇地面道路或水面成分層交會（HWL），否則為高速公路格
 function layHW(x,y,g){
  const k=K(x,y);HG[k]=g;
@@ -269,13 +273,13 @@ function reindex(){
  S.ix={m,bySt,idle}}
 const onScene=inc=>(S.ix&&S.ix.m.get(inc.id))||[];
 const onDuty=u=>u.st==='work'||u.st==='tx'||u.st==='give'||u.st==='clean';
-const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','31','艇','履','警'];
+const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','31','艇','履','警','43'];
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
   spawn:10,dspawn:90,nst:12,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
-  if(RD[k]&&RD[k]<4&&!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05))S.hyd.push([x,y])}
+  if(RD[k]&&RD[k]<4&&(TR[k]===7?Math.random()<.14:!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05)))S.hyd.push([x,y])}
  const roster=[
   [0,'11','16','71','71','99'],
   [1,'11','16','71','99'],
@@ -287,9 +291,10 @@ function reset(){
   [7,'11','11','16','01','01','艇','71','91','91'],
   [8,'16','11','11','艇','57','91','91','警'],
   [9,'11','11','16','41','91','91','71'],
-  [10,'11','16','61','91','71'],
+  [10,'11','16','61','91','71','43'],
   [11,'11','16','61','91','91']];
  roster.forEach(r=>{const si=r[0];for(let i=1;i<r.length;i++)addU(si,r[i])});
+ for(const u of S.units)if(CAFS_CS.includes(u.cs))u.cafs=1;
  S.ix=null;reindex();sel=selU=null;paused=false;zoom=2;
  cam={x:(SPOT[0].p[0]+.5)*cell()-cw/2,y:(SPOT[0].p[1]+.5)*cell()-ch/2};clamp()}
 // 分隊均勻分布：依人口權重（市區建物 > 郊區 > 鄉鎮 > 港區 > 農地）做 Lloyd 迭代，
@@ -298,16 +303,16 @@ function spreadStations(){
  const W=new Float32Array(N*N);
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y),t=TR[k];
   W[k]=t===1?0:t===2?.02:t===3?.3:t===4?.1:t===5?.05:t===6?.03:inCity(x,y)?(isSub(x,y)?.6:1):.5}
- const mov=SPOT.map(s=>!SABS[s.n]&&!SFIX[s.n]);
+ const mov=SPOT.map(s=>s.p&&!SABS[s.n]&&!SFIX[s.n]);
  for(let it=0;it<12;it++){
   const sx=new Float64Array(SPOT.length),sy=new Float64Array(SPOT.length),sw=new Float64Array(SPOT.length);
   for(let x=0;x<N;x+=2)for(let y=0;y<N;y+=2){const w=W[K(x,y)];if(!w)continue;
-   let b=0,bd=1e9;for(let i=0;i<SPOT.length;i++){const d=(SPOT[i].p[0]-x)**2+(SPOT[i].p[1]-y)**2;if(d<bd){bd=d;b=i}}
+   let b=0,bd=1e9;for(let i=0;i<SPOT.length;i++){if(!SPOT[i].p)continue;const d=(SPOT[i].p[0]-x)**2+(SPOT[i].p[1]-y)**2;if(d<bd){bd=d;b=i}}
    sx[b]+=x*w;sy[b]+=y*w;sw[b]+=w}
   for(let i=0;i<SPOT.length;i++)if(mov[i]&&sw[i]>0){const s=SPOT[i];
    s.p=[Math.round(s.p[0]*.3+sx[i]/sw[i]*.7),Math.round(s.p[1]*.3+sy[i]/sw[i]*.7)]}}
  // 貼齊：臨一般道路或幹道的陸地空格，避開醫院、機場、港區與其他分隊
- const used=new Set(SPOT.filter((s,i)=>!mov[i]).map(s=>K(s.p[0],s.p[1])));
+ const used=new Set(SPOT.filter((s,i)=>!mov[i]&&s.p).map(s=>K(s.p[0],s.p[1])));
  const ok=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);
   if(RD[k]||TR[k]===1||TR[k]===2||TR[k]===3||TR[k]===4||used.has(k))return false;
   if(HOSP.some(h=>Math.abs(h.p[0]-x)<4&&Math.abs(h.p[1]-y)<4))return false;

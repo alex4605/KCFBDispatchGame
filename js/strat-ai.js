@@ -3,7 +3,7 @@
 let stratT=0;
 function stratAI(dt){
  stratT-=dt;if(stratT>0)return;stratT=1.2;
- for(const inc of S.inc){
+ for(const inc of S.inc){if(inc.train)continue;   // 消防學校訓練案件不由戰略 AI 派遣
   const d=KIND[inc.k];
   // 現場請求一律同意（增派、位置確認）
   if(inc.req)answer(inc,true,false);
