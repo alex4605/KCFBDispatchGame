@@ -7,8 +7,8 @@ const CROP=new Uint8Array(N*N),CANAL=new Uint8Array(N*N);
 // HWL：此格有「高速公路層」從地面道路／水面上方（高架）或下方（地下道）交錯通過，兩層不互通
 // HG：此格高速公路的等級（RGK.HWE 高架國道、RGK.HWG 平面國道、RGK.EXP 快速道路），RG：地面道路等級，RGF：生成時指定的等級
 const HWL=new Uint8Array(N*N),HG=new Uint8Array(N*N),RG=new Uint8Array(N*N),RGF=new Uint8Array(N*N);
-const RGK={HWE:1,HWG:2,RAMP:3,EXP:4,UND:5,PROV:6,CNTY:7,CITY:8,TWN:9,IND:10,PATH:11};
-const RGN=['','高速公路（高架）','高速公路（平面）','高速公路匝道','快速道路','地下道','省道','縣道','市道','鄉道','產業道路','小徑'];
+const RGK={HWE:1,HWG:2,RAMP:3,EXP:4,UND:5,PROV:6,CNTY:7,CITY:8,TWN:9,IND:10,PATH:11,AIRS:12,TWY:13};
+const RGN=['','高速公路（高架）','高速公路（平面）','高速公路匝道','快速道路','地下道','省道','縣道','市道','鄉道','產業道路','小徑','機場聯絡道','滑行道'];
 let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
 // 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
 const SUBX=74,SUBY=86;
@@ -67,7 +67,7 @@ const inCity=(x,y)=>x>=OX&&y>=OY&&x<OX+CITY&&y<OY+CITY;
 function inFacility(x,y){
  for(let i=0;i<SPOT.length;i++)if(SPOT[i].p&&SPOT[i].p[0]===x&&SPOT[i].p[1]===y)return true;
  for(const h of HOSP)for(const q of (h.cells||[h.p]))if(q[0]===x&&q[1]===y)return true;
- if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.p[0]===x&&SCHOOL.p[1]===y)return true;
+ if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.set&&SCHOOL.set.has(K(x,y)))return true;
  return false}
 function build(){
  OX=0;OY=0;RTOWN.forEach((t,i)=>t.c=RTOWN0[i].slice());
@@ -94,7 +94,6 @@ function build(){
  for(let x=Math.round(13*MF);x<Math.round(19*MF);x++)for(let y=Math.round(28*MF);y<Math.round(33*MF);y++)if(TR[K(x,y)]!==1)TR[K(x,y)]=3;
  // 機場：東南跑道與停機坪
  for(let x=Math.round(45*MF);x<Math.round(60*MF);x++)for(let y=Math.round(43*MF);y<Math.round(58*MF);y++)TR[K(x,y)]=4;
- for(let y of[Math.round(46*MF),Math.round(52*MF)])for(let x=Math.round(46*MF);x<Math.round(59*MF);x++)RUN[K(x,y)]=1;
  // 郊區：市區外圍零星農地（以 4×4 區塊決定，成片）
  for(let x=0;x<CITY;x++)for(let y=0;y<CITY;y++){const k=K(x,y);if(!isSub(x,y)||TR[k])continue;
   const b=Math.sin((x>>2)*12.9898+(y>>2)*78.233)*43758.5453%1;if(Math.abs(b)<.3)TR[k]=5}
@@ -112,7 +111,7 @@ function build(){
   for(let x=ax0;x<=ax1;x++)for(let y=ay0;y<=ay1;y++)RD[K(x,y)]=0;
   for(let x=ax0-1;x<=ax1+1;x++)for(const y of[ay0-1,ay1+1])if(TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
   for(let y=ay0-1;y<=ay1+1;y++)for(const x of[ax0-1,ax1+1])if(x<CITY&&TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
-  const my=Math.round((ay0+ay1)/2);RD[K(ax0,my)]=2;RD[K(ax0+1,my)]=2}
+  airportLayout()}
  // 橋樑：部分幹道跨河；只跨窄水道（連續水面 5 格以內、兩岸都是陸地），不往海裡鋪
  const bridge=(cells)=>{let i=0;while(i<cells.length){if(TR[cells[i]]!==1){i++;continue}let j=i;while(j<cells.length&&TR[cells[j]]===1)j++;
    if(i>0&&j<cells.length&&j-i<=5)for(let q=i;q<j;q++)RD[cells[q]]=6;i=j}};
@@ -155,7 +154,7 @@ function build(){
  ruralRoads();
  pruneIslands();
  // 分隊與醫院
- SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
+ SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:n==='機場'&&AP?[AP.x0+AL.arff[0],AP.y0+AL.arff[1]]:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
@@ -174,7 +173,7 @@ function build(){
  // 隨機拆除路段製造繞路，保持全網連通
  for(let i=0;i<Math.round(260*MF*MF);i++){
   const x=1+Math.floor(Math.random()*(CITY-2)),y=1+Math.floor(Math.random()*(CITY-2)),k=K(x,y),c=RD[k];
-  if(!c||c>=4||prot[k]||HG[k])continue;
+  if(!c||c>=4||prot[k]||HG[k]||TR[k]===4)continue;   // 機場內的滑行道與聯絡道不拆
   RD[k]=0;if(!oneComponent())RD[k]=c}
  for(let k=0;k<N*N;k++)SH[k]=Math.random();
  for(const s of places){
@@ -193,7 +192,8 @@ function build(){
  roadGrades();
  indexLayers();
  ruralDetail();
- placeSchool()}
+ placeSchool();
+ spawnCands()}
 // 鋪高速公路：遇地面道路或水面成分層交會（HWL），否則為高速公路格
 function layHW(x,y,g){
  const k=K(x,y);HG[k]=g;
@@ -253,13 +253,14 @@ const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 function addU(si,code){
  const st=SPOT[si],b=parseInt(code,10),same=S.units.filter(u=>u.si===si&&u.code===code).length;
  const num=isNaN(b)?code+(same?String(same+1):''):String(b+same);
- S.units.push({id:uid++,si,code,cs:st.n+num,usar:/^特/.test(st.n)?1:0,x:st.x[0],y:st.x[1],path:[],st:'idle',
+ // 機場消防隊的機場消防車呼號為「機消1、機消2…」
+ S.units.push({id:uid++,si,code,cs:st.n==='機場'&&code==='機'?'機消'+(same+1):st.n+num,usar:/^特/.test(st.n)?1:0,lim:/^特/.test(st.n)?'usar':st.n==='機場'?'arff':null,x:st.x[0],y:st.x[1],path:[],st:'idle',
   inc:null,duty:null,off:0,wait:0,turn:0,oosT:0,mode:null,tp:false,crew:0,res:false,
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
 // 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權
 function repGain(base){if(base<=0)return 0;const g=base*150/(150+Math.max(0,S.rep));S.rep+=g;S.repLast={g,t:S.t};return g}
 // 車輛所屬分隊名稱（跨縣市支援車隊用原單位分隊）
-const ST_FULL={'特一':'第一特搜','特二':'第二特搜'};
+const ST_FULL={'特一':'第一特搜','特二':'第二特搜','機場':'機場消防隊'};
 const stName=u=>u.stn||ST_FULL[SPOT[u.si].n]||SPOT[u.si].n;
 function tpFree(si){let n=0;for(const u of S.units)if(u.si===si&&u.res)n++;return S.tp[si]-n}
 function reindex(){
@@ -277,9 +278,11 @@ const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','3
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
-  spawn:10,dspawn:90,nst:12,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
+  spawn:10,dspawn:90,nst:13,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&(TR[k]===7?Math.random()<.14:!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05)))S.hyd.push([x,y])}
+ // 消防訓練中心：火災模擬屋前的道路固定有一支消防栓
+ if(SCHOOL&&!S.hyd.some(h=>h[0]===SCHOOL.x[0]&&h[1]===SCHOOL.x[1]))S.hyd.push(SCHOOL.x.slice());
  const roster=[
   [0,'11','16','71','71','99'],
   [1,'11','16','71','99'],
@@ -292,7 +295,8 @@ function reset(){
   [8,'16','11','11','艇','57','91','91','警'],
   [9,'11','11','16','41','91','91','71'],
   [10,'11','16','61','91','71','43'],
-  [11,'11','16','61','91','91']];
+  [11,'11','16','61','91','91'],
+  [12,'機','機','機','91']];
  roster.forEach(r=>{const si=r[0];for(let i=1;i<r.length;i++)addU(si,r[i])});
  for(const u of S.units)if(CAFS_CS.includes(u.cs))u.cafs=1;
  S.ix=null;reindex();sel=selU=null;paused=false;zoom=2;

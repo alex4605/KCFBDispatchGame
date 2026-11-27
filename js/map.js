@@ -45,7 +45,8 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
  if(r){// 道路本身由 roadPass 依等級繪製；市區道路格底下鋪人行道色
   if(inCity(x,y)&&!isSub(x,y)&&t===0){ctx.fillStyle='rgba(120,118,110,.13)';ctx.fillRect(px,py,c+.6,c+.6)}
   return}
- if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
+ if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
+ else if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const a=hsh(k,i*3+j);if(a<.18)continue;
    const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
    const lv=16+(a*22|0);ctx.fillStyle='rgb('+(lv+12)+','+(lv+11)+','+(lv+8)+')';ctx.fillRect(bx,by,bw,bh);
@@ -67,6 +68,7 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
   if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
    ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
    ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
+ else if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
  else if(t===0){// 郊區與鄉鎮：低矮透天與三合院，偶有廟宇、學校、鐵皮工廠
   const a=hsh(k,1);
   if(CROP[k]===9){const cols=['#3e4a56','#4a4f55','#56504a','#3f4d4a'],cl=cols[hsh(k,6)*4|0];
@@ -118,12 +120,17 @@ function airportDetail(x,y,k,px,py,c){
  if(cp===10){ctx.fillStyle='#5a5f68';ctx.fillRect(px+c*.08,py,c*.84,c+.6);ctx.fillStyle='rgba(160,200,240,.35)';ctx.fillRect(px+c*.78,py,c*.08,c+.6);
   ctx.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.2+i*.2),py+c*.1,c*.08,c*.8);return}
  if(cp===11){ctx.strokeStyle='rgba(240,200,80,.55)';ctx.lineWidth=Math.max(1,c*.025);ctx.beginPath();ctx.moveTo(px,py+c/2);ctx.lineTo(px+c,py+c/2);ctx.stroke();
-  if(hsh(k,3)>.4){ctx.save();ctx.translate(px+c*.5,py+c*.5);ctx.fillStyle='#d8dadc';
-   ctx.fillRect(-c*.36,-c*.05,c*.72,c*.1);ctx.fillRect(-c*.05,-c*.34,c*.12,c*.68);ctx.fillRect(c*.24,-c*.14,c*.08,c*.28);ctx.restore()}
   return}
  // 跑道之間的草地；滑行道（跑道中間一列）與圍籬
- const mid=Math.round((A.y0+A.y1)/2);
- if(y===mid&&x>A.x0+4){ctx.fillStyle='#2e2f33';ctx.fillRect(px,py+c*.25,c+.6,c*.5);ctx.fillStyle='rgba(240,200,80,.55)';ctx.fillRect(px,py+c*.49,c+.6,Math.max(1,c*.025))}
+ // 塔台、貨運站、修護棚廠、油庫
+ if(cp===12){ctx.fillStyle='#55595f';ctx.beginPath();ctx.arc(px+c/2,py+c/2,c*.32,0,TAU);ctx.fill();ctx.fillStyle='#8fc0e8';ctx.beginPath();ctx.arc(px+c/2,py+c/2,c*.2,0,TAU);ctx.fill();
+  ctx.strokeStyle='#2a2c30';ctx.lineWidth=1;for(let a=0;a<8;a++){ctx.beginPath();ctx.moveTo(px+c/2,py+c/2);ctx.lineTo(px+c/2+Math.cos(a*.785)*c*.2,py+c/2+Math.sin(a*.785)*c*.2);ctx.stroke()}return}
+ if(cp===19){ctx.fillStyle='#5a6068';ctx.fillRect(px,py+c*.1,c+.6,c*.8);ctx.fillStyle='rgba(255,255,255,.1)';for(let i=0;i<4;i++)ctx.fillRect(px+c*(.1+i*.22),py+c*.1,c*.04,c*.8);
+  ctx.fillStyle='#6b5a3a';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.12+i*.28),py+c*.92,c*.2,c*.06);return}
+ if(cp===20){ctx.fillStyle='#6a6e74';ctx.fillRect(px,py+c*.06,c+.6,c*.88);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=Math.max(1,c*.02);
+  for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(px,py+c*.06+i*c*.147);ctx.lineTo(px+c,py+c*.06+i*c*.147);ctx.stroke()}return}
+ if(cp===21){for(const [a,b] of[[.3,.3],[.7,.3],[.3,.7],[.7,.7]]){ctx.fillStyle='#d8d6cc';ctx.beginPath();ctx.arc(px+c*a,py+c*b,c*.16,0,TAU);ctx.fill();ctx.strokeStyle='#8a8a84';ctx.lineWidth=1;ctx.stroke()}
+  ctx.strokeStyle='rgba(240,80,60,.5)';ctx.strokeRect(px+c*.06,py+c*.06,c*.88,c*.88);return}
  if(x===A.x0||x===A.x1||y===A.y0||y===A.y1){ctx.strokeStyle='rgba(200,200,190,.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();
   if(x===A.x0){ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+c)}if(x===A.x1){ctx.moveTo(px+c-1,py);ctx.lineTo(px+c-1,py+c)}
   if(y===A.y0){ctx.moveTo(px,py+1);ctx.lineTo(px+c,py+1)}if(y===A.y1){ctx.moveTo(px,py+c-1);ctx.lineTo(px+c,py+c-1)}ctx.stroke();ctx.setLineDash([])}}
@@ -157,9 +164,12 @@ function draw(){
   if(c>=13){ctx.fillStyle='#fff';ctx.font='500 '+(s*.4)+'px '+FONT;ctx.fillText(t,x,y)}
   if(sub&&c>=26){ctx.fillStyle='#b9b5ac';ctx.font='400 '+(m*.28)+'px '+FONT;ctx.fillText(sub,x,y+s*.8)}};
  // 消防學校（楠梓）
- if(SCHOOL){mk(SCHOOL.p,'#6a4fb0','校','消防學校');
+ if(SCHOOL){schoolLive(c);if(c<34)mk(SCHOOL.p,'#6a4fb0','校','訓練中心');
   if(sel===SCHOOL_ID){const x=(SCHOOL.p[0]+.5)*c,y=(SCHOOL.p[1]+.5)*c;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,Math.max(9,m*.9),0,TAU);ctx.stroke();ctx.setLineDash([])}}
+ // 放大後：分隊、醫院、機場改畫俯視圖（map-sites.js），否則畫標記
+ if(c>=34)siteOverlay(c,x0,x1,y0,y1);
  HOSP.forEach(h=>{
+  if(c>=34)return;
   const w=h.w||1,h2=h.h||1,x=h.p[0]*c,y=h.p[1]*c;
   ctx.fillStyle='#1a6bb8';rr(x+2,y+2,c*w-4,c*h2-4,Math.max(3,m*.2));ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=1;ctx.stroke();
@@ -168,8 +178,8 @@ function draw(){
   ctx.font='500 '+Math.min(s2*.42,m*.8)+'px '+FONT;ctx.fillText('醫',x+c*w/2,y+c*h2/2-(c>=22?s2*.1:0));
   if(c>=22){ctx.fillStyle='#d6e6f6';ctx.font='400 '+Math.max(10,m*.3)+'px '+FONT;
    ctx.fillText(h.n,x+c*w/2,y+c*h2/2+s2*.3)}});
- for(let i=0;i<S.nst;i++)
-  mk(SPOT[i].p,'#a8431f',SPOT[i].n,'待 '+(S.ix?S.ix.idle[i]:0));
+ if(c<34)for(let i=0;i<S.nst;i++)
+  mk(SPOT[i].p,SPOT[i].n==='機場'?'#b8902a':'#a8431f',SPOT[i].n,'待 '+(S.ix?S.ix.idle[i]:0));
  for(const d of S.duties){
   const x=(d.x+.5)*c,y=(d.y+.5)*c;
   ctx.fillStyle=d.unit?'#7f77dd':'#46443f';
@@ -429,6 +439,7 @@ function mapLabels(c){
  lb('山　區',OX+128,OY+14,13,'rgba(140,190,140,A)');
  lb('二 仁 溪',OX+40,3.5,12,'rgba(125,179,232,A)');
  lb('林園工業區',OX+93,OY+131,12,'rgba(200,205,215,A)');
+ if(SCHOOL)lb('消防訓練中心',SCHOOL.p[0]+.5,SCHOOL.y0-.6,12,'rgba(190,170,240,A)');
  ctx.restore()}
 // ===== 道路分級繪製 =====
 // 地面道路樣式（依 RG）：w 路寬（格寬比例）、col 路面、cl 中線（yy 雙黃、y 單黃、w 白虛線）、ed 路緣
@@ -441,6 +452,8 @@ RSTY[RGK.IND]={w:.32,col:'#5e5442',cl:'',ed:''};
 RSTY[RGK.PATH]={w:.24,col:'#3f3d37',cl:'',ed:''};
 RSTY[RGK.UND]={w:.56,col:'#2b2a25',cl:'',ed:''};
 RSTY[RGK.RAMP]={w:.46,col:'#676050',cl:'',ed:''};
+RSTY[RGK.TWY]={w:.66,col:'#2f3034',cl:'t',ed:''};     // 滑行道：深色道面、黃色中線、藍色邊燈
+RSTY[RGK.AIRS]={w:.4,col:'#4a4a46',cl:'',ed:''};      // 機場聯絡道
 const CITY_MAIN={w:.78,col:'#4a4943',cl:'w',ed:''};
 const isHW=k=>RD[k]===4||HWL[k]||RD[k]===7&&HG[k];
 const surf=k=>RD[k]&&RD[k]!==4;
@@ -473,7 +486,7 @@ function roadPass(c,x0,x1,y0,y1){
     if(isHW(nk)&&(fam(HG[nk])===fam(HG[k])||RD[k]===7||RD[nk]===7))ds.push(i)}
    hd.push([x,y,k,ds])}}
  ctx.lineCap='butt';ctx.lineJoin='round';
- const order=[RGK.PATH,RGK.IND,RGK.TWN,RGK.CITY,RGK.UND,RGK.CNTY,RGK.PROV,RGK.RAMP];
+ const order=[RGK.PATH,RGK.IND,RGK.AIRS,RGK.TWY,RGK.TWN,RGK.CITY,RGK.UND,RGK.CNTY,RGK.PROV,RGK.RAMP];
  // 路面
  for(const g of order){const L=buck[g];if(!L)continue;
   for(const [x,y,k,ds] of L){const s=sty(k);ctx.strokeStyle=s.col;ctx.lineWidth=Math.max(c<6?1:1.2,c*s.w);roadSeg(x*c,y*c,c,ds,1)}}
@@ -483,8 +496,11 @@ function roadPass(c,x0,x1,y0,y1){
    const hz=ds.some(d=>DIR[d][0]);if(hz){ctx.fillRect(x*c,y*c+c/2-w-1,c+.6,1.5);ctx.fillRect(x*c,y*c+c/2+w,c+.6,1.5)}else{ctx.fillRect(x*c+c/2-w-1,y*c,1.5,c+.6);ctx.fillRect(x*c+c/2+w,y*c,1.5,c+.6)}}}
  // 標線
  if(c>=20){ctx.lineCap='butt';
-  for(const g of[RGK.CITY,RGK.CNTY,RGK.PROV]){const L=buck[g];if(!L)continue;
-   for(const [x,y,k,ds] of L){const s=sty(k);if(!s.cl||ds.length>2)continue;
+  for(const g of[RGK.CITY,RGK.CNTY,RGK.PROV,RGK.TWY]){const L=buck[g];if(!L)continue;
+   for(const [x,y,k,ds] of L){const s=sty(k);if(!s.cl||ds.length>2&&s.cl!=='t')continue;
+    if(s.cl==='t'){ctx.setLineDash([]);ctx.strokeStyle='rgba(240,200,80,.75)';ctx.lineWidth=Math.max(1,c*.025);roadSeg(x*c,y*c,c,ds);
+     if(c>=34&&(x+y)%2===0){ctx.fillStyle='#4a8aff';for(const o of[-.32,.32]){const hz=ds.some(d=>DIR[d][0]);ctx.beginPath();ctx.arc(x*c+c/2+(hz?0:o*c),y*c+c/2+(hz?o*c:0),Math.max(1,c*.03),0,TAU);ctx.fill()}}
+     continue}
     if(s.cl==='w'){ctx.strokeStyle='rgba(230,228,220,.45)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.18,c*.16]);roadSeg(x*c,y*c,c,ds)}
     else if(s.cl==='y'){ctx.strokeStyle='rgba(225,190,90,.6)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.22,c*.12]);roadSeg(x*c,y*c,c,ds)}
     else{ctx.setLineDash([]);ctx.strokeStyle='rgba(225,190,90,.7)';ctx.lineWidth=Math.max(1,c*.05);roadSeg(x*c,y*c,c,ds);

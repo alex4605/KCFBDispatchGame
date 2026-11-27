@@ -61,7 +61,7 @@ const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.3,autoPause:true,ms:
 const TAC_AIR=110; // 滿瓶可在室內作業的秒數
 const TAC_LADR={'21':10,'31':7}; // 雲梯可達樓層數
 // 車種 → 小組類型；水庫車、指揮車、救護車不編成入室小組
-const TAC_SQ={'43':'resc','99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
+const TAC_SQ={'機':'pump','43':'resc','99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
 const TAC_TYN={med:'特搜醫療組',hazmat:'化災組',epa:'化災應變隊',pump:'幫浦組',ladder:'雲梯組',resc:'救助組',vent:'排煙組',robot:'機器人'};
 const TAC_TASK={sky:'朝天射水',beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
  guard:'周界防護',cover:'周界防護（鄰棟）',confine:'侷限火勢',search:'初期搜索',search2:'次級搜索',carry:'搬運傷者',
@@ -406,7 +406,7 @@ function tacSync(inc){
   if(u.st!=='work'||!TAC_SQ[u.code])continue;
   if(B.sq.some(q=>q.u===u.id))continue;
   const ty=TAC_SQ[u.code];
-  B.sq.push({cafs:u.cafs?1:0,usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+  B.sq.push({rookie:u.trainee?1:0,cafs:u.cafs||u.code==='機'?1:0,usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
    task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
    tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:2})}
  tacEpaSync(inc,B);
@@ -448,6 +448,7 @@ function tacStepTime(B,q,ns){
  if(q.task==='attack'&&q.line)t*=1.4;
  if(q.carry)t*=1.5;
  if(q.ty==='robot')t*=1.6;
+ if(q.rookie)t*=1.15;                      // 訓練假想單位（新進人員）動作較慢
  if(q.task==='ritgo')t*=.8;
  return t*(1+(q.fat||0)*.6)}
 // 能力：回傳 '' 表示可以，否則為不可執行的原因

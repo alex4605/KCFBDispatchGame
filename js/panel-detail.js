@@ -26,7 +26,7 @@ function detailHTML(){
  h+='<div class="sub" style="margin-top:4px">動線：'+
   (inc.z==='hiway'?'國道，須由交流道進入':inc.z==='forest'?'山區產業道路，大型車禁入':
    inc.z==='water'?'水岸邊':inc.z==='rural'?'鄉間道路，水源較遠':'市區道路')+' · '+(inc.bigOK?'大型車可進場':'僅小型車可進場')+'</div>';
- if(tacHas(inc))h+='<div class="row" style="padding:6px 0 2px">'+(!tacUnlocked()&&!inc.train?'<button class="tacbtn" disabled title="通過消防學校三關訓練後，才能接管現場指揮權">🔒 進入戰術指揮（需通過消防學校訓練）</button><button data-gosch="1">🎓 前往消防學校</button>':'')+'<button data-tac="1" class="tacbtn"'+(tacOK(inc)&&(tacUnlocked()||inc.train)?'':' disabled')+(!tacUnlocked()&&!inc.train?' hidden':'')+'>'+(inc.k==='forest'?'⚔ 建物防護戰術':'⚔ 進入戰術指揮')+'</button>'+
+ if(tacHas(inc))h+='<div class="row" style="padding:6px 0 2px">'+(!tacUnlocked()&&!inc.train?'<button class="tacbtn" disabled title="通過消防學校三關訓練後，才能接管現場指揮權">🔒 進入戰術指揮（需通過消防學校訓練）</button><button data-gosch="1">🎓 前往消防學校</button><button data-trainskip="1" title="不經訓練直接取得現場指揮權">⏭ 跳過教學</button>':'')+'<button data-tac="1" class="tacbtn"'+(tacOK(inc)&&(tacUnlocked()||inc.train)?'':' disabled')+(!tacUnlocked()&&!inc.train?' hidden':'')+'>'+(inc.k==='forest'?'⚔ 建物防護戰術':'⚔ 進入戰術指揮')+'</button>'+
   '<span class="sub">'+(inc.tac?(TAC.open?'':'現場由 AI 指揮官依戰術模型處置'):tacOK(inc)?'親自指揮各小組；期間由戰略 AI 代理派遣':'首車到場回報後可進入')+'</span></div>';
  if(inc.wf)h+=wfPanel(inc);
  h+=logHTML(inc);

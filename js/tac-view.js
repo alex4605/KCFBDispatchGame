@@ -177,7 +177,7 @@ function tacVeh(g,u,T){
  const c=u.code;
  g.fillStyle='rgba(0,0,0,.35)';scRR(g,1.5,2,50,20,3);g.fill(); // 陰影
  // 消防車一律消防紅，救護車白色、警車白色；車種靠車頂設備區分
- const body=c==='91'||c==='警'?'#f2f2ee':'#c8332c';
+ const body=u.trainee?(c==='91'?'#d8d6cc':'#9a4a40'):c==='91'||c==='警'?'#f2f2ee':'#c8332c';   // 訓練中心的除役車：褪色
  g.fillStyle=body;scRR(g,0,0,50,20,3);g.fill();
  // 駕駛艙與擋風玻璃
  g.fillStyle=c==='91'||c==='警'?'#d8d8d2':'rgba(0,0,0,.18)';g.fillRect(38,1,11,18);
@@ -196,6 +196,7 @@ function tacVeh(g,u,T){
   for(let k=0;k<3;k++){const a=k*TAU/3+T*6;g.moveTo(18,10);g.lineTo(18+Math.cos(a)*5.5,10+Math.sin(a)*5.5)}g.stroke()}
  else if(c==='71'||c==='搜'){g.strokeStyle='rgba(0,0,0,.3)';g.lineWidth=1;for(let x=5;x<36;x+=8){g.strokeRect(x,3,6,14)}}
  else if(c==='警'){g.fillStyle='#2f6fd0';g.fillRect(0,8,38,4);g.fillStyle='#22303c';g.fillRect(26,3,8,14)}
+ else if(c==='機'){g.fillStyle='#d8b83a';scRR(g,0,0,50,20,3);g.fill();g.fillStyle='#c8332c';g.fillRect(0,8,38,4);g.fillStyle='#3a3d44';g.beginPath();g.arc(30,10,4,0,TAU);g.fill();g.fillStyle='#eceae3';g.fillRect(30,9,14,2)}
  else if(c==='43'){g.fillStyle='#3b2a24';g.fillRect(2,3,22,14);g.strokeStyle='#d8d4c8';g.lineWidth=1;g.strokeRect(4,5,18,10);g.fillStyle='#1a1a1a';g.fillRect(0,0,3,20)}
  else if(c==='履'){g.fillStyle='#222';g.fillRect(2,0,34,4);g.fillRect(2,16,34,4)}
  else{ // 幫浦車：水帶床、白色腰線
@@ -939,8 +940,11 @@ function tacClick(inc,B,hit,e,x,y){
   if(tacOrder(inc,q,k,f,c,i>0,side))ok++});
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
+// 戰術畫面的按鈕：點擊時依 data-* 屬性分派（新增時加進 TAC_CLICK）
+const TAC_CLICK=['tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
+const TAC_CLICK_SEL=TAC_CLICK.map(k=>'[data-'+k+']').join(',');
 document.getElementById('tac').addEventListener('click',e=>{
- const b=e.target.closest('[data-tfl],[data-ttab],[data-tsq],[data-tord],[data-tpause],[data-texit],[data-thand],[data-tamb],[data-tstn],[data-trole],[data-task],[data-treq],[data-telev],[data-tspd],[data-tap],[data-tepa],[data-tma]');if(!b)return;
+ const b=e.target.closest(TAC_CLICK_SEL);if(!b)return;
  const D=b.dataset;msg='';
  const ic=S.inc.find(i=>i.id===TAC.id);
  if(ic&&ic.tac){const B=ic.tac;

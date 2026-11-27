@@ -1,4 +1,4 @@
-// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|load|map|normal|tac|handoff|school]
+// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|lint|load|map|normal|dispatch|tac|handoff|school]
 // 需要可 require('playwright') 的環境；直接開啟 index.html，不需要伺服器
 'use strict';
 const path=require('path'),{chromium}=require('playwright');
@@ -16,7 +16,20 @@ const TAC_RUN=`(k)=>{S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POO
  if(!S.inc.includes(inc))return{k,early:1};
  tacInit(inc);let t=0;for(;t<24000&&S.inc.includes(inc);t++){step(.05);if(inc.req&&t%20===0)answer(inc,true,false)}
  return{k,closed:!S.inc.includes(inc),t:Math.round(t*.05)}}`;
-(async()=>{const b=await chromium.launch();
+// 靜態檢查：程式裡產生的每個按鈕 data-* 屬性，都要在某個點擊處理的清單或選擇器裡（避免新按鈕按了沒反應）
+function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src={};
+ for(const f of fs.readdirSync(dir))if(f.endsWith('.js'))src[f]=fs.readFileSync(path.join(dir,f),'utf8');
+ const all=Object.values(src).join('\n'),used=new Set([...all.matchAll(/data-([a-z0-9]+)=/g)].map(m=>m[1]));
+ const handled=new Set();
+ for(const m of all.matchAll(/(?:MAIN_CLICK|TAC_CLICK)=\[([^\]]*)\]/g))for(const k of m[1].matchAll(/'([a-z0-9]+)'/g))handled.add(k[1]);
+ for(const m of all.matchAll(/closest\('([^']*)'\)/g))for(const k of m[1].matchAll(/\[data-([a-z0-9]+)\]/g))handled.add(k[1]);
+ const SECONDARY=['mode','wfs','wft','keep'];   // 搭配主要屬性一起使用，或不是按鈕
+ // AI 通話設定面板（#aipanel）以 closest('button') 處理所有按鈕，屬性皆以 ai 開頭
+ const miss=[...used].filter(k=>!handled.has(k)&&!SECONDARY.includes(k)&&!/^ai/.test(k));
+ ok('按鈕屬性都有點擊處理',!miss.length,miss)}
+(async()=>{if(which==='all'||which==='lint')lint();
+ if(which==='lint'){console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)}
+ const b=await chromium.launch();
  if(which==='all'||which==='load'){const {p,errs}=await page(b);ok('載入無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='map'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{const f=baseF(SPOT[0],0);const un=SPOT.filter(s=>f.D[K(s.x[0],s.x[1])]===INF).map(s=>s.n);
@@ -42,10 +55,22 @@ const TAC_RUN=`(k)=>{S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POO
    tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<6000&&S.inc.includes(inc);t2++)step(.05);
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
   ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
+ if(which==='all'||which==='dispatch'){const {p,errs}=await page(b);
+  // 限定派遣：一般火警不派特一特二與機場消防隊；呼叫特一只派特一；呼叫機場消防派機消
+  const r=await p.evaluate(()=>{S.spawn=999;const mk=k=>{S.inc=[];for(const zz in POOL)for(const lv in POOL[zz])POOL[zz][lv]=[k];for(const zz in POOLB)for(const lv in POOLB[zz])POOLB[zz][lv]=[k];for(let i=0;i<40&&!S.inc.length;i++)spawn();return S.inc[0]};
+   const back=()=>{for(const u of S.units)if(u.inc!=null){u.inc=null;u.st='idle';u.x=SPOT[u.si].x[0];u.y=SPOT[u.si].x[1];u.path=[]}reindex()};
+   const cs=inc=>onScene(inc).map(u=>u.cs);
+   let inc=mk('mfire');sendLv(inc,3);reindex();const lv3=cs(inc).filter(c=>/^特|^機/.test(c));back();
+   inc=mk('mfire');sendPkg(inc,PKG.find(x=>x.n==='呼叫特一'));reindex();const c1=cs(inc);back();
+   inc=mk('mfire');sendPkg(inc,PKG.find(x=>x.n==='呼叫機場消防'));reindex();const af=cs(inc);
+   return{lv3,c1,af}});
+  ok('限定派遣（特一特二、機場消防隊）',!r.lv3.length&&r.c1.length&&r.c1.every(c=>/^特一/.test(c))&&r.af.some(c=>/^機消/.test(c))&&!errs.length,r);await p.close()}
  if(which==='all'||which==='school'){const {p,errs}=await page(b);
-  const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);let t=0;for(;t<400&&!TAC.open;t++){step(.05);trainStep()}
-   const inc=S.inc.find(i=>i.id===TRAIN.inc),B=inc&&inc.tac;if(!B)return{lock,noTac:1};
-   for(;t<30000&&TRAIN.inc;t++){step(.05);trainStep();if(t%40===0)for(const q of B.sq){if(q.ty!=='pump'||!tacReady(q)||q.task==='attack')continue;const h=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>b.h-a.h)[0];if(h)tacOrder(inc,q,'attack',h.f,h.c,1)}}
-   return{lock,pass1:TRAIN.pass[0],extra:onScene(inc).length}});
-  ok('消防學校第一關（未通過前鎖定戰術指揮）',r.lock&&r.pass1&&!errs.length,r);await p.close()}
+  // 確定性測試：訓練隊出動並自動進入戰術畫面後，直接撲滅火勢，驗證目標判定、通過、解散與解鎖流程
+  const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);
+   const inc=S.inc.find(i=>i.id===TRAIN.inc),crew=onScene(inc).map(u=>u.cs);let t=0;for(;t<400&&!TAC.open;t++){step(.05);trainStep()}
+   const B=inc.tac;if(!B)return{lock,crew,noTac:1};
+   for(let i=0;i<40;i++){step(.05);trainStep()}for(const x of B.cells){x.h=0;x.emb=0}for(let i=0;i<40&&TRAIN.inc;i++){step(.05);trainStep()}
+   return{lock,crew,open:TAC.open,pass1:TRAIN.pass[0],trainee:S.units.filter(u=>u.trainee&&!u.gone).length,msg}});
+  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^高雄/.test(c))&&!errs.length,r);await p.close()}
  await b.close();console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)})();

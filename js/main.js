@@ -79,8 +79,11 @@ document.addEventListener('keydown',e=>{
  const ids=[...document.querySelectorAll('#calls [data-sel]')].map(x=>+x.dataset.sel);if(!ids.length)return;
  e.preventDefault();const i=ids.indexOf(sel);
  selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
+// 指揮中心面板的按鈕：點擊時依 data-* 屬性分派。新增按鈕屬性時要加進 MAIN_CLICK（tests/regress.js lint 會檢查）
+const MAIN_CLICK=['mrsend','mrno','ma','wfpri','wfu','wfauto','wfheli','wfcrew','wfhs','wfcs','sel','u','uc','oos','ret','duty','pkg','note','auto','rc','send','req','ext','dai','defl','stand','tac','buy','hire','newst','shopclose','gosch','train','trainstop','trainskip'];
+const MAIN_CLICK_SEL=MAIN_CLICK.map(k=>'[data-'+k+']').join(',')+',#rs';
 document.body.addEventListener('click',e=>{
- const b=e.target.closest('[data-mrsend],[data-mrno],[data-ma],[data-wfpri],[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
+ const b=e.target.closest(MAIN_CLICK_SEL);
  if(!b)return;
  msg='';
  const D=b.dataset;
@@ -105,6 +108,7 @@ document.body.addEventListener('click',e=>{
  if(D.gosch){sel=SCHOOL_ID;selU=null;if(SCHOOL)center({x:SCHOOL.p[0],y:SCHOOL.p[1]});dirty();return}
  if(D.train){trainStart(+D.train);return}
  if(D.trainstop){trainEnd('已放棄訓練。');return}
+ if(D.trainskip){trainSkip();return}
  if(D.duty){
   const u=S.units.find(x=>x.id===+D.duty),d=S.duties.find(x=>x.id===sel);
   if(u&&d&&!d.unit){const p=chase(getF(d,modeOf(u.code)),u);
@@ -239,7 +243,7 @@ cv.addEventListener('pointerup',e=>{
  // 地圖現場模式：點到車輛時選取車輛（案件選取不變）
  if(c>=SC_MAP){const uh=mapUnitHit(x,y);if(uh){selU=uh;dirty();return}}
  // 點到消防學校
- if(SCHOOL&&Math.hypot(SCHOOL.p[0]+.5-x,SCHOOL.p[1]+.5-y)<Math.max(1,18/c)&&best===null){sel=SCHOOL_ID;selU=null;dirty();return}
+ if(SCHOOL&&best===null&&x>=SCHOOL.x0&&x<=SCHOOL.x0+SCHOOL.w&&y>=SCHOOL.y0&&y<=SCHOOL.y0+SCHOOL.h){sel=SCHOOL_ID;selU=null;dirty();return}
  sel=best;selU=null;
  const bi=S.inc.find(i=>i.id===best);if(bi&&scMode==='map'&&!bi.wf&&c<SC_MAP)flyTo(bi);
  dirty()});

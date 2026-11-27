@@ -182,9 +182,8 @@ function ruralDetail(){
  // 郊區的鐵皮工廠、倉庫（CROP 9）
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);if(TR[k]!==0||RD[k]||!isSub(x,y)||inFacility(x,y))continue;
   if(blk(x,y,5)<.38)CROP[k]=9}
- // 機場：航廈（10）與停機坪（11）在西側，跑道之間為草地
- if(AP){const my=Math.round((AP.y0+AP.y1)/2);
-  for(let y=my-3;y<=my+3;y++){CROP[K(AP.x0+1,y)]=10;CROP[K(AP.x0+2,y)]=10;CROP[K(AP.x0+3,y)]=11;CROP[K(AP.x0+4,y)]=11}}
+ // 機場：航廈、停機坪、塔台、貨運站、修護棚廠、油庫（配置見 airport.js）
+ airportCrops();
  // 學校：每個鄉鎮邊緣一處操場
  for(const t of RTOWN){for(let tries=0;tries<30;tries++){const x=t.c[0]+Math.round((Math.random()-.5)*2*t.r),y=t.c[1]+Math.round((Math.random()-.5)*2*t.r),k=K(x,y);
   if(x<0||y<0||x>=N||y>=N||RD[k]||TR[k]!==0||inFacility(x,y))continue;CROP[k]=8;break}}
