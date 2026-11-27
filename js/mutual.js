@@ -83,7 +83,7 @@ function mrStep(dt){
    S.mr.push({id:uid++,from:f,n:t[0],need:t[1].map(x=>({c:x[0],n:x[1]})),rep:t[2],pay:1500+Math.round(Math.random()*3000),left:120,dur:360+Math.random()*240,sent:0,us:[]});
    msg=f+'消防局請求跨縣市支援：'+t[0]+'（點進線案件查看）'}}
  for(let i=S.mr.length-1;i>=0;i--){const r=S.mr[i];
-  if(!r.sent){r.left-=dt;if(r.left<=0){S.mr.splice(i,1);if(sel===r.id)sel=null;msg=r.from+'的支援請求已由其他縣市承接。'}continue}
+  if(!r.sent){if(!TAC.open)r.left-=dt;if(r.left<=0){S.mr.splice(i,1);if(sel===r.id)sel=null;msg=r.from+'的支援請求已由其他縣市承接。'}continue}
   if(S.units.filter(u=>r.us.includes(u.id)).every(u=>u.st!=='away')){
    const g=repGain(r.rep);S.money+=r.pay;S.score+=Math.round(r.pay/10);
    msg='支援'+r.from+'（'+r.n+'）完成返隊：評鑑 +'+g.toFixed(1)+'、補助 $'+r.pay;S.mr.splice(i,1);if(sel===r.id)sel=null}}}

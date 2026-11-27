@@ -196,3 +196,18 @@ function tacStaff(inc,B,dt){
  src.vic--;dst.vic++;dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
  radio(inc,'受理','機構護理人員將一名住民由'+tacNm(B,src.f,src.c)+'水平避難至'+tacNm(B,dst.f,dst.c)+'。');
  if(src.s>.5&&Math.random()<.3){S2.n--;radio(inc,'受理','一名機構人員吸入濃煙不適，退出避難作業。')}}
+// ===== 交給轄區分隊善後 =====
+// 主要目標達成後（B.hOK），留轄區（離現場最近的分隊）一輛幫浦車做殘火處理，其餘車輛返隊；照常結案與計分，畫面回到指揮中心
+function tacHandoff(inc,B){
+ if(!B.hOK||B.done)return;
+ const on=onScene(inc).filter(u=>u.st==='work');
+ const dist=u=>{const s=SPOT[u.si];return s?Math.hypot(s.p[0]-inc.x,s.p[1]-inc.y):1e9};
+ const pumps=on.filter(u=>CODE[u.code].cap&&u.code!=='61'&&!u.ma).sort((a,b)=>dist(a)-dist(b));
+ const keep=pumps[0]||on[0];
+ for(const u of on){if(u===keep||u.load>0)continue;u.inc=null;home(u)}
+ reindex();
+ for(const x of B.cells)x.emb=0;               // 餘燼由轄區分隊處理
+ B.handed=keep?keep.cs:'轄區分隊';B.doneT=3;
+ radio(inc,'指揮官','火勢撲滅、人員都已處置，現場交由'+B.handed+'殘火處理善後，其餘車輛返隊。');
+ tacEvt(inc,B,'milestone','交由 '+B.handed+' 善後');
+ tacClose('現場交由'+B.handed+'善後，回到指揮中心')}

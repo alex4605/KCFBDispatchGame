@@ -41,24 +41,39 @@ function rset(x,y,c,g){
  if(!r||(r===1&&v>1)||(r===5&&v!==5))RD[k]=v;
  if(g&&(!RGF[k]||g<RGF[k]))RGF[k]=g;
  return true}
-// 蜿蜒道路：每步依剩餘距離比例決定橫向或縱向前進，偶爾側移，形成不規則的斜向路線
+// 鄉間道路：先規劃大方向（起訖點之間放 1～2 個略為偏移的控制點），再以成本路徑搜尋鋪設：
+// 沿用既有道路很便宜（減少重疊與平行路）、緊鄰既有道路但不在路上較貴（避免兩條路並排）、
+// 過河很貴（只在必要處架橋）、偏離規劃線有小額成本（鋪出均勻的斜線，畫面上再以斜切轉角平滑）
 function rroad(a,b,c,wig,g,name){
- let x=a[0],y=a[1],n=0;rset(x,y,c,g);const cells=[[x,y]];
- while((x!==b[0]||y!==b[1])&&n++<600){
-  const dx=b[0]-x,dy=b[1]-y;
-  if(Math.random()<(wig||.12)){const s=Math.random()<.5?1:-1;
-   if(Math.abs(dx)>Math.abs(dy)){if(Math.abs(dy)<6)y+=s}else{if(Math.abs(dx)<6)x+=s}}
-  else{
-   // 依剩餘距離比例選方向；若會踏進水裡而另一方向可走，就改走另一方向（只有真的要過河才架橋）
-   const wet=(a,b)=>a>=0&&b>=0&&a<N&&b<N&&TR[K(a,b)]===1&&!RD[K(a,b)];
-   let hx=Math.random()<Math.abs(dx)/(Math.abs(dx)+Math.abs(dy));
-   if(hx&&wet(x+Math.sign(dx),y)&&dy&&!wet(x,y+Math.sign(dy)))hx=false;
-   else if(!hx&&wet(x,y+Math.sign(dy))&&dx&&!wet(x+Math.sign(dx),y))hx=true;
-   if(hx)x+=Math.sign(dx);else y+=Math.sign(dy)}
-  x=Math.max(0,Math.min(N-1,x));y=Math.max(0,Math.min(N-1,y));
-  rset(x,y,c,g);cells.push([x,y])}
+ const L=Math.hypot(b[0]-a[0],b[1]-a[1]),pts=[a],nm=L>40?2:L>14?1:0,px=-(b[1]-a[1])/(L||1),py=(b[0]-a[0])/(L||1);
+ for(let i=1;i<=nm;i++){const f=i/(nm+1),o=(Math.random()-.5)*2*L*(wig||.12)*.9;
+  pts.push([Math.round(a[0]+(b[0]-a[0])*f+px*o),Math.round(a[1]+(b[1]-a[1])*f+py*o)].map(v=>Math.max(1,Math.min(N-2,v))))}
+ pts.push(b);
+ const cells=[];
+ for(let i=0;i<pts.length-1;i++){const seg=routeAStar(pts[i],pts[i+1],c,g);
+  for(const q of(i?seg.slice(1):seg)){rset(q[0],q[1],c,g);cells.push(q)}}
  if(name)ROUTES.push({n:name,g,cells});
  return cells}
+function routeAStar(a,b,c,g){
+ const cost=(x,y,k)=>{const r=RD[k],t=TR[k];
+  if(t===4||inFacility(x,y))return INF;
+  if(t===1&&!HG[k])return r?.4:(c>=2?14:INF);
+  if(r===4)return 3;if(r===7)return 1.2;if(r)return .35;
+  let adj=0;for(let j=0;j<4;j++){const xx=x+DIR[j][0],yy=y+DIR[j][1];if(xx>=0&&yy>=0&&xx<N&&yy<N&&RD[K(xx,yy)])adj=1}
+  return (t===2?(g===RGK.PROV?1.6:2.2):t===6?3:t===0?.9:1)+(adj?1.6:0)+(inCity(x,y)?.6:0)};
+ const ax=a[0],ay=a[1],dx=b[0]-ax,dy=b[1]-ay,dl=Math.hypot(dx,dy)||1;
+ const dev=(x,y)=>Math.abs((x-ax)*dy-(y-ay)*dx)/dl;
+ const D=new Float32Array(N*N).fill(INF),P=new Int32Array(N*N).fill(-1),k0=K(a[0],a[1]),k1=K(b[0],b[1]),h=[];
+ D[k0]=0;hpush(h,k0,0);
+ while(h.length){hpop(h);const k=_hpK;if(k===k1)break;const d=D[k],x=(k/N)|0,y=k%N;
+  if(_hpD>d+Math.abs(b[0]-x)*.35+Math.abs(b[1]-y)*.35+1e-3)continue;
+  for(let j=0;j<4;j++){const nx=x+DIR[j][0],ny=y+DIR[j][1];if(nx<0||ny<0||nx>=N||ny>=N)continue;
+   const nk=K(nx,ny),cc=nk===k1?.35:cost(nx,ny,nk);if(cc===INF)continue;
+   const nd=Math.fround(d+cc+dev(nx,ny)*.06);
+   if(nd<D[nk]){D[nk]=nd;P[nk]=k;hpush(h,nk,nd+Math.abs(b[0]-nx)*.35+Math.abs(b[1]-ny)*.35)}}}
+ if(P[k1]<0&&k1!==k0)return[a,b];
+ const out=[];for(let k=k1;k>=0;k=P[k]){out.push([(k/N)|0,k%N]);if(k===k0)break}
+ return out.reverse()}
 // 市區接線點：從市區邊緣附近找最接近 (x,y) 的既有幹道格（郊區的次要道路可能沒有通到邊緣）
 function cityEntry(x,y){
  let best=null,bd=1e9;
@@ -72,7 +87,11 @@ function ruralRoads(){
  for(const t of RTOWN){const [cx,cy]=t.c;
   for(let d=-t.r-1;d<=t.r+1;d++){rset(cx+d,cy,2,RGK.TWN);rset(cx,cy+d,2,RGK.TWN)}
   for(let i=0;i<Math.max(2,t.r-1);i++){let x=cx+Math.round((Math.random()-.5)*t.r*1.6),y=cy+Math.round((Math.random()-.5)*t.r*1.6),hz=Math.random()<.5;
-   for(let s=0;s<3+Math.random()*4;s++){if(Math.hypot(x-cx,y-cy)>t.r+1)break;rset(x,y,1,RGK.PATH);
+   for(let s=0;s<3+Math.random()*4;s++){if(Math.hypot(x-cx,y-cy)>t.r+1)break;
+    // 小巷不貼著既有道路平行走（相鄰道路超過一格就停）
+    let nb=0;for(let j=0;j<4;j++)if(cls(x+DIR[j][0],y+DIR[j][1]))nb++;
+    if(s>0&&nb>1&&!RD[K(x,y)])break;
+    rset(x,y,1,RGK.PATH);
     if(Math.random()<.25)hz=!hz;if(hz)x+=Math.random()<.85?1:-1;else y+=Math.random()<.85?1:-1}}}
  // 省道與縣道：市區邊緣接到各鄉鎮，再串連鄉鎮
  const edgeY=y=>RR.reduce((b,v)=>Math.abs(v-y)<Math.abs(b-y)?v:b,RR[0]);

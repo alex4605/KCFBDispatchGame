@@ -162,6 +162,7 @@ function build(){
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
   return{n,p:[px,py],w,h:h2,cells}});
+ spreadStations();
  const places=SPOT.concat(HOSP);
  const prot=new Uint8Array(N*N);
  for(const s of places){
@@ -187,6 +188,7 @@ function build(){
   s.x=e||s.p}
  pruneIslands();
  roadGrades();
+ indexLayers();
  ruralDetail()}
 // 鋪高速公路：遇地面道路或水面成分層交會（HWL），否則為高速公路格
 function layHW(x,y,g){
@@ -207,22 +209,26 @@ function hpop(h){const d0=h[0],k0=h[1],n=(h.length>>1)-1;
   if(s===i)break;
   const x=h[s*2],y=h[s*2+1];h[s*2]=h[i*2];h[s*2+1]=h[i*2+1];h[i*2]=x;h[i*2+1]=y;i=s}
  _hpD=d0;_hpK=k0}
-// 路徑場（由目標往外的最短路）：節點 0..NN-1 為地面層，NN..2NN-1 為分層交會格的高速公路層
+// 路徑場（由目標往外的最短路）：節點 0..NN-1 為地面層，NN 起為分層交會格的高速公路層（只配置分層格，見 HLI／HLC）
 // 從高速公路（4）或匝道（7）進入分層格時走高速公路層，其餘走地面層；兩層不互通，所以高架下、地下道不能轉上國道
-const NN=N*N;
+const NN=N*N,HLI=new Int32Array(NN).fill(-1);let HLC=new Int32Array(0);
+// 建圖完成後編列分層格：HLI[格]＝第幾個分層格，HLC[i]＝格索引
+function indexLayers(){HLI.fill(-1);const a=[];for(let k=0;k<NN;k++)if(HWL[k]){HLI[k]=a.length;a.push(k)}HLC=Int32Array.from(a)}
+// 路徑場節點 → 格索引
+const cellOf=n=>n<NN?n:HLC[n-NN];
 function field(tx,ty,mode){
- const D=new Float32Array(2*NN).fill(INF),P=new Int32Array(2*NN).fill(-1),k0=K(tx,ty);
+ const M=NN+HLC.length,D=new Float32Array(M).fill(INF),P=new Int32Array(M).fill(-1),k0=K(tx,ty);
  if(!canEnter(kcls(k0,mode),mode))return{D,P};
  D[k0]=0;const h=[];hpush(h,k0,0);
  while(h.length){
   hpop(h);const d=_hpD,n=_hpK;
   if(d>D[n])continue;
-  const L=n>=NN,k=L?n-NN:n,x=(k/N)|0,y=k%N,cc=L?4:kcls(k,mode),step=Math.fround(d+1/MULT[cc]);   // 與 Float32 陣列一致，避免被誤判為過時節點
+  const L=n>=NN,k=L?HLC[n-NN]:n,x=(k/N)|0,y=k%N,cc=L?4:kcls(k,mode),step=Math.fround(d+1/MULT[cc]);   // 與 Float32 陣列一致，避免被誤判為過時節點
   for(let i=0;i<4;i++){
    const nx=x+DIR[i][0],ny=y+DIR[i][1];
    if(nx<0||ny<0||nx>=N||ny>=N)continue;
    const nk=K(nx,ny);let nn=nk,nc;
-   if(HWL[nk]&&(cc===4||cc===7)){nn=nk+NN;nc=4}else nc=kcls(nk,mode);
+   if(HWL[nk]&&(cc===4||cc===7)){nn=NN+HLI[nk];nc=4}else nc=kcls(nk,mode);
    if(!canEnter(nc,mode)||!linkOK(nc,cc))continue;
    if(step<D[nn]){D[nn]=step;P[nn]=n;hpush(h,nn,step)}}}
  return{D,P}}
@@ -236,8 +242,8 @@ function etaTo(u,o){const f=getF(o,modeOf(u.code)),d=f.D[K(Math.round(u.x),Math.
  return d===INF?null:Math.round(d/CODE[u.code].s)}
 function chase(f,u){let k=K(Math.round(u.x),Math.round(u.y));
  if(!f)return null;
- if(f.D[k]===INF){if(HWL[k]&&f.D[k+NN]!==INF)k+=NN;else return null}   // 車在高架上
- const p=[];while(f.P[k]>=0){k=f.P[k];const c=k%NN;p.push([(c/N)|0,c%N])}return p}
+ if(f.D[k]===INF){if(HWL[k]&&f.D[NN+HLI[k]]!==INF)k=NN+HLI[k];else return null}   // 車在高架上
+ const p=[];while(f.P[k]>=0){k=f.P[k];const c=cellOf(k);p.push([(c/N)|0,c%N])}return p}
 const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 
 function addU(si,code){
@@ -267,7 +273,7 @@ const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','3
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
-  spawn:10,dspawn:90,nst:10,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
+  spawn:10,dspawn:90,nst:12,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05))S.hyd.push([x,y])}
  const roster=[
@@ -280,7 +286,33 @@ function reset(){
   [6,'11','11','16','21','91','91','61'],
   [7,'11','11','16','01','01','艇','71','91','91'],
   [8,'16','11','11','艇','57','91','91','警'],
-  [9,'11','11','16','41','91','91','71']];
+  [9,'11','11','16','41','91','91','71'],
+  [10,'11','16','61','91','71'],
+  [11,'11','16','61','91','91']];
  roster.forEach(r=>{const si=r[0];for(let i=1;i<r.length;i++)addU(si,r[i])});
  S.ix=null;reindex();sel=selU=null;paused=false;zoom=2;
  cam={x:(SPOT[0].p[0]+.5)*cell()-cw/2,y:(SPOT[0].p[1]+.5)*cell()-ch/2};clamp()}
+// 分隊均勻分布：依人口權重（市區建物 > 郊區 > 鄉鎮 > 港區 > 農地）做 Lloyd 迭代，
+// 每個可移動的分隊移到自己責任區的重心，再貼齊最近、臨一般道路或幹道的空地；鄉鎮、特搜與離島分隊固定
+function spreadStations(){
+ const W=new Float32Array(N*N);
+ for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y),t=TR[k];
+  W[k]=t===1?0:t===2?.02:t===3?.3:t===4?.1:t===5?.05:t===6?.03:inCity(x,y)?(isSub(x,y)?.6:1):.5}
+ const mov=SPOT.map(s=>!SABS[s.n]&&!SFIX[s.n]);
+ for(let it=0;it<12;it++){
+  const sx=new Float64Array(SPOT.length),sy=new Float64Array(SPOT.length),sw=new Float64Array(SPOT.length);
+  for(let x=0;x<N;x+=2)for(let y=0;y<N;y+=2){const w=W[K(x,y)];if(!w)continue;
+   let b=0,bd=1e9;for(let i=0;i<SPOT.length;i++){const d=(SPOT[i].p[0]-x)**2+(SPOT[i].p[1]-y)**2;if(d<bd){bd=d;b=i}}
+   sx[b]+=x*w;sy[b]+=y*w;sw[b]+=w}
+  for(let i=0;i<SPOT.length;i++)if(mov[i]&&sw[i]>0){const s=SPOT[i];
+   s.p=[Math.round(s.p[0]*.3+sx[i]/sw[i]*.7),Math.round(s.p[1]*.3+sy[i]/sw[i]*.7)]}}
+ // 貼齊：臨一般道路或幹道的陸地空格，避開醫院、機場、港區與其他分隊
+ const used=new Set(SPOT.filter((s,i)=>!mov[i]).map(s=>K(s.p[0],s.p[1])));
+ const ok=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);
+  if(RD[k]||TR[k]===1||TR[k]===2||TR[k]===3||TR[k]===4||used.has(k))return false;
+  if(HOSP.some(h=>Math.abs(h.p[0]-x)<4&&Math.abs(h.p[1]-y)<4))return false;
+  for(let j=0;j<4;j++){const r=cls(x+DIR[j][0],y+DIR[j][1]);if(r===2||r===3)return true}return false};
+ for(let i=0;i<SPOT.length;i++){if(!mov[i])continue;const s=SPOT[i];let best=null;
+  for(let r=0;r<12&&!best;r++)for(let a=-r;a<=r&&!best;a++)for(let b=-r;b<=r;b++){if(Math.max(Math.abs(a),Math.abs(b))!==r)continue;
+   if(ok(s.p[0]+a,s.p[1]+b)){best=[s.p[0]+a,s.p[1]+b];break}}
+  if(best){s.p=best;used.add(K(best[0],best[1]))}}}
