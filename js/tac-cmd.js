@@ -60,6 +60,8 @@ function tacHints(inc,B){
  if(B.pts.length>tacAmbFree(inc,B))add(2,'傷患 '+B.pts.length+' 名待送醫，救護車不足，建議請求救護車。');
  const em=B.cells.filter(x=>x.emb).length;if(em&&!B.cells.some(x=>x.h>.05))add(3,'火勢已滅，仍有 '+em+' 間房有餘燼，建議殘火處理。');
  const lowB=B.sq.filter(q=>tacIn(q)&&q.air<.4&&q.task!=='exit').length;if(lowB&&tacAcc(B))add(2,'管制板顯示 '+lowB+' 組氣量偏低，注意撤出時機。');
+ {const gl=B.cells.filter(x=>x.gm&&x.gm.lel>=10&&S.t-x.gm.t<180).sort((a,b)=>b.gm.lel-a.gm.lel)[0];
+  if(gl)add(0,tacNm(B,gl.f,gl.c)+'量到 LEL '+gl.gm.lel+'%：禁止破窗、開門與火源，先在外射水降溫或等待通風。')}
  if(B.gasL&&B.gasL.t>0)add(1,'瓦斯管線持續供氣：起火點撲滅後仍會再燒，先防護周邊與搜救瓦礫，待欣高關閥後再撲滅。');
  if(B.cells.some(x=>x.rub&&x.vic))add(1,'1F 瓦礫堆中有受困者：派救助組搜救，瓦礫搜索很慢，注意結構。');
  if(B.rf&&B.rf.h>0)add(1,'屋頂光電板起火'+(inc.pow>=2?'，台電已斷電，可派雲梯射水撲滅。':'，仍帶電：只能以雲梯水霧遠距射水，等待台電斷電。'));
@@ -152,3 +154,27 @@ function tacFDStep(inc,B,dt){
   for(let i=1;i<p.length;i++)if(p[i][0]!==p[i-1][0]){B.atkS.add(p[i][1]);break}}}
 // 侷限火勢關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
 function tacFDClose(B,key){const d=B.fd.get(key);if(!d)return true;if(d.t==='gone')return false;d.t='auto';B.fdO.delete(key);return true}
+// ===== 氣體偵測（五用氣體偵測器：O₂、LEL、CO、H₂S、HCN）=====
+const TAC_GAS=[['o2','O₂','%'],['lel','LEL','%'],['co','CO','ppm'],['h2s','H₂S','ppm'],['hcn','HCN','ppm']];
+// 合成材質多的空間燃燒時 HCN（氰化氫）較高
+const TAC_HCNK={shelf:2,rack:2.2,bunk:1.8,park:2,stall:1.6,store:1.5,shop:1.4,food:1.3,machine:1.3,care:1.2,ward:1.2};
+function tacGasRead(B,x){
+ const k=x.ty==='room'?tacK(B,x.f,x.c):'',hf=TAC_HCNK[k]||1,sm=Math.max(0,(18-x.o2)/6);
+ let lel=0,h2s=0;
+ if(x.o2<15&&x.s>.55)lel+=(15-x.o2)*5+x.s*8; // 悶燒熱裂解產生的可燃氣體（爆燃前兆）
+ if(x.li)lel+=x.h>.02||x.emb?18:6; // 鋰電池熱失控釋出氫氣等可燃氣體
+ if(B.gasL&&B.gasL.t>0&&x.f===B.bf){const g=B.gasL.c;lel+=x.c===g?55:B.L.N[g].nb.includes(x.c)?28:x.ty==='hall'?10:0}
+ if(B.gas!==undefined&&!B.gasX&&x.f===B.gasF&&x.c===B.gas&&x.h>.2)lel+=8; // 瓦斯桶受熱洩漏
+ if(B.k==='chemfire'&&k==='machine')h2s+=4+x.h*30+x.s*10;
+ if(k==='park'||k==='mech')h2s+=x.s*3;
+ const co=Math.min(1999,Math.round((x.s*700+x.h*1400)*(1+sm)));
+ const hcn=Math.min(99,Math.round((x.s*22+x.h*18)*hf*10)/10);
+ return{o2:Math.round(x.o2*10)/10,lel:Math.min(100,Math.round(lel)),co,h2s:Math.round(h2s),hcn}}
+// 警報值：O₂ <19.5%；LEL ≥10%；CO ≥35 ppm；H₂S ≥10 ppm；HCN ≥4.7 ppm
+function tacGasBad(r){const b=[];if(r.o2<19.5)b.push('缺氧');if(r.lel>=10)b.push('可燃氣體');if(r.co>=35)b.push('CO');if(r.h2s>=10)b.push('H₂S');if(r.hcn>=4.7)b.push('HCN');return b}
+const tacGasCol=(k,v)=>k==='o2'?(v<19.5||v>23.5?'#ff6a5a':'#9d9a92'):(k==='lel'?v>=10:k==='co'?v>=200:k==='h2s'?v>=10:v>=10)?'#ff6a5a':(k==='co'?v>=35:k==='hcn'?v>=4.7:false)?'#e9a13b':'#9d9a92';
+function tacGasMeas(inc,B,q,x){
+ const r=tacGasRead(B,x);x.gm=Object.assign({t:S.t},r);const bad=tacGasBad(r);
+ radio(inc,q.cs,tacNm(B,x.f,x.c)+'氣體偵測：O₂ '+r.o2+'%、LEL '+r.lel+'%、CO '+r.co+' ppm、H₂S '+r.h2s+' ppm、HCN '+r.hcn+' ppm'+
+  (r.lel>=10?'。可燃氣體超標，禁止開口與任何火源！':bad.length?'。'+bad.join('、')+'超標，全程著空氣呼吸器。':'，各項正常。'));
+ tacEvt(inc,B,r.lel>=10?'danger':bad.length?'warn':'milestone',tacNm(B,x.f,x.c)+'氣體偵測'+(bad.length?'：'+bad.join('、')+'超標':'正常'),r.lel>=25)}

@@ -8,7 +8,7 @@ const TAC_GRP=[
   ['guard','周界防護','H','守住一個空間不讓火延燒進來；點鄰棟則為鄰棟周界防護'],['confine','侷限火勢','F','到火點旁關門，減緩延燒與濃煙擴散'],
   ['overhaul','殘火處理','Q','翻搜餘燼並澆熄，避免復燃；有餘燼未處理不會結案']]],
  ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）或房門（點房間）'],['dctrl','門控進入','K','守在入口（點道路）或門邊（點空間）控制開度，阻斷進氣路徑']]],
- ['搜救',[['search','初期搜索','S','快速掃過，濃煙中可能漏人'],['search2','次級搜索','D','徹底翻找，找出初搜遺漏的人'],['roofres','屋頂救援','U','上屋頂帶回避難民眾']]],
+ ['搜救',[['search','初期搜索','S','快速掃過，濃煙中可能漏人'],['search2','次級搜索','D','徹底翻找，找出初搜遺漏的人'],['gas','氣體偵測','Y','以五用氣體偵測器量測 O₂、LEL、CO、H₂S、HCN'],['roofres','屋頂救援','U','上屋頂帶回避難民眾']]],
  ['排煙',[['vent','破窗排煙','V','打破窗戶建立排煙開口（缺氧火場突然開口可能爆燃）'],['hydro','水霧排煙','W','開窗後以水霧把煙帶出窗外（需水線）'],
   ['ppv','正壓排煙','P','在入口架送風機，沿送風路徑把煙推向開口'],['npv','負壓排煙','N','在窗口架排風機把煙抽出，不會灌空氣助長火勢'],
   ['vvent','垂直排煙','J','在頂樓房間正上方屋頂開孔，排出熱煙、避免閃燃'],['roof','屋頂排煙','O','開啟頂樓樓梯間的排煙口']]],
@@ -18,7 +18,7 @@ const TAC_GRP=[
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令
-const TAC_NEEDT={attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
@@ -106,6 +106,9 @@ function tacFurn(g,r,kind,seed,dark){
   g.strokeStyle=lc;g.setLineDash([3,3]);g.beginPath();g.moveTo(x+p,y+h*.45);g.lineTo(x+w-p,y+h*.45);g.stroke();g.setLineDash([])}
  else if(kind==='shelf'){const n2=Math.max(2,Math.floor(h/(u*.28)));for(let i=0;i<n2;i++)box(x+w*.12,y+p+i*(h-2*p)/n2,w*.76,u*.07)}
  else if(kind==='care')tacFurn(g,r,'ward',seed,dark);
+ else if(kind==='clinic'||kind==='act')tacFurn(g,r,'office',seed,dark);
+ else if(kind==='food')tacFurn(g,r,'stall',seed,dark);
+ else if(kind==='shrine'){box(x+w*.15,y+p,w*.7,u*.2,dark?fc:'#6a3a2a');g.fillStyle=dark?fc:'#c9a040';g.fillRect(x+w*.45,y+p+u*.03,w*.1,u*.12);box(x+w*.3,y+h*.45,w*.4,u*.16);box(x+p,y+h-p-u*.18,w*.35,u*.18)}
  else if(kind==='rack')tacFurn(g,r,'shelf',seed,dark);
  else if(kind==='bunk'){const n2=Math.max(2,Math.floor(w/(u*.32)));for(let i=0;i<n2;i++){const bx=x+p+i*(w-2*p)/n2,bw=(w-2*p)/n2*.7;
   box(bx,y+p,bw,h*.36);box(bx,y+h-p-h*.36,bw,h*.36);g.strokeStyle=lc;g.beginPath();g.moveTo(bx,y+p+h*.18);g.lineTo(bx+bw,y+p+h*.18);g.stroke()}}
@@ -144,7 +147,7 @@ function tacSqPos(B,G,q,i){
 function tacFloorPat(g,r,n,kd){
  const k=n.ty==='hall'?'hall':n.ty==='stair'?'':kd||n.kind;if(!k)return;
  g.save();g.beginPath();g.rect(r[0],r[1],r[2],r[3]);g.clip();g.lineWidth=1;
- if(k==='bed'||k==='living'||k==='office'||k==='ward'||k==='shop'||k==='care'||k==='bunk'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
+ if(k==='bed'||k==='living'||k==='office'||k==='ward'||k==='shop'||k==='care'||k==='bunk'||k==='shrine'||k==='clinic'||k==='act'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
   for(let a=7;a<(hz?r[3]:r[2]);a+=7){g.beginPath();if(hz){g.moveTo(r[0],r[1]+a);g.lineTo(r[0]+r[2],r[1]+a)}else{g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3])}g.stroke()}}
  else if(k==='kitchen'||k==='bath'||k==='lobby'||k==='nurse'){g.strokeStyle='rgba(200,210,220,.12)';
   for(let a=10;a<r[2];a+=10){g.beginPath();g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3]);g.stroke()}
@@ -388,6 +391,9 @@ function drawTac(){
    else{const hx=s[0]+3,hy=s[1],dir=rr[0]>hx-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx+dir*dw,hy);g.arc(hx,hy,dw,dir>0?0:Math.PI,Math.PI/2,dir<0)}
    g.stroke()}
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}}
+ // 氣體偵測標記：量過的空間角落顯示「偵」，超標為紅色
+ if(vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.gm)continue;const r=G.r(n.c),bad=tacGasBad(x.gm).length;
+  g.fillStyle=bad?'#a8362f':'#2f5f8a';g.fillRect(r[0]+4,r[1]+r[3]-20,20,16);g.fillStyle='#eceae3';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('偵',r[0]+14,r[1]+r[3]-12)}
  // 氣爆瓦礫
  if(vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.rub)continue;const r=G.r(n.c);
   for(let k=0;k<14;k++){const a=(n.c*17+k*31)%97/97,b=(n.c*7+k*13)%89/89,sz=6+(k*7)%9;g.fillStyle=k%3?'#5a5048':'#6e6258';
@@ -650,6 +656,8 @@ function drawTac(){
     ['能見度　'+P.vis+' m',P.vis<1?'#ff6a5a':P.vis<5?'#e9a13b':'#9d9a92'],
     ['燃燒面積　'+P.burn+' / '+P.area+' ㎡',P.burn?'#ff8a5a':'#9d9a92'],
     ['含氧量　'+P.o2+' %',P.o2<14?'#ff6a5a':P.o2<18?'#e9a13b':'#9d9a92']];
+   if(x.gm){const a=Math.round((S.t-x.gm.t)/60);rows.push(['氣體偵測（'+(a?a+' 分鐘前':'剛剛')+'）','#7db3e8']);
+    for(const gk of TAC_GAS)rows.push(['　'+gk[1]+'　'+x.gm[gk[0]]+' '+gk[2],tacGasCol(gk[0],x.gm[gk[0]])])}
    if(x.emb)rows.push(['餘燼未處理（可能復燃）','#ff8a5a']);
    if(n.ty==='room')rows.push([x.sl>=2?'已次級搜索':x.sl===1?'已初期搜索':'未搜索','#7db3e8']);
    if(x.o2<13&&x.h>.35&&!x.v)rows.push(['⚠ 缺氧悶燒：開口可能爆燃','#ff6a5a']);
@@ -699,6 +707,10 @@ function tacSideHTML(inc){
  if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,tacElevTop(B)))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
  if(B.fwd)h+='<div class="row"><span>前進指揮所</span><span>'+tacFlr(B,B.fwd.f)+' · '+(tacFwdOK(B)?'就位':'前往中')+' · 備用瓶 '+(B.st.air?'充填區供應':B.fwd.stock)+'</span></div>';
  h+='</div>';
+ // 氣體偵測紀錄（最近 4 筆）
+ {const gs=B.cells.filter(x=>x.gm).sort((a,b)=>b.gm.t-a.gm.t).slice(0,4);
+  if(gs.length){h+='<div class="hd mt">氣體偵測</div>';for(const x of gs){const r=x.gm;
+   h+='<div class="row" style="flex-wrap:wrap"><span>'+esc(tacNm(B,x.f,x.c))+'</span><span>'+TAC_GAS.map(k=>'<b style="color:'+tacGasCol(k[0],r[k[0]])+'">'+k[1]+' '+r[k[0]]+'</b>').join(' ')+'</span></div>'}}}
  // 請求增援
  h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
   return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';
