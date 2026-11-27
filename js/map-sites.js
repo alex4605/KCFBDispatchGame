@@ -31,6 +31,12 @@ function stationSite(s,i,c){
  // 旗桿
  ctx.fillStyle='#ddd';ctx.fillRect(h*.82,-h*.2,c*.015,c*.3);ctx.fillStyle='#c8332c';ctx.fillRect(h*.83,-h*.2,c*.08,c*.05);
  ctx.restore();
+ // 局本部辦公大樓（成功分隊第二格）
+ if(s.cells&&s.cells[1]){const bx=s.cells[1][0]*c,by=s.cells[1][1]*c;
+  ctx.fillStyle='#3a3833';ctx.fillRect(bx,by,c,c);ctx.fillStyle='#5d6a7a';ctx.fillRect(bx+c*.06,by+c*.06,c*.88,c*.88);
+  ctx.fillStyle='#7d8a9a';for(let r=0;r<4;r++)for(let q=0;q<4;q++)ctx.fillRect(bx+c*.12+q*c*.2,by+c*.12+r*c*.2,c*.12,c*.12);
+  ctx.fillStyle='#c8332c';ctx.fillRect(bx+c*.4,by+c*.4,c*.2,c*.2);
+  ctx.fillStyle='#fff';ctx.font='600 '+Math.max(9,c*.14)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('局本部',bx+c/2,by+c/2)}
  ctx.fillStyle='rgba(10,10,9,.75)';const lb=(ST_FULL[s.n]||s.n+'分隊')+' · 待命 '+idle.length;ctx.font='600 11px '+FONT;
  const tw=ctx.measureText(lb).width+10;rr(cx-tw/2,cy-h-17,tw,15,3);ctx.fill();
  ctx.fillStyle='#f0c8b8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lb,cx,cy-h-9.5)}

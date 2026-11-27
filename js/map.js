@@ -179,7 +179,8 @@ function draw(){
   if(c>=22){ctx.fillStyle='#d6e6f6';ctx.font='400 '+Math.max(10,m*.3)+'px '+FONT;
    ctx.fillText(h.n,x+c*w/2,y+c*h2/2+s2*.3)}});
  if(c<34)for(let i=0;i<S.nst;i++)
-  mk(SPOT[i].p,SPOT[i].n==='機場'?'#b8902a':'#a8431f',SPOT[i].n,'待 '+(S.ix?S.ix.idle[i]:0));
+  {const s=SPOT[i];if(s.cells&&s.cells[1])mk(s.cells[1],'#4d5d72','局','局本部');
+   mk(s.p,s.n==='機場'?'#b8902a':'#a8431f',s.n,(s.cells?'局本部 · ':'')+'待 '+(S.ix?S.ix.idle[i]:0))}
  for(const d of S.duties){
   const x=(d.x+.5)*c,y=(d.y+.5)*c;
   ctx.fillStyle=d.unit?'#7f77dd':'#46443f';

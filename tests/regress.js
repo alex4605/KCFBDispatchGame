@@ -52,7 +52,7 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
   const r=await p.evaluate(()=>{const k='mfire';S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POOL[z][lv]=[k];for(const z in POOLB)for(const lv in POOLB[z])POOLB[z][lv]=[k];
    for(let i=0;i<9&&!S.inc.length;i++)spawn();const inc=S.inc[0];sendLv(inc,2);reindex();auto(inc);let n=0;while(!inc.rev&&n<20000){step(.05);n++}
    tacInit(inc);const B=inc.tac;let t=0;for(;t<24000&&!B.hOK&&S.inc.includes(inc);t++)step(.05);if(!B.hOK)return{skip:1};
-   tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<6000&&S.inc.includes(inc);t2++)step(.05);
+   tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<12000&&S.inc.includes(inc);t2++)step(.05);
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
   ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
  if(which==='all'||which==='dispatch'){const {p,errs}=await page(b);

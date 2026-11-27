@@ -17,7 +17,7 @@ const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
 let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[],AP=null;   // AP：機場範圍
 let S,cw=900,ch=700,base=14,zoom=2,cam={x:0,y:0},uid=1,sel=null,selU=null,paused=false,
- last=0,uiT=0,msg='',mt=0,shopSt=0,shopOn=false,dpr=1;
+ last=0,uiT=0,msg='',mt=0,shopSt=0,shopOn=false,rosterOn=false,rsh='',dpr=1;
 const cell=()=>base*zoom;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const wpick=o=>{const r=Math.random();let s=0;for(const k in o){s+=o[k];if(r<s)return k}return Object.keys(o)[0]};
@@ -160,6 +160,11 @@ function build(){
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
   return{n,p:[px,py],w,h:h2,cells}});
  spreadStations();
+ // 成功分隊（局本部）：廳舍較大，佔 2 格（分隊車庫＋局本部辦公大樓），第二格取相鄰、非道路的陸地
+ {const hq=SPOT.find(s=>s.n==='成功');
+  if(hq&&hq.p)for(const d of DIR){const x=hq.p[0]+d[0],y=hq.p[1]+d[1];if(x<1||y<1||x>N-2||y>N-2)continue;const k=K(x,y);
+   if(RD[k]||HG[k]||TR[k]===1||SPOT.some(s=>s!==hq&&s.p&&s.p[0]===x&&s.p[1]===y)||HOSP.some(H=>H.cells.some(q=>q[0]===x&&q[1]===y)))continue;
+   hq.cells=[hq.p.slice(),[x,y]];break}}
  const places=SPOT.filter(s=>s.p).concat(HOSP);
  const prot=new Uint8Array(N*N);
  for(const s of places){
@@ -259,8 +264,16 @@ function addU(si,code){
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
 // 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權
 function repGain(base){if(base<=0)return 0;const g=base*150/(150+Math.max(0,S.rep));S.rep+=g;S.repLast={g,t:S.t};return g}
+// 救災救護大隊行動指揮車：一般分隊每 5 個成立一個大隊，隨機挑大隊內一個分隊配置「一大指、二大指…」
+const BRIG_N=['一','二','三','四','五','六','七','八','九'];
+function mcvBrigades(){
+ const reg=[];for(let i=0;i<S.nst;i++)if(!/^特|^機場|^成功/.test(SPOT[i].n))reg.push(i);
+ const want=Math.min(BRIG_N.length,Math.max(1,Math.floor(reg.length/5)));
+ const have=S.units.filter(u=>u.brig).length;
+ for(let b=have;b<want;b++){const free=reg.filter(i=>!S.units.some(u=>u.brig&&u.si===i)),si=free[Math.floor(Math.random()*free.length)];if(si===undefined)break;
+  addU(si,'指');const u=S.units[S.units.length-1];u.brig=b+1;u.cs=BRIG_N[b]+'大指'}}
 // 車輛所屬分隊名稱（跨縣市支援車隊用原單位分隊）
-const ST_FULL={'特一':'第一特搜','特二':'第二特搜','機場':'機場消防隊'};
+const ST_FULL={'特一':'第一特搜','特二':'第二特搜','機場':'機場消防隊','成功':'成功分隊（局本部）'};
 const stName=u=>u.stn||ST_FULL[SPOT[u.si].n]||SPOT[u.si].n;
 function tpFree(si){let n=0;for(const u of S.units)if(u.si===si&&u.res)n++;return S.tp[si]-n}
 function reindex(){
@@ -278,7 +291,7 @@ const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','3
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
-  spawn:10,dspawn:90,nst:13,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
+  spawn:10,dspawn:90,nst:14,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&(TR[k]===7?Math.random()<.14:!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05)))S.hyd.push([x,y])}
  // 消防訓練中心：火災模擬屋前的道路固定有一支消防栓
@@ -296,9 +309,14 @@ function reset(){
   [9,'11','11','16','41','91','91','71'],
   [10,'11','16','61','91','71','43'],
   [11,'11','16','61','91','91'],
-  [12,'機','機','機','91']];
+  [12,'機','機','機','91'],
+  [13,'11','11','16','91','71','41','41','指']];
  roster.forEach(r=>{const si=r[0];for(let i=1;i<r.length;i++)addU(si,r[i])});
  for(const u of S.units)if(CAFS_CS.includes(u.cs))u.cafs=1;
+ // 局本部（與成功分隊同一廳舍辦公）：局本部41、42 與局本部行動指揮車；特一、特二各有行動指揮車
+ {const hq=SNAME.indexOf('成功');let n41=41;for(const u of S.units)if(u.si===hq&&(u.code==='41'||u.code==='指')){u.hq=1;u.cs=u.code==='指'?'局本部指':'局本部'+(n41++)}}
+ for(const n of['特一','特二']){addU(SNAME.indexOf(n),'指');S.units[S.units.length-1].cs=n+'指'}
+ mcvBrigades();
  S.ix=null;reindex();sel=selU=null;paused=false;zoom=2;
  cam={x:(SPOT[0].p[0]+.5)*cell()-cw/2,y:(SPOT[0].p[1]+.5)*cell()-ch/2};clamp()}
 // 分隊均勻分布：依人口權重（市區建物 > 郊區 > 鄉鎮 > 港區 > 農地）做 Lloyd 迭代，

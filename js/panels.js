@@ -89,6 +89,24 @@ function unitHTML(u){
  h+='<div class="row">'+(u.st==='idle'?'<button data-oos="'+u.id+'">報停</button>':'')+
   (u.st==='oos'?'<button data-ret="'+u.id+'">復歸</button>':'')+'<button data-uc="1">關閉</button></div>';
  return h}
+// 名冊（Roster）：高雄市政府消防局編組：局本部、特種搜救大隊、各救災救護大隊與所屬分隊、機場消防隊
+function rosterHTML(){
+ const chip=u=>{const st=ST[u.st];return'<span data-u="'+u.id+'" title="'+esc(LB[u.code]+' · '+st[0])+'"><i style="background:'+st[1]+'"></i><b class="mono">'+u.cs+'</b><em class="sub">'+LB[u.code]+'</em></span>'};
+ const own=u=>!u.ma&&!u.trainee&&!u.gone;
+ const row=(nm,us)=>'<div class="rs"><b>'+nm+' <span class="sub">'+us.filter(u=>u.st==='idle').length+'/'+us.length+'</span></b><div class="ru">'+us.map(chip).join('')+'</div></div>';
+ const stUs=i=>S.ix.bySt[i].filter(u=>own(u)&&!u.hq);
+ let h='<div class="row" style="padding:0"><span class="hd" style="margin:0">高雄市政府消防局 · 名冊 <span class="sub">共 '+S.units.filter(own).length+' 輛</span></span><button data-rosterclose="1">關閉</button></div>';
+ const hq=S.units.filter(u=>own(u)&&u.hq);
+ h+='<div class="rg">局本部 <span class="sub">與成功分隊同一廳舍辦公</span></div>'+row('局本部',hq);
+ h+='<div class="rg">特種搜救大隊 <span class="sub">平時不出動一般救災救護，呼叫特一、特二時派遣</span></div>';
+ for(const n of['特一','特二']){const i=SNAME.indexOf(n);if(i>=0&&i<S.nst)h+=row(ST_FULL[n]+'分隊',stUs(i))}
+ const reg=[];for(let i=0;i<S.nst;i++)if(!/^特|^機場/.test(SPOT[i].n))reg.push(i);
+ const mcv=S.units.filter(u=>u.brig).sort((a,b)=>a.brig-b.brig),grp=mcv.map(()=>[]);
+ for(const i of reg){let b=0,bd=INF;mcv.forEach((m,k)=>{const d=Math.hypot(SPOT[m.si].p[0]-SPOT[i].p[0],SPOT[m.si].p[1]-SPOT[i].p[1]);if(d<bd){bd=d;b=k}});if(grp[b])grp[b].push(i)}
+ mcv.forEach((m,k)=>{h+='<div class="rg">第'+BRIG_N[m.brig-1]+'救災救護大隊 <span class="sub">大隊行動指揮車 '+m.cs+'（駐 '+SPOT[m.si].n+'分隊）</span></div>';
+  for(const i of grp[k])h+=row(ST_FULL[SPOT[i].n]||SPOT[i].n+'分隊',stUs(i))});
+ const ap=SNAME.indexOf('機場');if(ap>=0&&ap<S.nst)h+='<div class="rg">機場消防隊 <span class="sub">民航局所屬，僅呼叫機場消防時協力出動</span></div>'+row('機場消防隊',stUs(ap));
+ return h}
 function shopHTML(){
  let h='<div class="row" style="padding:0"><span class="hd" style="margin:0">車輛採購 · 經費 $'+S.money+
   '</span><button data-shopclose="1">關閉</button></div><select id="selSt" style="margin:8px 0">';

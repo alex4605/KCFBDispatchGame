@@ -2,7 +2,7 @@
 'use strict';
 // 站點：需要的車種（u 為擔任的單位；media 可由到場警方擔任）、名稱、效果說明
 const TAC_STN=[
- {k:'icp',n:'指揮站',need:'指揮車',codes:['41'],fx:'作業效率 +15%；每輛指揮車提供 2 名幕僚可指派職務'},
+ {k:'icp',n:'指揮站',need:'指揮車或行動指揮車',codes:['指','41'],fx:'作業效率 +15%；每輛指揮車提供 2 名幕僚、行動指揮車（MCV）提供 4 名幕僚可指派職務'},
  {k:'stage',n:'待命集結區',need:'指揮站已開設，由一名幕僚開設（佔用一個幕僚名額）',codes:[],staff:1,fx:'新到小組直接在集結區整裝報到，約 3 秒即可派用；沒有集結區時，小組要先自行整裝、找入口交 passkey，約 20 秒後才能進入建物；幫浦組不足時自動請求增援'},
  {k:'air',n:'氣瓶充填區',need:'救助器材車（氣瓶灌充機）',codes:['71'],drv:1,fx:'任一輛救助器材車到場即由司機自動開設（不佔用救助組）；換瓶 3 秒、不限數量。未開設前每組只有車上 2 支備用瓶，用完就無法再換瓶'},
  {k:'rehab',n:'後勤照護區',need:'救護車一輛',codes:['91'],fx:'隊員休息、補水與生命徵象監測，疲勞恢復快 5 倍'},
@@ -65,7 +65,7 @@ const tacStaffUsed=B=>Object.values(B.role).filter(Boolean).length+TAC_STN.filte
 // 職務名額：指揮站開設後，每輛在場指揮車 2 名
 function tacRoleSlots(inc,B){
  if(!B.st.icp)return 0;
- return onScene(inc).filter(u=>u.code==='41'&&u.st==='work').length*2}
+ return onScene(inc).filter(u=>u.st==='work').reduce((a,u)=>a+(u.code==='41'?2:u.code==='指'?4:0),0)}
 function tacRoleSet(inc,B,k,on){
  if(on&&!B.role[k]){const used=Object.values(B.role).filter(Boolean).length;
   if(tacStaffUsed(B)>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}

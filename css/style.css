@@ -83,6 +83,15 @@ input:focus,select:focus{outline:none;border-color:var(--blu)}
 #logbox{height:210px;overflow-y:auto;overscroll-behavior:contain;padding-right:6px;scrollbar-width:thin}
 #shop{position:absolute;left:14px;right:14px;bottom:14px;background:var(--pnl);border:1px solid var(--line2);border-radius:10px;padding:12px;display:none;max-height:76%;overflow:auto}
 #shop.open{display:block}
+#roster{position:absolute;left:14px;right:14px;top:14px;bottom:14px;background:var(--pnl);border:1px solid var(--line2);border-radius:10px;padding:12px;display:none;overflow:auto;z-index:5}
+#roster.open{display:block}
+#roster .rg{margin:10px 0 4px;font-weight:600;color:#f0c8b8}#roster .rg .sub{font-weight:400}
+#roster .rs{display:flex;gap:8px;align-items:flex-start;padding:4px 0;border-top:1px solid var(--line)}
+#roster .rs>b{flex:none;width:150px;font-size:12px}
+#roster .ru{display:flex;flex-wrap:wrap;gap:4px}
+#roster .ru span{display:inline-flex;align-items:center;gap:4px;background:#24231f;border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer}
+#roster .ru i{width:7px;height:7px;border-radius:50%;display:inline-block}#roster .ru em{font-style:normal}
+@media (max-width:640px){#roster .rs{flex-direction:column}#roster .rs>b{width:auto}}
 #aipanel{position:absolute;left:14px;right:14px;top:14px;background:var(--pnl);border:1px solid var(--line2);border-radius:10px;padding:12px;display:none;max-height:76%;overflow:auto;max-width:560px}
 #aipanel.open{display:block}
 #aipanel label{display:block;font-size:12px;color:var(--fg2);margin:9px 0 3px}
