@@ -52,7 +52,10 @@ function tacVar(inc){const T=Object.assign({},TACK[inc.k]),t=tacTxt(inc);
 // 此案件是否適用戰術指揮（氣爆只有建物那種報案才適用）
 const tacHas=inc=>inc.k==='forest'?!!(inc.tac||inc.wf&&wfWuiTodo(inc.wf).length):!!TACK[inc.k]&&(!TACK[inc.k].only||!!tacVar(inc).ok);
 // 玩家戰術畫面的介面狀態
-const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.5,autoPause:true,ms:[]};
+// 時間尺度：場內動作（移動、氣瓶、火勢）約以 1:10 模擬（1 秒＝現實 10 秒）。
+// spd 為戰術畫面開著時的時間倍率：0.2／0.3／0.5／1 分別等於現實時間的 1:2／1:3／1:5／1:10，預設 1:3
+const TAC_RT=10,TAC_SPDS=[.2,.3,.5,1];
+const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.3,autoPause:true,ms:[]};
 const TAC_AIR=110; // 滿瓶可在室內作業的秒數
 const TAC_LADR={'21':10,'31':7}; // 雲梯可達樓層數
 // 車種 → 小組類型；水庫車、指揮車、救護車不編成入室小組
@@ -638,10 +641,11 @@ function tacSquad(inc,B,q,dt,eff){
   if(q.hp<1)q.hp=Math.min(1,q.hp+dt*.03);
   q.fat=Math.max(0,q.fat-dt/(B.st.rehab?16:80));
   if(q.air<1&&q.ty!=='robot'&&q.ty!=='ladder'){
-   // 換瓶：充填區 3 秒；否則用車上備用瓶 7 秒，用完要等 25 秒
+   // 換瓶：充填區 3 秒；否則用車上備用瓶 7 秒；備用瓶用完又沒有充填區就無法換瓶（等救助器材車到場）
+   if(q.refill==='none'&&B.st.air)q.refill=null;
    if(!q.refill){q.refill=B.st.air?'air':q.cyl>0?'cyl':'none';if(q.refill==='cyl')q.cyl--;
-    if(q.refill==='none'&&!q.noCyl){q.noCyl=1;radio(inc,q.cs,'車上備用氣瓶用完，換瓶要向其他車借瓶，請開設氣瓶充填區。')}}
-   q.air=Math.min(1,q.air+dt/(q.refill==='air'?3:q.refill==='cyl'?7:25));
+    if(q.refill==='none'&&!q.noCyl){q.noCyl=1;radio(inc,q.cs,'車上備用氣瓶用完，現場沒有氣瓶充填區，無法換瓶！請派救助器材車（71）。')}}
+   if(q.refill!=='none')q.air=Math.min(1,q.air+dt/(q.refill==='air'?3:7));
    if(q.air>=1)q.refill=null;
    return}
   if(q.prev&&q.fat<.5&&tacStale(B,q.prev)){q.prev=null;q.low=0;q.task='idle';return}
@@ -711,8 +715,9 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='move'){q.task='idle';return}
  if(k==='fwdgo'){q.task='station';q.stn='fwd';radio(inc,q.cs,tacFlr(B,q.f)+'前進指揮所設置完成，備用氣瓶 '+B.fwd.stock+' 支。');tacEvt(inc,B,'milestone','前進指揮所就位（'+tacFlr(B,q.f)+'）');return}
  if(k==='fwdref'){ // 前進指揮所：換瓶（備用瓶用完就要等充填區送上來）、休息
+  if(q.refill==='none'&&B.st.air)q.refill=null;
   if(!q.refill){q.refill=B.st.air?'air':B.fwd.stock>0?'cyl':'none';if(q.refill==='cyl')B.fwd.stock--}
-  q.air=Math.min(1,q.air+dt/(q.refill==='air'?4:q.refill==='cyl'?7:25));q.fat=Math.max(0,q.fat-dt/40);
+  if(q.refill!=='none')q.air=Math.min(1,q.air+dt/(q.refill==='air'?4:7));q.fat=Math.max(0,q.fat-dt/40);
   if(q.air>=1&&q.fat<.5){q.refill=null;q.low=0;let p=q.prev;q.prev=null;if(p&&tacStale(B,p))p=null;
    if(p){q.task=p.task;q.tf=p.tf;q.tc=p.tc;radio(inc,q.cs,'於前進指揮所換瓶完成，返回'+tacFlr(B,p.tf)+'續行'+TAC_TASK[p.task]+'。')}else q.task='idle'}
   return}
@@ -940,7 +945,8 @@ function tacAI(inc,B,dt,M){
  // 站點（AI 指揮）：指揮站、氣瓶充填區、後勤照護區、聯訪處、集結區
  if(M.stn){
   if(!B.st.icp)tacStnOpen(inc,B,'icp',1);
-  if(!B.st.air&&B.sq.length>=4)tacStnOpen(inc,B,'air',1);
+  // 沒有救助器材車就無法開設氣瓶充填區：有人開始用備用瓶時請求一輛救助車（只請求一次）
+  if(!B.st.air&&!B.req71&&!onScene(inc).some(u=>u.code==='71')&&B.sq.some(q=>q.cyl<2||q.refill==='none')){B.req71=1;tacReinf(inc,B,'resc')}
   if(!B.st.media&&B.vtot&&B.st.icp)tacStnOpen(inc,B,'media',1);
   if(!B.st.stage&&onScene(inc).filter(u=>u.code==='41').length>=2)tacStnOpen(inc,B,'stage',1);
   if(!B.st.rehab&&B.sq.length>=6&&tacAmbFree(inc,B)>=2)tacStnOpen(inc,B,'rehab',1);
