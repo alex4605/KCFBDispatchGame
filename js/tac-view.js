@@ -625,6 +625,11 @@ function drawTac(){
   if(q.ty!=='robot'&&tacAcc(B)){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(lx,ly+1,26,3);
    g.fillStyle=q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,26*q.air,3)}
   TAC.hits.unshift({t:'sq',id:q.u,x:p[0]-fr*3.5,y:p[1]-fr*4,w:fr*7,h:fr*7})}
+ // 對話泡泡：入室小組喊話（約 3 秒）
+ {const now=performance.now();for(const q of B.sq){if(!q.say||now-q.say.t>3000)continue;const p=TAC.sqp[q.u];if(!p||!tacIn(q)||q.f!==vf)continue;
+  g.font='600 11px '+FONT;const w=g.measureText(q.say.s).width+12,bx=p[0]-w/2,by=p[1]-fr*4-24,a=Math.min(1,(3000-(now-q.say.t))/400);
+  g.globalAlpha=a;g.fillStyle='rgba(250,248,240,.95)';scRR(g,bx,by,w,18,6);g.fill();g.beginPath();g.moveTo(p[0]-4,by+18);g.lineTo(p[0]+4,by+18);g.lineTo(p[0],by+24);g.fill();
+  g.fillStyle='#1a1a18';g.textAlign='center';g.textBaseline='middle';g.fillText(q.say.s,p[0],by+9.5);g.globalAlpha=1}}
  // 雲梯組與幫浦組也可以點車輛選取
  for(const q of B.sq){const p=TP[q.u];if(p&&(q.ty==='ladder'||q.ty==='pump'))TAC.hits.push({t:'sq',id:q.u,x:p[0]-14,y:p[1]-14,w:28,h:28});
   if(p&&(q.ty==='ladder'||q.ty==='pump')&&!TAC.sqp[q.u])TAC.sqp[q.u]=p;
@@ -858,6 +863,8 @@ function tacGear(B,q){
   if(n==='油壓剪'&&q.task!=='force'&&q.task!=='dctrl')continue;
   g.push(n)}
  if(q.task==='gas'&&!g.includes('氣體偵測器'))g.push('氣體偵測器');
+ if(tacTIC(q)&&!g.includes('TIC'))g.unshift('TIC');
+ if(!tacTIC(q))g.push('無 TIC');
  if(q.vol)g.push('手電筒');
  return g.join('、')||'—'}
 // 單位看板：現行動作（括號內）
