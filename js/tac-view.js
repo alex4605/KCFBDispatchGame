@@ -4,40 +4,39 @@ const tcv=document.getElementById('tcv'),tctx=tcv.getContext('2d');
 let tW=800,tH=500,tTopH='',tSideH='',tBotH='';
 // 指令列：依類別分組；[代碼, 名稱, 快捷鍵, 說明]
 // 說明格式：誰能做｜點哪裡｜做什麼、效果｜注意事項（提示框分行顯示）
-const tacDesc=d=>{const p=d.split('｜');return p.length<3?d:['可執行：'+p[0],'目標：'+p[1],p[2]].concat(p[3]?['注意：'+p[3]]:[]).join('\n')};
 const TAC_GRP=[
- ['水線',[['attack','入室攻擊','A','幫浦組｜點房間｜帶水線進入火點射水，撲滅後自動往同層最近火點推進｜水帶長度有限，太遠請移車或送水口加壓'],
-  ['sky','車頂砲塔','','幫浦組｜點 1F～3F 面向道路的房間｜由車頂砲塔（朝天瞄）從車旁經窗口大流量射水，快速降溫壓制，之後自動轉入室攻擊｜占兩條水線；室內有小組時會把熱煙蒸汽壓回去'],
-  ['trans','過渡射水','E','幫浦組｜點 1F、2F 有窗的房間｜先站在窗外射水降溫，再自動轉入室攻擊｜窗戶須面向可站位的道路'],
-  ['cover','周界防護','H','幫浦組｜點鄰棟那一側｜車停在相鄰道路，對鄰棟外牆射水，防止延燒過去｜只針對鄰接的建築物（室外場景點要保護的建物）'],
-  ['confine','侷限火勢','F','幫浦組｜點火點旁的房間｜對本室與相鄰房間射水降溫、濕潤，擋住延燒｜不會撲滅火點，需另派入室攻擊'],
-  ['overhaul','殘火處理','Q','各組｜點有餘燼的房間｜翻開夾層與家具，澆熄餘燼避免復燃｜有餘燼未處理不會結案']]],
- ['進入',[['force','破壞進入','B','各組｜點道路（入口）、點門或點房間｜破開上鎖的入口、指定的門或本室房門｜快，但門的開關不受控制，悶燒缺氧的空間容易爆燃'],
-  ['dctrl','門控進入','K','各組｜點道路（入口）、點門或點房間｜控制門的開度慢慢開門（上鎖會先破壞）；點房間則把通往火點的門關上並守住，阻斷進氣｜較慢，但悶燒空間不易爆燃、受傷較輕']]],
- ['搜救',[['search','初期搜索','S','救助組與各組｜點房間｜快速掃過可能有人的地方｜濃煙中可能漏人'],
-  ['search2','次級搜索','D','救助組與各組｜點已初搜的房間｜徹底翻找，找出初搜遺漏的人｜較慢'],
-  ['gas','氣體偵測','Y','各組｜點空間｜以五用氣體偵測器量測 O₂、LEL、CO、H₂S、HCN｜結果顯示在空間參數'],
-  ['roofres','屋頂救援','U','各組（雲梯組直接架梯）｜立即執行｜上屋頂把避難民眾帶下樓｜屋頂超出雲梯高度時只能走樓梯']]],
- ['排煙',[['vent','破窗排煙','V','排煙組、雲梯組｜點有窗的房間｜打破窗戶建立排煙開口｜火點還沒有水線就開口會助燃；悶燒缺氧時可能爆燃'],
-  ['hydro','水霧排煙','W','幫浦組｜點有窗的房間｜開窗後以水霧把煙帶出窗外，提升能見度｜需要水線'],
-  ['ppv','正壓排煙','P','排煙組、11 幫浦車｜點道路（入口）｜在入口架送風機，沿送風路徑把煙推向開口｜要先有出風口；火點未壓制時送風會助燃'],
-  ['npv','負壓排煙','N','排煙組｜點有窗的房間｜在窗口架排風機把煙抽出｜不會灌空氣助長火勢'],
-  ['vvent','垂直排煙','J','各組（雲梯組較快）｜點頂樓房間｜在正上方屋頂開孔，排出熱煙、避免閃燃｜火點未壓制時開孔會助燃'],
-  ['roof','屋頂排煙','O','各組｜立即執行｜開啟頂樓樓梯間的排煙口，樓梯間的煙往上排出｜']]],
- ['野火',[['beat','撲打','','各組｜點草地火線｜以打火拍、背負式水袋撲打低矮火線｜火勢猛烈時無法靠近'],
-  ['brk','防火線','','各組｜點還沒燒到的草地｜清除可燃物開設防火線，阻斷延燒｜要在火頭前方預先開設']]],
+ ['水線',[['attack','入室攻擊','A','幫浦組、機器人｜點起火的房間或走廊｜帶水線進入火點射水，撲滅後自動往同層最近火點推進，全層熄滅後原地守線｜水帶長度有限，太遠請移車或送水口加壓'],
+  ['sky','車頂砲塔','','幫浦組（人員須在車邊）｜點 1F～3F 窗戶面向道路的房間｜必要時先移車到那一側，由車頂砲塔（朝天瞄）經窗口大流量射水，約 14 秒壓制後自動轉入室攻擊｜占兩條水線；室內有小組時會把熱煙蒸汽壓回去'],
+  ['trans','過渡射水','E','幫浦組｜點 1F、2F 窗戶面向道路的房間｜先站在窗外射水降溫約 10 秒，再自動轉入室攻擊｜射水會打破窗戶，成為開口'],
+  ['cover','周界防護','H','幫浦組｜點鄰棟那一側｜車停在相鄰道路，對鄰棟外牆射水，防止延燒過去；鄰棟降溫後自動停止｜只針對鄰接的建築物（室外場景點要保護的建物）'],
+  ['confine','侷限火勢','F','幫浦組｜點火點旁的房間｜持續對本室與相鄰房間射水降溫、濕潤，擋住延燒；火點房間也會慢慢降溫｜降溫只有入室攻擊的約四成，要撲滅請派入室攻擊'],
+  ['overhaul','殘火處理','Q','各組（幫浦組較快，機器人除外）｜點有餘燼的房間｜翻開夾層與家具澆熄餘燼，完成後自動往同層下一個有餘燼的房間｜有餘燼未處理不會結案']]],
+ ['進入',[['force','破壞進入','B','各組（機器人除外）｜點道路（入口）、點門或點房間｜破開上鎖的入口、指定的門或本室所有門鎖｜快，但門的開關不受控制，悶燒缺氧的空間容易爆燃'],
+  ['dctrl','門控進入','K','各組（機器人除外，一般義消不做室內門控）｜點道路（入口）、點門或點房間｜控制門的開度慢慢開門（上鎖會先破壞）；點房間則把通往火點的門關上並守住，阻斷進氣｜較慢，但悶燒空間不易爆燃、受傷較輕']]],
+ ['搜救',[['search','初期搜索','S','各組（救助組最快，機器人除外）｜點房間｜快速掃過可能有人的地方，發現受困者就搬運撤出；本室完成後自動往同層下一間｜濃煙中可能漏人'],
+  ['search2','次級搜索','D','各組（救助組最快，機器人除外）｜點房間（通常是已初搜的房間）｜徹底翻找，找出初搜遺漏的人；本室完成後自動往同層下一間｜比初搜慢'],
+  ['gas','氣體偵測','Y','各組｜點空間｜到點以五用氣體偵測器量測約 5 秒（O₂、LEL、CO、H₂S、HCN）｜結果顯示在空間參數，超標以紅、橘色標示'],
+  ['roofres','屋頂救援','U','各組（機器人除外；雲梯組直接架梯）｜立即執行，或點畫面上的屋頂｜上屋頂把避難民眾帶下來｜走樓梯的小組每趟帶 1～2 人，人多要再下令；屋頂超出雲梯高度時雲梯組不能執行']]],
+ ['排煙',[['vent','破窗排煙','V','各組（排煙組較快，機器人除外）｜點有窗的房間｜打破窗戶建立排煙開口；點頂樓樓梯間則改為屋頂排煙｜火點還沒有水線就開口會助燃；悶燒缺氧時可能爆燃'],
+  ['hydro','水霧排煙','W','幫浦組｜點有窗的房間｜開窗後以水霧把煙帶出窗外，提升能見度；排除後原地守線｜需要水線'],
+  ['ppv','正壓排煙','P','排煙組、11 幫浦車｜立即執行（本組所在側入口），排煙組也可點道路指定入口｜在入口架送風機，沿送風路徑把煙推向開口｜要先有出風口；火點未壓制時送風會助燃；同一組再下一次即關閉送風機'],
+  ['npv','負壓排煙','N','排煙組｜點有窗的房間｜開窗架排風機，把煙抽出｜不會灌空氣助長火勢'],
+  ['vvent','垂直排煙','J','各組（雲梯組較快，機器人除外）｜點頂樓房間｜在正上方屋頂開孔，排出熱煙、避免閃燃｜火點未壓制時開孔會助燃'],
+  ['roof','屋頂排煙','O','各組（機器人除外）｜立即執行｜上頂樓開啟樓梯間的排煙口，樓梯間的煙往上排出｜']]],
+ ['野火',[['beat','撲打','','各組（雲梯組、機器人除外）｜點草地火線｜以打火拍、背負式水袋撲打低矮火線，撲滅後自動往附近火線｜火勢猛烈時無法靠近'],
+  ['brk','防火線','','各組（雲梯組、機器人除外）｜點還沒燒到的草地｜清除可燃物開設防火線，阻斷延燒（救助組較快）｜要在火頭前方預先開設']]],
  ['化災',[['ident','化物辨識','I','化災組、化災應變隊｜點洩漏處｜偵檢辨識化學品並劃設危害區｜辨識前請著適當防護'],
-  ['plug','止漏','Z','化災組、化災應變隊（最快）｜點洩漏源｜止漏；加油站為關閉緊急遮斷閥｜'],
-  ['ppeF','消防衣','','各組｜立即執行｜換回消防衣帽鞋｜耐火，但不防化學品'],
-  ['ppeC','C級','','各組｜立即執行｜濾毒罐與防濺衣，不耗氣｜不耐火，不能進濃煙、缺氧或高濃度區'],
-  ['ppeB','B級','','各組｜立即執行｜空氣呼吸器＋防濺衣｜每輛化災車 2 套'],
-  ['ppeA','A級','','各組｜立即執行｜氣密全身防護｜每輛化災車 1 套']]],
- ['雲梯',[['ladder','雲梯救援','L','雲梯組｜點有窗的房間｜架雲梯到窗口搜索並救下受困者｜車要停在窗戶那一側、在可達樓層內'],
-  ['master','雲梯射水','M','雲梯組｜點有窗的房間｜從窗外以雲梯瞄子射水｜室內有小組時會把熱煙壓回去']]],
- ['調度',[['move','移動','G','各組｜點空間｜移到指定位置待命｜'],['rit','RIT','R','各組｜立即執行｜在入口待命，MAYDAY 時入室救援｜人員入室前應先編成（2 進 2 出）'],
-  ['exit','撤出','X','各組｜立即執行｜撤出建物｜'],['truck','移車','T','幫浦組、雲梯組｜點道路｜把車移到另一側道路（約 12 秒）｜人員在室內時不能移車'],
-  ['hyd','佔據水源','','幫浦組｜立即執行｜移到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
-  ['stand','送水口加壓','C','幫浦組｜立即執行｜接連結送水管送水口，各樓層出水口可接線｜五層以上建物才有']]]];
+  ['plug','止漏','Z','各組（化災應變隊最快、化災組次之，其他組很慢）｜點洩漏源｜止漏；加油站為關閉緊急遮斷閥｜'],
+  ['ppeF','消防衣','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜換回消防衣帽鞋｜耐火，但不防化學品'],
+  ['ppeC','C級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜濾毒罐與防濺衣，不耗氣｜不耐火，不能進濃煙、缺氧或高濃度區'],
+  ['ppeB','B級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜空氣呼吸器＋防濺衣｜每輛化災車 2 套'],
+  ['ppeA','A級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜氣密全身防護｜每輛化災車 1 套']]],
+ ['雲梯',[['ladder','雲梯救援','L','雲梯組｜點有窗的房間｜移車到窗戶那一側、架梯到窗口搜索，逐一救下受困者｜要在可達樓層內，窗戶那一側要能停大型車'],
+  ['master','雲梯射水','M','雲梯組｜點有窗的房間｜從窗外以雲梯瞄子射水，該室熄滅後自動停止；也能撲滅屋頂光電板、外牆室外機火｜室內有小組時會把熱煙壓回去']]],
+ ['調度',[['move','移動','G','各組｜點空間｜移到指定位置待命｜一般義消不進入高溫或濃煙的空間'],['rit','RIT','R','各組（雲梯組、機器人除外）｜立即執行｜在入口待命，MAYDAY 時入室救援；已有隊員倒地時立即入室｜人員入室前應先編成（2 進 2 出）'],
+  ['exit','撤出','X','室內各組｜立即執行｜撤出建物｜'],['truck','移車','T','幫浦組、雲梯組｜點道路｜把車移到另一側道路（約 12 秒）｜人員在室內時不能移車'],
+  ['hyd','佔據水源','','幫浦組（人員須在車邊）｜立即執行｜移車到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
+  ['stand','送水口加壓','C','幫浦組（人員須在車邊）｜立即執行｜移車到送水口那一側，接連結送水管，約 8 秒後各樓層出水口可接線｜地上五層以上的建物才有']]]];
 // 指令的 Emoji
 const TAC_EMO={hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
@@ -929,6 +928,47 @@ function tacTagHTML(inc,B,q,i){
   '<div class="mb"><div><span class="sub">任務</span> '+task+(q.line?' 💧'+(q.burst>0?'燒破':Math.round(q.pf*100)+'%'):'')+'</div>'+
   (q.ty!=='robot'?'<div class="mg"><span class="sub">水線</span> '+noz+(gear?'　<span class="sub">裝備</span> '+gear:'')+'</div>':'')+
   '<div class="mf"><span class="sub">'+loc+'</span>'+(inT&&acc?'<span class="sub">入室 '+fmt(inT)+'</span>':'')+air+(q.ty!=='robot'&&q.ty!=='ladder'&&q.fat>.4?'<span class="sub" style="color:'+(q.fat>.7?'var(--red)':'var(--amb)')+'">疲勞 '+Math.round(q.fat*100)+'%</span>':'')+'</div></div></div>'}
+// 指令能否下給這一組：回傳不可執行的原因（'' 表示可以）；需點目標的指令只看小組本身，目標相關的限制等點了再判斷
+function tacOrdWhy(B,q,k){
+ if(/^ppe/.test(k))return q.ty==='ladder'||q.ty==='robot'?'此組不需換裝':tacIn(q)?'人員在室內，需先撤出才能換裝':q.down?'該組已倒地':'';
+ const t=TAC_NEEDT[k],pr=(B.L.N.find(n=>n.ty==='room'&&n.wins&&n.wins.some(w=>B.sd[w].road))||B.L.N.find(n=>n.ty==='room')).c;
+ const why=k==='truck'?tacCan(B,q,'truck'):k==='roofres'||k==='roof'?tacCan(B,q,k,B.F-1,0):tacCan(B,q,k,t?B.bf:-1,t?pr:0);
+ return why&&!(t&&/高度|道路|窗|地下|樓梯|搜索|頂樓|房間|請點/.test(why))?why:''}
+// 指令說明拆成欄位：可執行／目標／效果／注意
+function tacDescF(d){const p=d.split('｜');return p.length<3?{fx:d}:{who:p[0],tgt:p[1],fx:p[2],note:p[3]||''}}
+// 指令面板：上方說明列（選取的小組、滑過或選定的指令說明與不可執行原因），下方依類別分組的按鈕
+function tacCmdHTML(inc,B){
+ const qs=tacSelList(B),hzOn=!!B.chem||tacPPECap(inc).A>0||B.sq.some(q=>q.epa||q.ty==='hazmat');
+ const why={};TAC.cwhy=why;
+ const btn=o=>{const k=o[0],t=TAC_NEEDT[k],on2=B.out&&TAC_OUTN[k];
+  let ok=0,r='';for(const q of qs){const w=tacOrdWhy(B,q,k);if(!w)ok++;else if(!r)r=(qs.length>1?q.cs+'：':'')+w}
+  if(!qs.length)r='請先選擇小組';if(!ok)why[k]=r;
+  const cls=(TAC.ord===k?'on ':'')+(ok?'':'dis ')+(t?'otg':'onw');
+  return'<button data-tord="'+k+'" class="'+cls+'"><i class="emo">'+(TAC_EMO[k]||'')+'</i>'+(on2?on2[0]:o[1])+
+   (qs.length>1&&ok&&ok<qs.length?' <i class="cnt">'+ok+'/'+qs.length+'</i>':'')+(o[2]?' <span class="key">'+o[2]+'</span>':'')+'</button>'};
+ let h='<div class="tgrps">';
+ for(const gp of TAC_GRP){if((gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;
+  h+='<div class="tgrp"><span class="tgl">'+gp[0]+'</span>'+gp[1].map(btn).join('')+'</div>'}
+ h+='<div class="tgrp tglob"><span class="tgl" title="小組自行開門（上鎖或關著的門、入口）時的方式：破壞進入快，但門的開關不受控制，悶燒缺氧的空間容易爆燃；門控進入較慢，但不容易爆燃">ROE</span>'+
+  ['force','dctrl'].map(r=>'<button data-troe="'+r+'"'+((B.roe||'force')===r?' class="on"':'')+'>'+(r==='force'?'🪓 破壞':'🚪 門控')+'</button>').join('')+
+  '<button data-tord="evac" class="evac" title="所有入室小組立即撤出建物，人員清點">⚠ 全員撤出</button></div>';
+ return'<div class="tinfo">'+tacCmdInfo(B,qs,why)+'</div>'+h+'</div>'}
+function tacCmdInfo(B,qs,why){
+ const k=TAC.hord&&TAC.hord!=='evac'?TAC.hord:TAC.ord,o=k&&TAC_ORD.find(x=>x[0]===k);
+ let sel;
+ if(!qs.length)sel='<span class="sub">未選小組</span>';
+ else if(qs.length===1){const q=qs[0];sel='<b>'+q.cs+'</b> <span class="sub">'+(TAC_TYN[q.ty]||'')+' '+q.n+'人</span>'}
+ else sel='<b>'+qs.length+' 組</b> <span class="sub">'+qs.slice(0,4).map(q=>q.cs).join('、')+(qs.length>4?'…':'')+'</span>';
+ sel='<div class="tisel">'+sel+'</div>';
+ if(!o){
+  const tip=!qs.length?'先選小組：點看板上的牌、畫面上的人員或按 1–9；拖曳可框選多組':
+   TAC.hord==='evac'?'⚠ 全員撤出：所有入室小組立即撤出建物，人員清點':
+   '點下方指令；<b class="otg">◎</b> 需再點畫面目標，<b class="onw">⚡</b> 立即執行。也可直接右鍵點畫面，使用該處的預設任務';
+  return sel+'<div class="tidesc"><span class="sub">'+tip+'</span></div>'}
+ const on2=B.out&&TAC_OUTN[k],d=tacDescF(on2?on2[1]:o[3]),f=(l,v)=>v?'<span><i>'+l+'</i>'+esc(v)+'</span>':'';
+ const head=(TAC.ord===k&&!TAC.hord?'<b class="go">▶ 請點畫面上的目標（Esc 取消）</b>':'')+'<b>'+(TAC_EMO[k]||'')+' '+(on2?on2[0]:o[1])+'</b>'+(o[2]?' <span class="key">'+o[2]+'</span>':'')+
+  ' <span class="sub">'+(TAC_NEEDT[k]?'◎ 需點目標':'⚡ 立即執行')+'</span>';
+ return sel+'<div class="tidesc"><div class="tih">'+head+(why[k]?'<span class="no">✕ '+esc(why[k])+'</span>':'')+'</div><div class="tif">'+f('可執行',d.who)+f('目標',d.tgt)+f('效果',d.fx)+f('注意',d.note)+'</div></div>'}
 function tacBotHTML(inc){
  const B=inc.tac,sq=B.sq.find(q=>q.u===TAC.sq);
  // 沒有小組的欄位縮窄，讓有小組的欄位寬一點
@@ -939,22 +979,7 @@ function tacBotHTML(inc){
   h+='<div class="tcol c-'+c[0]+'"><div class="tch2">'+c[1]+' <span>'+qs.length+'</span></div>'+qs.map(x=>tacTagHTML(inc,B,x[0],x[1])).join('')+'</div>'}
  h+='</div>';
  if(!B.sq.length)h+='<div class="sub">尚無可編組的小組到場（幫浦、雲梯、救助、排煙、機器人）。</div>';
- // 指令：需指定目標的（先選指令再點畫面）／立即執行的
- const pr=(B.L.N.find(n=>n.ty==='room'&&n.wins&&n.wins.some(w=>B.sd[w].road))||B.L.N.find(n=>n.ty==='room')).c;
- const hzOn=!!B.chem||tacPPECap(inc).A>0||B.sq.some(q=>q.epa||q.ty==='hazmat');
- const btn=o=>{const t=TAC_NEEDT[o[0]];let dis=!sq;
-  if(sq&&/^ppe/.test(o[0]))dis=tacIn(sq)||sq.ty==='ladder'||sq.ty==='robot';
-  else if(sq){const why=o[0]==='truck'?tacCan(B,sq,'truck'):o[0]==='roofres'?tacCan(B,sq,'roofres',B.F-1,0):o[0]==='roof'?tacCan(B,sq,'roof',B.F-1,0):tacCan(B,sq,o[0],t?B.bf:-1,t?pr:0);
-   dis=!!why&&!/高度|道路|窗|地下|樓梯|搜索|頂樓|房間/.test(why)}
-  const on2=B.out&&TAC_OUTN[o[0]];
-  return'<button data-tord="'+o[0]+'" title="'+esc(tacDesc(on2?on2[1]:o[3]))+'"'+(TAC.ord===o[0]?' class="on"':'')+(dis?' disabled':'')+'><i class="emo">'+(TAC_EMO[o[0]]||'')+'</i>'+(on2?on2[0]:o[1])+' <span class="sub">'+o[2]+'</span></button>'};
- h+='<div class="tords"><span class="trow">需指定目標</span>';
- for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
- h+='</div><div class="tords"><span class="trow">立即執行</span>';
- for(const gp of TAC_GRP)for(const o of gp[1])if(!TAC_NEEDT[o[0]]&&(gp[0]!=='化災'||hzOn))h+=btn(o);
- h+='<span class="trow" style="margin-left:auto" title="小組自行開門（上鎖或關著的門、入口）時的方式：破壞進入快，但門的開關不受控制，悶燒缺氧的空間容易爆燃；門控進入較慢，但不容易爆燃">ROE</span>'+
-  ['force','dctrl'].map(r=>'<button data-troe="'+r+'"'+((B.roe||'force')===r?' class="on"':'')+'>'+(r==='force'?'🪓 破壞進入':'🚪 門控進入')+'</button>').join('');
- h+='<button data-tord="evac" style="border-color:var(--red)">全員撤出</button></div>';
+ h+=tacCmdHTML(inc,B);
  return h}
 function tacUI(){
  const inc=S.inc.find(i=>i.id===TAC.id);if(!inc||!inc.tac)return;
@@ -985,10 +1010,15 @@ function tacCmd(k){
   radio(inc,'受理','緊急撤退！所有入室小組立即撤出建物，人員清點。');msg=n?'已下令 '+n+' 組撤出':'';TAC.ord=null;return}
  const qs=tacSelList(B);
  if(!qs.length){msg='請先選擇小組';return}
+ if(TAC.cwhy&&TAC.cwhy[k]){msg=TAC.cwhy[k];TAC.ord=null;return}
  if(TAC_NEEDT[k]){TAC.ord=TAC.ord===k?null:k;return}
  let ok=0;qs.forEach((q,i)=>{if(tacOrder(inc,q,k,k==='roof'||k==='roofres'?B.F-1:-1,0,i>0))ok++});
  if(qs.length>1)msg=TAC_TASK[k]+'：'+ok+' / '+qs.length+' 組受令';TAC.ord=null}
 tcv.addEventListener('contextmenu',e=>e.preventDefault());
+// 指令按鈕滑過時，說明列顯示該指令的說明與不可執行的原因
+{const tb=document.getElementById('tacBot'),hv=k=>{if(k!==TAC.hord){TAC.hord=k;tBotH='';tacUI()}};
+ tb.addEventListener('mouseover',e=>{const b=e.target.closest('[data-tord]');hv(b?b.dataset.tord:null)});
+ tb.addEventListener('mouseleave',()=>hv(null))}
 tcv.addEventListener('pointermove',e=>{const r=tcv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
  if(TAC.drag){TAC.drag.x1=x;TAC.drag.y1=y}
  if(e.pointerType!=='touch')TAC.hov={x,y}});
