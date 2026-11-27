@@ -264,9 +264,9 @@ function release(inc,ok){
   else home(u)})}
 function parkArms(inc){
  if(inc.pk)return inc.pk;
- const seen=new Set([K(inc.ax,inc.ay)]),Q=[[inc.ax,inc.ay,0]],spots=[],par=new Map();
- while(Q.length&&spots.length<30){
-  const [x,y,dd]=Q.shift();
+ const seen=new Set([K(inc.ax,inc.ay)]),Q=[[inc.ax,inc.ay,0]],spots=[],par=new Map();let qi=0;
+ while(qi<Q.length&&spots.length<30){
+  const [x,y,dd]=Q[qi++];
   if(dd>0){
    const hz=cls(x+1,y)||cls(x-1,y),vt=cls(x,y+1)||cls(x,y-1);
    const dir=(hz&&!vt)?[1,0]:(!hz&&vt)?[0,1]:(Math.abs(x-inc.x)>=Math.abs(y-inc.y)?[1,0]:[0,1]);

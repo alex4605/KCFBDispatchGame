@@ -252,7 +252,7 @@ function tacLayout(T,K,kind,two){
  for(const[a,b]of P)if(a.ty==='room'&&b.ty==='room'&&((a.kind==='living'&&b.kind==='kitchen')||(b.kind==='living'&&a.kind==='kitchen'))&&R()<.6)door(a,b);
  // 連通：從樓梯出發還走不到的房間，開門到相鄰已走得到的空間
  for(let it=0;it<20;it++){
-  const seen=new Set([0]),qu=[0];while(qu.length){const c=qu.shift();for(const d of N[c].nb)if(!seen.has(d)){seen.add(d);qu.push(d)}}
+  const seen=new Set([0]),qu=[0];let qi=0;while(qi<qu.length){const c=qu[qi++];for(const d of N[c].nb)if(!seen.has(d)){seen.add(d);qu.push(d)}}
   if(seen.size===N.length)break;
   for(const[a,b]of P){if(seen.has(a.c)!==seen.has(b.c)){door(a,b);break}}}
  // 外牆方向、對外窗
@@ -445,11 +445,10 @@ function tacInit(inc){
  if(T.spk)B.spk={ok:Math.random()>.2,fl:{}};
  // 養護機構：值班護理人員進行水平避難
  if(T.staff)B.staff={n:tacRint(2,3),t:20};
- if(T.blast)B.dmg=.4;
  // 屋主不在：起火戶的戶門上鎖
  if(T.away||T.elder){const u=L.N[oc].u,en=u!==undefined?L.N.find(n=>n.u===u&&n.uent):L.N[oc];
   if(en)for(const o of en.nb)if(L.N[o].ty!=='room')B.lk.add(tacDK(B,of,en.c,o))}
- B.t0=S.t;B.ev=[];B.viol={};B.stab=TAC_STAB[inc.pm.stab]||1;B.dmg=0;
+ B.t0=S.t;B.ev=[];B.viol={};B.stab=TAC_STAB[inc.pm.stab]||1;B.dmg=T.blast?.4:0;
  B.elev=Fa>=6&&T.lay==='corridor'; // 六層以上走廊式建物有消防專用升降機
  B.fwdF=Math.max(bf+1,of>=bf+3?of-2:bf+Math.floor((F-bf)/2)); // 火在低樓層時設在建物中段，方便上方樓層搜索
  inc.tac=B;tacSync(inc);
@@ -484,22 +483,27 @@ function tacAdj(B,f,c){
  if(tacStair(B,c)){const ok=x=>!(B.cz&&B.cz.has(x));if(f>0&&ok(f-1))r.push([f-1,c]);if(f<B.F-1&&ok(f+1))r.push([f+1,c])}
  if(f<=B.bf&&B.ents.some(e=>e.c===c&&tacEF(B,e)===f&&!(e.shop&&e.lock)))r.push([-1,0]);
  return r}
-// 從 (f0,c0) 到 (tf,tc) 的最短路徑（廣度優先）；回傳整條路徑，不含起點
+// 從 (f0,c0) 到 (tf,tc) 的最短路徑（廣度優先，含拓樸版本快取）；回傳整條路徑，不含起點
 function tacPath(B,f0,c0,tf,tc){
  const key=(f,c)=>f<0?-1:f*B.W+c,goal=key(tf,tc),start=key(f0,c0);
  if(goal===start)return[];
- const prev=new Map([[start,null]]),qu=[[f0,c0]];
- while(qu.length){const n=qu.shift();if(key(n[0],n[1])===goal)break;if(n[0]<0)continue;
+ let pv=(B.cz?B.cz.size:0)*31+(B.ents?B.ents.length:0);
+ if(B.ents)for(let i=0;i<B.ents.length;i++)if(B.ents[i].shop&&B.ents[i].lock)pv+=1024*(i+1);
+ if(B._pv!==pv){B._pv=pv;B._pc=new Map()}
+ const ck=start*100003+goal,hit=B._pc.get(ck);
+ if(hit!==undefined)return hit;
+ const prev=new Map([[start,null]]),qu=[[f0,c0]];let qi=0;
+ while(qi<qu.length){const n=qu[qi++];if(key(n[0],n[1])===goal)break;if(n[0]<0)continue;
   for(const m of tacAdj(B,n[0],n[1])){const k=key(m[0],m[1]);if(!prev.has(k)){prev.set(k,n);qu.push(m)}}}
- if(!prev.has(goal))return[];
+ if(!prev.has(goal)){B._pc.set(ck,[]);return[]}
  const out=[];let cur=tf<0?[-1,0]:[tf,tc];
- while(key(cur[0],cur[1])!==start){out.unshift(cur);cur=prev.get(key(cur[0],cur[1]))}
- return out}
+ while(key(cur[0],cur[1])!==start){out.push(cur);cur=prev.get(key(cur[0],cur[1]))}
+ out.reverse();B._pc.set(ck,out);return out}
 // 換瓶前的任務已經沒有意義（射水目標火已熄）
 const tacStale=(B,p)=>!!TAC_WET[p.task]&&p.task!=='cover'&&p.tf>=0&&tacCel(B,p.tf,p.tc).h<.05;
 function tacNext(B,q){
  if(q.f===q.tf&&q.c===q.tc)return null;
- if(q.f<0){if(!q.ent)q.ent=tacBestEnt(B,q.side,q.tf,q.tc,false);return[tacEF(B,q.ent),q.ent.c]}
+ if(q.f<0){if(!q.ent)q.ent=tacBestEnt(B,q.side,q.tf,q.tc,false);return q.ent?[tacEF(B,q.ent),q.ent.c]:null}
  return tacPath(B,q.f,q.c,q.tf,q.tc)[0]||null}
 function tacStepTime(B,q,ns){
  let t=q.f<0||ns[0]<0?1.5:ns[0]!==q.f?(tacElevOK(B,q.f,ns[0])?.6:2.2):1.8;
@@ -911,9 +915,9 @@ function tacSquad(inc,B,q,dt,eff){
   return}
  if(k==='hydro'){ // 水霧排煙：先開窗，再用水霧把煙從窗口帶出去
   if(!cl.v){q.wk+=dt;if(q.wk>=3){q.wk=0;tacOpenWin(inc,B,cl,q.cs);radio(inc,q.cs,tacNm(B,q.f,q.c)+'開窗完成，水霧排煙。')}return}
-  if(q.line&&eff>0&&q.pf>0){cl.s=Math.max(0,cl.s-dt*.45*q.pf);cl.wet=1;for(const o of B.L.N[q.c].nb){const y=tacCel(B,q.f,o);y.s=Math.max(0,y.s-dt*.12*q.pf)}
+  if(q.line&&eff>0&&q.pf>0){cl.s=Math.max(0,cl.s-dt*.45*q.pf);cl.wet=1;
    for(const o of B.L.N[q.c].nb)if(!tacShut(B,q.f,q.c,o)){const y=tacCel(B,q.f,o);y.s=Math.max(0,y.s-dt*.12*q.pf)}}
-  if(cl.s<.05&&B.L.N[q.c].nb.every(o=>tacCel(B,q.f,o).s<.15)){q.task='hold';radio(inc,q.cs,tacNm(B,q.f,q.c)+'一帶濃煙已排除。')}
+  if(cl.s<.05&&B.L.N[q.c].nb.every(o=>tacShut(B,q.f,q.c,o)||tacCel(B,q.f,o).s<.15)){q.task='hold';radio(inc,q.cs,tacNm(B,q.f,q.c)+'一帶濃煙已排除。')}
   return}
  if(k==='vent'){q.wk+=dt;if(q.wk>=(q.ty==='vent'?2:4)){q.wk=0;tacOpenWin(inc,B,cl,q.cs);q.task='idle';
   radio(inc,q.cs,tacNm(B,q.f,q.c)+'破窗完成，開口建立。')}return}

@@ -89,7 +89,7 @@ function tacYardStep(inc,B,dt){
  // 油料外洩：油池擴散到相鄰車道，可被引燃
  if(B.leak&&B.leak.on&&B.chem&&B.chem.fuel)for(const cc of B.L.N[B.leak.c].nb){const y=tacCel(B,0,cc);if(B.L.N[cc].ty==='hall'&&y.fu<.4){y.fu=.4;y.fuel=1;y.pool=1}}}
 // 場區空間名稱：塑膠堆 A、加油島 2、場內車道
-function tacYardNm(B,c){const n=B.L.N[c];if(n.ty==='hall')return n.pool?'車道（油池）':n.levee?'堤頂道路':'場內車道';
+function tacYardNm(B,c){const n=B.L.N[c];if(n.ty==='hall')return tacCel(B,0,c).pool?'車道（油池）':n.levee?'堤頂道路':'場內車道';
  const same=B.L.N.filter(m=>m.ty==='room'&&m.kind===n.kind);
  return TAC_RK[n.kind].n+(same.length>1?' '+(n.kind==='island'?same.indexOf(n)+1:String.fromCharCode(65+same.indexOf(n))):'')}
 // 繪製：場區地面與圍籬
@@ -191,6 +191,7 @@ function tacYardPost(inc,B,T){
  B.sd[rs]={road:0,big:false,nm:'水域'};B.riv=rs;
  B.ents=B.ents.filter(e=>e.side!==rs);
  if(B.arr===rs){B.arr=B.ents.length?B.ents[0].side:tacOpp(rs,'n')?'n':'s'}
+ if(!B.ents.length){if(!B.sd[B.arr].road)B.sd[B.arr]={road:2,big:true,nm:'道路'};B.ents=[{side:B.arr,c:B.L.ent[B.arr]}]}
  if(B.hyd&&B.hyd.side===rs)B.hyd.side=B.arr}
 // 野火小組：撲打（打火拍、背負式水袋）、開設防火線
 function tacWildCan(B,q,k,c){

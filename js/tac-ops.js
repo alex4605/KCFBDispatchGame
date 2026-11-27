@@ -25,7 +25,7 @@ function tacStnPick(inc,B,k){
  if(k==='media'&&!B.st.icp)return{why:'需先開設指揮站'};
  if(k==='media'&&inc.pol===2)return{u:null};
  if(k==='fwd'&&(!B.st.icp||B.F-B.bf<5))return{why:!B.st.icp?'需先開設指揮站':'五層以上建物才需要'};
- if(d.staff){if(!B.st.icp)return{why:'需先開設指揮站（由幕僚開設）'};if(tacStaffUsed(B)>=tacRoleSlots(inc,B))return{why:'幕僚不足：每輛指揮車只能提供 2 名幕僚'};return{u:null,staff:1}}
+ if(d.staff){if(!B.st.icp)return{why:'需先開設指揮站（由幕僚開設）'};if(tacStaffUsed(B)>=tacRoleSlots(inc,B))return{why:'幕僚不足（指揮車 2 名、行動指揮車 4 名）'};return{u:null,staff:1}}
  if(k==='decon'){const e=B.sq.find(q=>q.epa&&!tacIn(q)&&q.task==='idle');if(e)return{u:e.u}}
  for(const code of d.codes)for(const u of onScene(inc)){
   if(u.code!==code||u.st!=='work'||tacStnBusy(B,u.id)||u.load)continue;
@@ -67,8 +67,8 @@ function tacRoleSlots(inc,B){
  if(!B.st.icp)return 0;
  return onScene(inc).filter(u=>u.st==='work').reduce((a,u)=>a+(u.code==='41'?2:u.code==='指'?4:0),0)}
 function tacRoleSet(inc,B,k,on){
- if(on&&!B.role[k]){const used=Object.values(B.role).filter(Boolean).length;
-  if(tacStaffUsed(B)>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}
+ if(on&&!B.role[k]){
+  if(tacStaffUsed(B)>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足（指揮車 2 名、行動指揮車 4 名）':'需先開設指揮站';return}
   B.role[k]=1;radio(inc,'受理','指派'+TAC_ROLE.find(x=>x.k===k).n+'。')}
  else if(!on&&B.role[k]){B.role[k]=0;radio(inc,'受理','解除'+TAC_ROLE.find(x=>x.k===k).n+'。')}}
 // 人員管制板：安全官就位約 10 秒後在入口設好，才能掌握各組入室時間與氣量

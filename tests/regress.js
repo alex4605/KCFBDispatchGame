@@ -1,7 +1,7 @@
 // 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|lint|load|map|normal|dispatch|tac|handoff|school]
 // 需要可 require('playwright') 的環境；直接開啟 index.html，不需要伺服器
 'use strict';
-const path=require('path'),{chromium}=require('playwright');
+const path=require('path');
 const URL='file://'+path.resolve(__dirname,'..','index.html');
 const which=process.argv[2]||'all';
 let fail=0;
@@ -29,6 +29,7 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
  ok('按鈕屬性都有點擊處理',!miss.length,miss)}
 (async()=>{if(which==='all'||which==='lint')lint();
  if(which==='lint'){console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)}
+ const {chromium}=require('playwright');
  const b=await chromium.launch();
  if(which==='all'||which==='load'){const {p,errs}=await page(b);ok('載入無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='map'){const {p,errs}=await page(b);

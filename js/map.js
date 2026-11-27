@@ -69,8 +69,7 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
   if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
    ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
    ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
- else if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
- else if(t===0){// 郊區與鄉鎮：低矮透天與三合院，偶有廟宇、學校、鐵皮工廠
+  else if(t===0){// 郊區與鄉鎮：低矮透天與三合院，偶有廟宇、學校、鐵皮工廠
   const a=hsh(k,1);
   if(CROP[k]===9){const cols=['#3e4a56','#4a4f55','#56504a','#3f4d4a'],cl=cols[hsh(k,6)*4|0];
    ctx.fillStyle=cl;ctx.fillRect(px+c*.06,py+c*.1,c*.88,c*.74);
@@ -370,14 +369,18 @@ function mapUnitHit(x,y){
   const d=Math.hypot(u.x+.5+(u.ox||0)-x,u.y+.5+(u.oy||0)-y);if(d<bd){bd=d;best=u.id}}
  return best}
 // 地圖現場模式的夜間：整體壓暗、住家窗光、路燈；窗光位置與街廓細節的建物量體一致
+let _lampGlow=null;
 function mapNight(c,x0,x1,y0,y1,nf){
  ctx.fillStyle='rgba(8,12,28,'+(.55*nf).toFixed(3)+')';ctx.fillRect(x0*c,y0*c,(x1-x0+1)*c,(y1-y0+1)*c);
  if(c<34)return;
- const fl=.75+.25*Math.sin(S.t*.7);
+ if(!_lampGlow){const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');
+  const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,210,140,.32)');gr.addColorStop(1,'rgba(255,210,140,0)');
+  g.fillStyle=gr;g.fillRect(0,0,64,64);_lampGlow=cv}
+ const fl=.75+.25*Math.sin(S.t*.7),rad=c*.6,lampCol='rgba(255,230,180,'+(.9*nf).toFixed(2)+')';
  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const k=K(x,y),t=TR[k],r=RD[k],px=x*c,py=y*c,s=SH[k];
   if(r){if(r<=3&&hsh(k,50)>(inCity(x,y)?.55:.85)){const gx=px+c*.08,gy=py+c*.08;
-    const gr=ctx.createRadialGradient(gx,gy,0,gx,gy,c*.6);gr.addColorStop(0,'rgba(255,210,140,'+(.32*nf).toFixed(3)+')');gr.addColorStop(1,'rgba(255,210,140,0)');
-    ctx.fillStyle=gr;ctx.fillRect(gx-c*.6,gy-c*.6,c*1.2,c*1.2);ctx.fillStyle='rgba(255,230,180,'+(.9*nf).toFixed(2)+')';ctx.fillRect(gx-1.5,gy-1.5,3,3)}
+    ctx.save();ctx.globalAlpha=nf;ctx.drawImage(_lampGlow,gx-rad,gy-rad,rad*2,rad*2);ctx.restore();
+    ctx.fillStyle=lampCol;ctx.fillRect(gx-1.5,gy-1.5,3,3)}
    continue}
   if(t!==0)continue;
   ctx.fillStyle='rgba(255,206,130,'+(.75*nf*fl).toFixed(3)+')';

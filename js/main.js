@@ -74,9 +74,10 @@ function selInc(id){sel=id;selU=null;const o=S.inc.find(x=>x.id===sel)||S.duties
 $('calls').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-sel]');if(!b||e.button!==0)return;msg='';selInc(+b.dataset.sel)});
 $('calls').addEventListener('pointerenter',()=>{callsHover=true});
 $('calls').addEventListener('pointerleave',()=>{callsHover=false});
-// ↑／↓ 在進線案件間切換（輸入框內不作用）
+// ↑／↓ 在進線案件間切換；空白鍵暫停／繼續（輸入框內不作用）
 document.addEventListener('keydown',e=>{
  if(TAC.open||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+ if(e.key===' '&&e.target.tagName!=='BUTTON'){e.preventDefault();paused=!paused;$('btnPause').textContent=paused?'繼續':'暫停';return}
  if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;
  const ids=[...document.querySelectorAll('#calls [data-sel]')].map(x=>+x.dataset.sel);if(!ids.length)return;
  e.preventDefault();const i=ids.indexOf(sel);

@@ -88,7 +88,7 @@ function trainEnd(why){
  const inc=S.inc.find(i=>i.id===TRAIN.inc);
  if(TAC.open&&TAC.id===TRAIN.inc)tacClose(why);
  if(inc){release(inc,0);S.inc.splice(S.inc.indexOf(inc),1)}
- for(const u of S.units)if(u.trainee){u.gone=1;u.inc=null;u.st='idle';u.path=[]}
+ S.units=S.units.filter(u=>!u.trainee);reindex();
  TRAIN.inc=null;TRAIN.lv=0;sel=SCHOOL_ID;msg=why;dirty()}
 // 每幀：車到場後自動進入戰術指揮、檢查目標、失敗條件
 function trainStep(){

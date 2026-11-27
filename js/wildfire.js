@@ -137,10 +137,15 @@ function wfDrawMap(ctx,c){
    ctx.fillStyle='rgba(12,12,11,.85)';rr(x-tw/2,y-c*.3,tw,c*.6,3);ctx.fill();ctx.strokeStyle=WF_SCOL[k];ctx.lineWidth=1.5;ctx.stroke();
    ctx.fillStyle='#eceae3';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lb.trim(),x,y)}}}
 // ===== 繪製：現場畫面改為山火作戰圖 =====
+let _wfGlow=null;
 function wfScene(inc,g){
  const W=inc.wf;if(!W){g.fillStyle='#0b0b0a';g.fillRect(0,0,scW,scH);return}
+ if(!_wfGlow){const cv=document.createElement('canvas');cv.width=cv.height=64;const c2=cv.getContext('2d');
+  const gr=c2.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,230,120,.95)');gr.addColorStop(1,'rgba(255,80,20,0)');
+  c2.fillStyle=gr;c2.fillRect(0,0,64,64);_wfGlow=cv}
  let x0=W.o[0],x1=W.o[0],y0=W.o[1],y1=W.o[1];
- for(const k of [...W.F.keys(),...W.B]){const x=(k/N)|0,y=k%N;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)}
+ for(const k of W.F.keys()){const x=(k/N)|0,y=k%N;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+ for(const k of W.B){const x=(k/N)|0,y=k%N;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
  x0-=4;x1+=4;y0-=4;y1+=4;
  // 指揮站（報案地點）離火場不遠才一起框進來
  const near=Math.hypot(inc.x-W.o[0],inc.y-W.o[1])<10;if(near){x0=Math.min(x0,inc.x-2);x1=Math.max(x1,inc.x+2);y0=Math.min(y0,inc.y-2);y1=Math.max(y1,inc.y+2)}
@@ -162,7 +167,7 @@ function wfScene(inc,g){
   for(let i=1;i<4;i++){g.beginPath();g.moveTo(X(x)+c*i/4,Y(y)+2);g.lineTo(X(x)+c*i/4,Y(y)+c-2);g.stroke()}}
  for(const f of W.F.values()){const px=X(f.x),py=Y(f.y);g.fillStyle='rgba(255,'+(120-f.h*70|0)+',30,'+(.3+.4*f.h).toFixed(2)+')';g.fillRect(px,py,c+.6,c+.6);
   for(let i=0;i<Math.ceil(f.h*3);i++){const fx=px+c*(.2+.6*((f.x*7+i*13)%11/11)),fy=py+c*(.2+.6*((f.y*5+i*7)%9/9)),fr=c*(.12+.18*f.h)*(.8+.3*Math.sin(T*8+i+f.x));
-   const gr=g.createRadialGradient(fx,fy,0,fx,fy,fr);gr.addColorStop(0,'rgba(255,230,120,.95)');gr.addColorStop(1,'rgba(255,80,20,0)');g.fillStyle=gr;g.beginPath();g.arc(fx,fy,fr,0,TAU);g.fill()}
+   g.drawImage(_wfGlow,fx-fr,fy-fr,fr*2,fr*2)}
   if(f.wet>0){g.fillStyle='rgba(125,179,232,.25)';g.fillRect(px,py,c+.6,c+.6)}}
  // 煙流
  for(const f of W.F.values()){if(f.h<.5||((f.x+f.y)&1))continue;for(let i=0;i<3;i++){const ph=(T*.2+i/3+f.x*.1)%1,d=ph*c*3;
