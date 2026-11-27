@@ -207,7 +207,7 @@ function tacHandoff(inc,B){
  const keep=pumps[0]||wk[0]||on[0];  // 還在路上的車也一併返隊
  for(const u of on){if(u===keep||u.load>0)continue;u.inc=null;home(u)}
  reindex();
- for(const x of B.cells)x.emb=0;               // 餘燼由轄區分隊處理
+ for(const x of B.cells){x.emb=0;x.pre=0;if(x.h<.1){x.h=0;x.ovh=1}}   // 餘燼與殘餘熱由轄區分隊處理
  B.handed=keep?keep.cs:'轄區分隊';B.doneT=3;
  radio(inc,'指揮官','火勢撲滅、人員都已處置，現場交由'+B.handed+'殘火處理善後，其餘車輛返隊。');
  tacEvt(inc,B,'milestone','交由 '+B.handed+' 善後');
