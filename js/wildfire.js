@@ -127,7 +127,15 @@ function wfDrawMap(ctx,c){
  for(const inc of S.inc){const W=inc.wf;if(!W)continue;
   ctx.fillStyle='rgba(10,8,6,.55)';for(const k of W.B){const x=(k/N)|0,y=k%N;ctx.fillRect(x*c,y*c,c+.6,c+.6)}
   ctx.fillStyle='rgba(160,120,70,.55)';for(const k of W.BK){const x=(k/N)|0,y=k%N;ctx.fillRect(x*c+c*.2,y*c+c*.2,c*.6,c*.6)}
-  for(const f of W.F.values()){ctx.fillStyle='rgba(255,'+(140-f.h*90|0)+',40,'+(.35+.5*f.h).toFixed(2)+')';ctx.fillRect(f.x*c,f.y*c,c+.6,c+.6)}}}
+  for(const f of W.F.values()){ctx.fillStyle='rgba(255,'+(140-f.h*90|0)+',40,'+(.35+.5*f.h).toFixed(2)+')';ctx.fillRect(f.x*c,f.y*c,c+.6,c+.6)}
+  // 派到各分區的資源：在分區火線重心標示水線車數、防火線組數、直升機
+  if(c>=8)for(const k of WF_SECK){const L=(W.E||[]).filter(e=>e.sec===k);if(!L.length)continue;
+   let nw=0,nb=0;for(const u of onScene(inc)){const a=W.as[u.id];if(a&&a.sec===k&&u.st==='work'){if(a.task==='water')nw++;else nb++}}
+   if(W.crew.st===2&&W.crew.sec===k)nb+=W.crew.n;const hl=W.heli.st===2&&W.heli.sec===k;if(!nw&&!nb&&!hl)continue;
+   const x=(L.reduce((a,e)=>a+e.x,0)/L.length+.5)*c,y=(L.reduce((a,e)=>a+e.y,0)/L.length+.5)*c;
+   const lb=(nw?'水'+nw:'')+(nb?' 線'+nb:'')+(hl?' 機':'');ctx.font='600 '+Math.max(9,c*.32)+'px '+FONT;const tw=ctx.measureText(lb).width+8;
+   ctx.fillStyle='rgba(12,12,11,.85)';rr(x-tw/2,y-c*.3,tw,c*.6,3);ctx.fill();ctx.strokeStyle=WF_SCOL[k];ctx.lineWidth=1.5;ctx.stroke();
+   ctx.fillStyle='#eceae3';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lb.trim(),x,y)}}}
 // ===== 繪製：現場畫面改為山火作戰圖 =====
 function wfScene(inc,g){
  const W=inc.wf;if(!W){g.fillStyle='#0b0b0a';g.fillRect(0,0,scW,scH);return}

@@ -249,6 +249,12 @@ function tacWuiStep(inc,B,dt,first){
   W.prot.delete(B.wk);(W.wd||(W.wd=new Set())).add(B.wk);if(B.homeLost)W.hit.add(B.wk);
   W.svH=(W.svH||0)+sv;W.lsH=(W.lsH||0)+hs.length-sv;
   if(B.played&&sv&&B.whMax>.3){const g=repGain(sv*.8);radio(inc,'受理','建物防護成果：評鑑 +'+g.toFixed(1)+'。')}
+  // 建物防護結案報告：財損以保住的民宅比例計
+  {const r=tacReport(inc,B);r.nm='建物防護（'+((B.wk/N)|0)+','+(B.wk%N)+'）· '+r.nm;r.sc.loss=hs.length?sv/hs.length*100:100;
+   r.avg=Math.round((r.sc.time+r.sc.resc+r.sc.safe+r.sc.loss)/4);r.grade=r.avg>=90?'S':r.avg>=80?'A':r.avg>=65?'B':r.avg>=50?'C':'D';
+   r.sum=r.sum.filter(x=>x[0]!=='燒毀').concat([['保住民宅',sv+' / '+hs.length+' 棟'],['外圍山火最強',Math.round((B.whMax||0)*100)+'%']]);
+   if(B.homeLost)r.notes=r.notes.filter(x=>x!=='無明顯缺失').concat(['民宅燒毀 '+B.homeLost+' 棟：山火逼近前應先對外牆周界防護']);
+   B.report=r;W.lastRep=r;if(B.played)tacShowRep(r)}
   B.done=1;B.burnt=B.homeLost||0;inc.tac=null;
   // 還有其他受威脅的民宅：依序轉往下一處（指揮官在看就直接切換畫面）
   const nx=wfWuiTodo(W);

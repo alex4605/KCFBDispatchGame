@@ -341,7 +341,7 @@ function drawTac(){
    if(B.sp){g.fillStyle=B.sp.on?'#7db3e8':'#6b6960';g.font='10px '+FONT;g.fillText(B.sp.on?'出水口 ●':'出水口',r[0]+r[2]/2,r[1]+r[3]*.32)}
    // 多座樓梯：編號與攻擊梯／避難梯
    const sts=L.N.filter(m=>m.ty==='stair');
-   if(sts.length>1){const no=sts.indexOf(n)+1,atk=B.atkS&&B.atkS.has(n.c),ev=B.atkS&&B.atkS.size&&!atk;
+   if(sts.length>1){const no=sts.indexOf(n)+1,ev=B.evS!==undefined?n.c===B.evS:!!(B.atkS&&B.atkS.size&&!B.atkS.has(n.c)),atk=!ev&&(B.evS!==undefined||(B.atkS&&B.atkS.has(n.c)));
     g.font='600 10px '+FONT;g.fillStyle=atk?'#e9a13b':ev?'#5dcaa5':'rgba(236,234,227,.45)';g.fillText(no+'號梯'+(atk?'・攻擊':ev?'・避難':''),r[0]+r[2]/2,r[1]+r[3]*.68)}}
   if(x.h>.02){g.fillStyle='rgba(255,'+(110-x.h*60|0)+',30,'+(x.h*.45).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3])}
   if(x.h>.15){const nF=Math.ceil(x.h*6);
@@ -799,7 +799,7 @@ function tacTagHTML(inc,B,q,i){
  let air='';
  if(q.ty!=='robot'&&q.ty!=='ladder')air=acc?'<span class="tbar"><i style="width:'+Math.round(q.air*100)+'%;background:'+(q.air<.33?'var(--red)':q.air<.5?'var(--amb)':'var(--grn)')+'"></i></span>':'<span class="sub">氣量 ？</span>';
  return'<div class="mtag ty-'+q.ty+(q.u===TAC.sq||TAC.ms.indexOf(q.u)>=0?' sel':'')+(q.down?' dn':'')+'" data-tsq="'+q.u+'">'+
-  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+(q.ppe&&q.ppe!=='F'?'<i class="ppe">'+TAC_PPE[q.ppe].n+'</i>':'')+(q.cont?'<i class="ppe cont">污染</i>':'')+TAC_TYN[q.ty]+' '+q.n+'人</span></div>'+
+  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+(q.ppe&&q.ppe!=='F'?'<i class="ppe">'+TAC_PPE[q.ppe].n+'</i>':'')+(q.cont?'<i class="ppe cont">污染</i>':'')+(q.ma?'<i class="ppe" style="background:#3d5a80">'+maGrp(q.ma).replace(/市消防局|縣消防局/,'')+'</i>':'')+(q.usar?'<i class="ppe" style="background:#6a4a9a">特搜</i>':'')+TAC_TYN[q.ty]+' '+q.n+'人</span></div>'+
   '<div class="mb"><div>'+task+(q.line?' 💧'+(q.burst>0?'燒破':Math.round(q.pf*100)+'%'):'')+'</div>'+
   '<div class="mf"><span class="sub">'+loc+'</span>'+(inT&&acc?'<span class="sub">入室 '+fmt(inT)+'</span>':'')+air+(q.ty!=='robot'&&q.ty!=='ladder'&&q.fat>.4?'<span class="sub" style="color:'+(q.fat>.7?'var(--red)':'var(--amb)')+'">疲勞 '+Math.round(q.fat*100)+'%</span>':'')+'</div></div></div>'}
 function tacBotHTML(inc){

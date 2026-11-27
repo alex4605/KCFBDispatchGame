@@ -19,6 +19,8 @@ function stratAI(dt){
   // 派遣：火警先派分級編組，其餘依需求補足（已派出未到的車也算在內，不會重複派）
   if(!onScene(inc).length&&d.cls==='火警'&&!d.wild&&!d.road&&!(inc.al|0)){sendLv(inc,(inc.calls||1)>=4?2:1);reindex()}
   auto(inc);reindex()}
+ // 外縣市支援請求：轄區案件不多、待命車足夠時代為派遣
+ for(const r of S.mr||[])if(!r.sent&&S.inc.length<=3&&mrPick(r)){mrSend(r);msg='（AI 代理）'+msg}
  // 公務勤務：指派最近的同車種待命車
  for(const dd of S.duties){
   if(dd.unit)continue;

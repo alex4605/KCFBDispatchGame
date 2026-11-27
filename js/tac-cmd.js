@@ -21,7 +21,8 @@ function tacStruct(inc,B,dt){
  if(B.dmg>=1&&!B.cz){B.cz=new Set();
   // 燒得最嚴重的樓層坍塌（該層至少兩間房燃料燒掉六成以上）
   // 坍塌：燒得最嚴重的一到兩層（該層至少兩間房燃料燒掉六成以上）
-  const cand=[];for(let f=B.bf;f<B.F;f++){const n=B.cells.filter(x=>x.f===f&&x.ty==='room'&&x.fu<.4).length;if(n>=2)cand.push([n,f])}
+  // 坍塌只會發生在起火層以上（燒得最久的樓層），不會讓下方樓梯中斷而困住上方小組
+  const cand=[];for(let f=Math.max(B.bf,B.of);f<B.F;f++){const n=B.cells.filter(x=>x.f===f&&x.ty==='room'&&x.fu<.4).length;if(n>=2)cand.push([n,f])}
   cand.sort((a,b)=>b[0]-a[0]);for(const x of cand.slice(0,2))B.cz.add(x[1]);
   if(!B.cz.size)B.cz.add(B.of);
   const fl=[...B.cz].map(f=>tacFlr(B,f)).join('、');
@@ -90,7 +91,8 @@ function tacReport(inc,B){
  const tw=B.tWater,tc=B.tCtrl,dur=S.t-T0;
  const sc={};
  // 時效：首次出水與控火時間
- sc.time=B.hoax||!B.peak?100:Math.max(0,Math.min(100,100-Math.max(0,(tw===undefined?300:tw)-60)*.5-Math.max(0,(tc===undefined?900:tc)-300)*.12));
+ // 時效：首次出水 30 秒內、火勢控制 3 分鐘內滿分，之後逐秒扣分；誤報看查證完成時間；外部火源（屋頂、外牆）也計入
+ sc.time=B.hoax?Math.max(0,Math.min(100,100-Math.max(0,dur-120)*.25)):!B.peak?100:Math.max(0,Math.min(100,100-Math.max(0,(tw===undefined?dur:tw)-30)*.8-Math.max(0,(tc===undefined?dur:tc)-180)*.15));
  // 救援：送醫比例，罹難大扣
  sc.resc=B.vtot?Math.max(0,Math.min(100,B.tx/B.vtot*100-B.lost*15)):100;
  // 安全

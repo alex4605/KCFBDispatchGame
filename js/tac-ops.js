@@ -94,6 +94,7 @@ function tacEMS(inc,B,dt){
  for(const p of B.pts.slice()){
   let r=p.sev==='red'?.006:p.sev==='yellow'?.0018:0;
   if(B.st.treat)r*=.3;else if(B.st.triage&&p.sev==='red')r*=.75;
+  if(B.sq.some(q=>q.ty==='med'&&!tacIn(q)))r*=.5; // 特搜醫療組在場：現場醫療處置
   p.hp-=dt*r;
   if(p.sev==='yellow'&&p.hp<.4){p.sev='red';radio(inc,'救護組','一名黃色傷患惡化為紅色。')}
   if(p.hp<=0){B.pts.splice(B.pts.indexOf(p),1);B.lost++;B.dws=(B.dws||0)+1;S.rep-=3;
