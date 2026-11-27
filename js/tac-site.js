@@ -179,5 +179,6 @@ function tacParkStep(inc,B,dt){
  B.park=tacParkModel(inc,B);
  for(const q of B.sq){const sl=B.park.slots[q.u];
   q.off=sl&&sl.off?1:0;q.offD=sl&&sl.off?sl.d:0;q.xh=q.off?Math.ceil(q.offD/20):0;
-  if(q.rdy===undefined)q.rdy=S.t+(q.epa?0:3+(q.off?q.offD/12:0))}}
+  // 有集結區：在集結區整裝報到即可派用；沒有集結區：要自行整裝、找入口交 passkey，較慢
+  if(q.rdy===undefined)q.rdy=S.t+(q.epa?0:(B.st.stage?3:20)+(q.off?q.offD/(B.st.stage?18:12):0))}}
 const tacReady=q=>q.rdy===undefined||S.t>=q.rdy;

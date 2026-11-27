@@ -1004,7 +1004,7 @@ function tacAI(inc,B,dt,M){
   // 沒有救助器材車就無法開設氣瓶充填區：有人開始用備用瓶時請求一輛救助車（只請求一次）
   if(!B.st.air&&!B.req71&&!onScene(inc).some(u=>u.code==='71')&&B.sq.some(q=>q.cyl<2||q.refill==='none')){B.req71=1;tacReinf(inc,B,'resc')}
   if(!B.st.media&&B.vtot&&B.st.icp)tacStnOpen(inc,B,'media',1);
-  if(!B.st.stage&&onScene(inc).filter(u=>u.code==='41').length>=2)tacStnOpen(inc,B,'stage',1);
+  if(!B.st.stage&&B.st.icp)tacStnOpen(inc,B,'stage',1);
   if(!B.st.rehab&&B.sq.length>=6&&tacAmbFree(inc,B)>=2)tacStnOpen(inc,B,'rehab',1);
   for(const q of free.slice())if(q.task==='station')take(q)}
  // 救護：檢傷站、醫療站、請求救護車

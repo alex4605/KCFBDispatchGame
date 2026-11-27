@@ -180,6 +180,7 @@ main.sw.mapc #mapbar button{padding:2px 8px}
 .mtag.ty-resc .mh{background:#d9a51e;color:#1a1a18}.mtag.ty-vent .mh{background:#7a6fc4}.mtag.ty-ladder .mh{background:#d46a1e}.mtag.ty-robot .mh{background:#5b6570}
 .mtag .mb{padding:2px 6px;line-height:1.35}.mtag .mb>div:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mtag .mb .sub{color:#55534d;font-size:10px}
 .mtag .mf{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.mtag .mg{font-size:10px;color:#3a3833;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mtag .tbar{width:50px;background:#c8c4ba}
 .mtag.sel{border-color:var(--amb);box-shadow:0 0 0 2px rgba(233,161,59,.4)}
 .mtag.dn{background:#ffd9d4;animation:mdn 1s infinite}

@@ -3,7 +3,7 @@
 // 站點：需要的車種（u 為擔任的單位；media 可由到場警方擔任）、名稱、效果說明
 const TAC_STN=[
  {k:'icp',n:'指揮站',need:'指揮車',codes:['41'],fx:'作業效率 +15%；每輛指揮車提供 2 名幕僚可指派職務'},
- {k:'stage',n:'待命集結區',need:'指揮車或一組幫浦組',codes:['41','11','16','57'],fx:'新到小組在集結區整裝即可派用；幫浦組不足時自動請求增援'},
+ {k:'stage',n:'待命集結區',need:'指揮站已開設，由一名幕僚開設（佔用一個幕僚名額）',codes:[],staff:1,fx:'新到小組直接在集結區整裝報到，約 3 秒即可派用；沒有集結區時，小組要先自行整裝、找入口交 passkey，約 20 秒後才能進入建物；幫浦組不足時自動請求增援'},
  {k:'air',n:'氣瓶充填區',need:'救助器材車（氣瓶灌充機）',codes:['71'],drv:1,fx:'任一輛救助器材車到場即由司機自動開設（不佔用救助組）；換瓶 3 秒、不限數量。未開設前每組只有車上 2 支備用瓶，用完就無法再換瓶'},
  {k:'rehab',n:'後勤照護區',need:'救護車一輛',codes:['91'],fx:'隊員休息、補水與生命徵象監測，疲勞恢復快 5 倍'},
  {k:'triage',n:'救護檢傷站',need:'救護車一輛',codes:['91'],fx:'依傷勢優先後送；裝載較快；紅色傷患惡化減緩'},
@@ -25,6 +25,7 @@ function tacStnPick(inc,B,k){
  if(k==='media'&&!B.st.icp)return{why:'需先開設指揮站'};
  if(k==='media'&&inc.pol===2)return{u:null};
  if(k==='fwd'&&(!B.st.icp||B.F-B.bf<5))return{why:!B.st.icp?'需先開設指揮站':'五層以上建物才需要'};
+ if(d.staff){if(!B.st.icp)return{why:'需先開設指揮站（由幕僚開設）'};if(tacStaffUsed(B)>=tacRoleSlots(inc,B))return{why:'幕僚不足：每輛指揮車只能提供 2 名幕僚'};return{u:null,staff:1}}
  if(k==='decon'){const e=B.sq.find(q=>q.epa&&!tacIn(q)&&q.task==='idle');if(e)return{u:e.u}}
  for(const code of d.codes)for(const u of onScene(inc)){
   if(u.code!==code||u.st!=='work'||tacStnBusy(B,u.id)||u.load)continue;
@@ -38,7 +39,8 @@ function tacStnOpen(inc,B,k,quiet){
  if(B.st[k])return true;
  const r=tacStnPick(inc,B,k);
  if(r.why){if(!quiet)msg=tacStnDef(k).n+'：'+r.why;return false}
- B.st[k]={u:r.u,side:B.arr,t:S.t};
+ B.st[k]={u:r.u,side:B.arr,t:S.t,staff:r.staff||0};
+ if(r.staff){tacEvt(inc,B,'milestone','開設'+tacStnDef(k).n);radio(inc,'指揮站',tacStnDef(k).n+'由幕僚於'+TAC_SDN[B.arr]+'側開設完成，後續到場小組至集結區報到。');return true}
  if(k==='air')B.airOff=0;
  if(tacStnDef(k).drv){const u=S.units.find(x=>x.id===r.u);tacEvt(inc,B,'milestone','開設'+tacStnDef(k).n);
   radio(inc,u?u.cs:'現場',(u?u.cs+'司機':'司機')+'開設氣瓶充填區，灌充機運轉，各組可前來換瓶。');
@@ -58,13 +60,15 @@ function tacStnClose(inc,B,k,why){
  if(k==='fwd')B.fwd=null;
  radio(inc,'受理',tacStnDef(k).n+(why||'撤除')+'。');
  if(k==='icp')for(const r in B.role)B.role[r]=0}
+// 幕僚使用數：職務與由幕僚開設的站點（集結區）
+const tacStaffUsed=B=>Object.values(B.role).filter(Boolean).length+TAC_STN.filter(d=>d.staff&&B.st[d.k]).length;
 // 職務名額：指揮站開設後，每輛在場指揮車 2 名
 function tacRoleSlots(inc,B){
  if(!B.st.icp)return 0;
  return onScene(inc).filter(u=>u.code==='41'&&u.st==='work').length*2}
 function tacRoleSet(inc,B,k,on){
  if(on&&!B.role[k]){const used=Object.values(B.role).filter(Boolean).length;
-  if(used>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}
+  if(tacStaffUsed(B)>=tacRoleSlots(inc,B)){msg=B.st.icp?'幕僚不足：每輛指揮車只能提供 2 名幕僚':'需先開設指揮站';return}
   B.role[k]=1;radio(inc,'受理','指派'+TAC_ROLE.find(x=>x.k===k).n+'。')}
  else if(!on&&B.role[k]){B.role[k]=0;radio(inc,'受理','解除'+TAC_ROLE.find(x=>x.k===k).n+'。')}}
 // 人員管制板：安全官就位約 10 秒後在入口設好，才能掌握各組入室時間與氣量
@@ -75,9 +79,20 @@ function tacStnStep(inc,B,dt){
   if(was<10&&B.accT>=10){const e=B.ents.find(x=>x.side===B.arr)||B.ents[0];
    radio(inc,'安全官','已於'+(e?TAC_SDN[e.side]+'側':'')+'入口設置人員管制板，開始登錄各組入室時間與氣量。');tacEvt(inc,B,'milestone','設置人員管制板')}}
  else B.accT=0;
+ // 安全官無線電：偶爾詢問入室小組的入室時間與殘餘氣量（不影響遊戲，增加臨場感）
+ if(tacAcc(B)&&!B.done){
+  if(B.chat&&S.t>=B.chat.t){const q=B.sq.find(x=>x.u===B.chat.u);B.chat=null;
+   if(q&&tacIn(q)&&!q.down){const p=Math.max(5,Math.round(q.air*100/5)*5),bar=Math.round(q.air*300/10)*10;
+    radio(inc,q.cs,'收到，'+q.cs+' 在'+tacNm(B,q.f,q.c)+'，殘餘氣量約 '+bar+' bar（'+p+'%）'+(q.air<.5?'，準備撤出換瓶。':'，繼續作業。'))}}
+  B.chatT=(B.chatT===undefined?45:B.chatT)-dt;
+  if(B.chatT<=0&&!B.chat){B.chatT=50+Math.random()*50;
+   const qs=B.sq.filter(q=>tacIn(q)&&!q.down&&q.inT&&S.t-q.inT>60&&q.ty!=='robot'&&(!q.chatAt||S.t-q.chatAt>120));
+   if(qs.length){const q=qs[Math.floor(Math.random()*qs.length)],m=Math.floor((S.t-q.inT)/60),sec=Math.floor((S.t-q.inT)%60);q.chatAt=S.t;
+    radio(inc,'安全官',q.cs+'，你們已入室 '+m+' 分'+(sec?' '+sec+' 秒':'')+'，請回報殘餘氣量。');B.chat={t:S.t+3+Math.random()*3,u:q.u}}}}
  // 氣瓶充填區：任一輛救助器材車到場即由司機自動開設（指揮官手動撤除後不再自動開設）
  if(!B.st.air&&!B.airOff&&onScene(inc).some(u=>u.code==='71'&&u.st==='work'))tacStnOpen(inc,B,'air',1);
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
+  if(s.staff){if(!B.st.icp)tacStnClose(inc,B,k,'指揮站撤除，幕僚撤離');continue}
   if(s.u!==null&&!B.sq.some(q=>(q.epa||q.vol)&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
  // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，每 90 秒扣評鑑（最多 4 次）

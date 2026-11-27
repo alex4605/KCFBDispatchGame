@@ -836,16 +836,60 @@ function tacCat(q){
  if(q.task==='idle'&&!q.tmv)return'idle';
  return'out'}
 const TAC_COLS=[['in','入室作業'],['out','屋外勤務'],['rit','RIT'],['rest','換瓶・休息'],['idle','待命'],['stn','站點・後勤']];
+// 單位看板：攜帶水線（瞄子）
+function tacNoz(B,q){
+ if(q.ty==='ladder')return q.task==='master'&&q.line?'雲梯瞄子':'無';
+ if(q.task==='sky')return'車頂砲塔（朝天瞄）';
+ if(q.ty==='pump'&&(q.line||TAC_WET[q.task])){
+  const foam=q.code==='57'||q.code==='01'||q.cafs;
+  if(foam&&q.f>=0&&tacCel(B,q.f,q.c).fuel)return'泡沫瞄';
+  return q.task==='trans'||q.task==='cover'||q.task==='guard'||B.out||q.code==='57'?'2.5 吋瞄子':'1.5 吋瞄子'}
+ if(q.ty==='pump'||q.ty==='resc'||q.ty==='crew'||q.ty==='vent')return q.ty==='pump'?'無':'滅火器';
+ return'無'}
+// 單位看板：攜帶裝備（依車輛器材與目前任務）
+const TAC_PORT=[['TIC 熱顯像儀','TIC'],['RIT 快速救援包','RIT 包'],['破壞器材組','破門器具'],['三用敲棒','三用敲棒'],['油壓剪','油壓剪'],['照明索','照明索'],['四用氣體偵測器','氣體偵測器'],['正壓排煙機','送風機'],['負壓排煙機與排煙管','排風機'],['SKED 軟式擔架','SKED 擔架'],['生命探測器','生命探測器']];
+function tacGear(B,q){
+ if(q.ty==='ladder'||q.ty==='robot')return'';
+ const eq=EQ[q.code]||[],g=[];
+ for(const [k,n] of TAC_PORT){if(!eq.includes(k))continue;
+  if(n==='RIT 包'&&!(q.task==='rit'||q.task==='ritgo'))continue;
+  if((n==='送風機'&&!B.ppv)||(n==='排風機'&&q.task!=='npv'))continue;
+  if((n==='生命探測器'||n==='SKED 擔架')&&!(q.task==='search'||q.task==='search2'||q.carry))continue;
+  if(n==='油壓剪'&&q.task!=='force'&&q.task!=='dctrl')continue;
+  g.push(n)}
+ if(q.task==='gas'&&!g.includes('氣體偵測器'))g.push('氣體偵測器');
+ if(q.vol)g.push('手電筒');
+ return g.join('、')||'—'}
+// 單位看板：現行動作（括號內）
+function tacDoing(B,q){
+ if(q.down)return'';
+ if(q.tmv)return'移車中';if(q.refill)return'換瓶中';if(q.task==='dress')return'換裝中';
+ if(!tacReady(q))return q.off?'整裝、交 passkey 中':'整裝中';
+ if(q.task==='idle')return q.f>=0?'原地待命':'';
+ if(q.task==='exit')return q.f>=0?(q.nf!==q.f&&q.mt?'下樓梯中':'撤出中'):'';
+ if(q.carry)return q.nf!==q.f&&q.mt?'搬運下樓中':'搬運中';
+ const at=q.f>=0&&q.f===q.tf&&q.c===q.tc;
+ if(q.task==='sky'||q.task==='trans'||q.task==='cover'||(q.ty==='ladder'&&q.task==='master'))return q.line&&q.pf>0?'射水中':'等待出水';
+ if(q.ty==='ladder')return q.ext<1?'架設雲梯中':'作業中';
+ if((q.task==='force'||q.task==='dctrl')&&q.f<0)return q.frc>0||q.wk>0?'破壞中':q.side===q.dside?'控門中':'前往入口';
+ if(q.tf>=0&&!at){if(q.f<0)return q.line?'延伸水線、前往入口':'前往入口';
+  return q.mt&&q.nf!==q.f?'爬樓梯中':q.frc>0?'破門中':'移動中'}
+ const D={attack:q.line&&q.pf>0?'射水中':'等待出水',hold:'守線中',confine:q.line&&q.pf>0?'射水降溫中':'等待出水',guard:'射水中',
+  search:'搜索中',search2:'搜索中',overhaul:'翻搜中',force:'破壞中',dctrl:q.dcd?'控門中':'關門中',vent:'破窗中',npv:'排煙中',hydro:'排煙中',
+  gas:'偵測中',rit:'待命中',ritgo:'救援中',vvent:'開孔中',stand:'加壓中',fwdgo:'設置中',fwdref:'換瓶休息中',station:'駐守中',roofres:'救援中',ident:'偵檢中',plug:'止漏中'};
+ return D[q.task]||'作業中'}
 function tacTagHTML(inc,B,q,i){
  const acc=tacAcc(B),inT=tacIn(q)&&q.inT?S.t-q.inT:0;
- const task=q.down?'倒地待救（MAYDAY）':(q.task==='station'?tacStnDef(q.stn).n:TAC_TASK[q.task])+(q.prev?'（換瓶後續行）':'');
+ const dn=tacDoing(B,q),task=q.down?'倒地待救（MAYDAY）':(q.task==='idle'?'待命':q.task==='station'?tacStnDef(q.stn).n:TAC_TASK[q.task]||q.task)+(q.prev?'（換瓶後續行）':dn?'（'+dn+'）':'');
+ const noz=tacNoz(B,q),gear=tacGear(B,q),sk=tacSk(q);
  const offS=TAC.off&&TAC.off.some(o=>o.u.id===q.u);
  const loc=offS&&!tacIn(q)&&(q.task==='idle'||q.ty==='pump')?'已抵達（畫面外）':q.ty==='ladder'&&q.lf!==undefined&&q.task!=='idle'?'雲梯→'+tacNm(B,q.lf,q.lc):tacIn(q)?tacNm(B,q.f,q.c):(q.ty==='pump'||q.ty==='ladder'?(q.tmv?'移車往'+TAC_SDN[q.tgt]+'側':TAC_SDN[q.tside]+'側'):'屋外');
  let air='';
  if(q.ty!=='robot'&&q.ty!=='ladder')air=acc?'<span class="tbar"><i style="width:'+Math.round(q.air*100)+'%;background:'+(q.air<.33?'var(--red)':q.air<.5?'var(--amb)':'var(--grn)')+'"></i></span>':'<span class="sub">氣量 ？</span>';
  return'<div class="mtag ty-'+q.ty+(q.u===TAC.sq||TAC.ms.indexOf(q.u)>=0?' sel':'')+(q.down?' dn':'')+'" data-tsq="'+q.u+'">'+
-  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+(q.cafs?'<i class="ppe" style="background:#2a6a5a" title="CAFS：可打泡沫瞄，對油火有效、對一般火效果較好">CAFS</i>':'')+(q.ppe&&q.ppe!=='F'?'<i class="ppe">'+TAC_PPE[q.ppe].n+'</i>':'')+(q.cont?'<i class="ppe cont">污染</i>':'')+(q.ma?'<i class="ppe" style="background:#3d5a80">'+maGrp(q.ma).replace(/市消防局|縣消防局/,'')+'</i>':'')+(q.usar?'<i class="ppe" style="background:#6a4a9a">特搜</i>':'')+TAC_TYN[q.ty]+' '+q.n+'人</span></div>'+
-  '<div class="mb"><div>'+task+(q.line?' 💧'+(q.burst>0?'燒破':Math.round(q.pf*100)+'%'):'')+'</div>'+
+  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+(q.cafs?'<i class="ppe" style="background:#2a6a5a" title="CAFS：可打泡沫瞄，對油火有效、對一般火效果較好">CAFS</i>':'')+(q.ppe&&q.ppe!=='F'?'<i class="ppe">'+TAC_PPE[q.ppe].n+'</i>':'')+(q.cont?'<i class="ppe cont">污染</i>':'')+(q.ma?'<i class="ppe" style="background:#3d5a80">'+maGrp(q.ma).replace(/市消防局|縣消防局/,'')+'</i>':'')+(q.usar?'<i class="ppe" style="background:#6a4a9a">特搜</i>':q.sk&&q.sk!=='reg'||q.rookie?'<i class="ppe" style="background:'+(q.sk==='volp'?'#5a7a3a':'#7a6a3a')+'">'+sk.n+'</i>':'')+(TAC_TYN[q.ty]||'')+' '+q.n+'人</span></div>'+
+  '<div class="mb"><div><span class="sub">任務</span> '+task+(q.line?' 💧'+(q.burst>0?'燒破':Math.round(q.pf*100)+'%'):'')+'</div>'+
+  (q.ty!=='robot'?'<div class="mg"><span class="sub">水線</span> '+noz+(gear?'　<span class="sub">裝備</span> '+gear:'')+'</div>':'')+
   '<div class="mf"><span class="sub">'+loc+'</span>'+(inT&&acc?'<span class="sub">入室 '+fmt(inT)+'</span>':'')+air+(q.ty!=='robot'&&q.ty!=='ladder'&&q.fat>.4?'<span class="sub" style="color:'+(q.fat>.7?'var(--red)':'var(--amb)')+'">疲勞 '+Math.round(q.fat*100)+'%</span>':'')+'</div></div></div>'}
 function tacBotHTML(inc){
  const B=inc.tac,sq=B.sq.find(q=>q.u===TAC.sq);
@@ -1000,13 +1044,13 @@ function tacIcsNode(inc,B,nd,cls){
  const slots=tacRoleSlots(inc,B),used=Object.values(B.role).filter(Boolean).length;
  let on,st,dis='',tip,attr;
  if(nd.s){const o=B.st[nd.s],def=tacStnDef(nd.s);on=!!o;attr='data-tstn="'+nd.s+'"';tip=def.fx;
-  if(o){const u=S.units.find(x=>x.id===o.u);st=(u?u.cs+(def.drv?' 司機':''):nd.s==='media'?'警方':'')||'開設中'}
+  if(o){const u=S.units.find(x=>x.id===o.u);st=(o.staff?'幕僚':u?u.cs+(def.drv?' 司機':''):nd.s==='media'?'警方':'')||'開設中'}
   else{const r=tacStnPick(inc,B,nd.s);st=r.why?r.why.replace(/^需要/,'需 '):'可開設';if(r.why)dis=' disabled'}}
  else{const r=TAC_ROLE.find(x=>x.k===nd.r);on=!!B.role[nd.r];attr='data-trole="'+nd.r+'"';tip=r.fx;
   st=on?'已指派':!B.st.icp?'需開設指揮站':used>=slots?'幕僚已滿':'可指派';if(!on&&(used>=slots))dis=' disabled'}
  return'<button class="icsn'+(cls?' '+cls:'')+(on?' on':'')+'" '+attr+dis+' title="'+esc(tip)+'"><b>'+nd.n+'</b><i>'+esc(st)+'</i></button>'}
 function tacIcsHTML(inc,B){
- const slots=tacRoleSlots(inc,B),used=Object.values(B.role).filter(Boolean).length,T=ICS_TREE;
+ const slots=tacRoleSlots(inc,B),used=tacStaffUsed(B),T=ICS_TREE;
  let h='<div class="hd mt">ICS 編組 <span class="sub">幕僚 '+used+' / '+slots+'　點方塊開設／撤除、指派／解除</span></div><div class="ics">';
  h+='<div class="ics-top">'+tacIcsNode(inc,B,T.top,'top')+'</div>';
  h+='<div class="ics-staff">'+T.staff.map(n=>tacIcsNode(inc,B,n,'staff')).join('')+'</div>';
