@@ -45,6 +45,7 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
  if(r){// 道路本身由 roadPass 依等級繪製；市區道路格底下鋪人行道色
   if(inCity(x,y)&&!isSub(x,y)&&t===0){ctx.fillStyle='rgba(120,118,110,.13)';ctx.fillRect(px,py,c+.6,c+.6)}
   return}
+ {const L=lmkAt(x,y);if(L){lmkDetail(L,px,py,c);return}}
  if(t===0&&CROP[k]>=13&&CROP[k]<=17)schoolDetail(k,CROP[k],px,py,c);
  else if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const a=hsh(k,i*3+j);if(a<.18)continue;
@@ -167,6 +168,9 @@ function draw(){
  if(SCHOOL){schoolLive(c);if(c<34)mk(SCHOOL.p,'#6a4fb0','校','訓練中心');
   if(sel===SCHOOL_ID){const x=(SCHOOL.p[0]+.5)*c,y=(SCHOOL.p[1]+.5)*c;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,Math.max(9,m*.9),0,TAU);ctx.stroke();ctx.setLineDash([])}}
  // 放大後：分隊、醫院、機場改畫俯視圖（map-sites.js），否則畫標記
+ drawTHSR(c,x0,x1,y0,y1);
+ if(c>=34)lmkLabels(c,x0,x1,y0,y1);
+ if(c<34)for(const m of LMK)mk(m.p,m.col,m.ic,m.n);
  if(c>=34)siteOverlay(c,x0,x1,y0,y1);
  HOSP.forEach(h=>{
   if(c>=34)return;
