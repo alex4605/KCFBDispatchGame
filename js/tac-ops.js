@@ -142,7 +142,7 @@ function tacAsk(inc,B,k){
  else if(k==='fire'){
   if(B.hoax){say('我沒看到火，只是聞到怪味道，有人說那層在冒煙。');return}
   const oc=Math.random()<.85?B.oc:(B.L.N[B.oc].nb.find(o=>B.L.N[o].ty==='room')||B.oc);B.ocKnown=1;
-  say('是從'+tacNm(B,B.of,oc)+(B.L.N[oc].kind==='kitchen'?'廚房':'')+'那邊燒起來的，煙很大。')}
+  const nm=tacNm(B,B.of,oc);say('是從'+nm+(tacK(B,B.of,oc)==='kitchen'&&!nm.includes('廚房')?'（廚房）':'')+'那邊燒起來的，煙很大。')}
  else if(k==='gas'){
   if(B.gas!==undefined){B.gasK=1;say('有！'+tacNm(B,B.gasF,B.gas)+'有一桶瓦斯，你們要小心。')}
   else say('應該沒有，這棟都是天然氣管線。')}

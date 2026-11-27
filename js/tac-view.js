@@ -75,6 +75,15 @@ function tacCorners(G,side){
  const ord={n:['nw','ne','sw','se'],s:['sw','se','nw','ne'],e:['ne','se','nw','sw'],w:['nw','sw','ne','se']}[side];
  return ord.map(k=>all[k])}
 // 家具：依房間用途畫，固定種子讓每次畫的位置一樣
+// 挑空與電扶梯：中央開口（看得到下層）＋兩道交錯的電扶梯
+function tacAtr(g,r,top){
+ const[x,y,w,h]=r,p=Math.min(w,h)*.14;
+ g.fillStyle='rgba(0,0,0,.45)';g.fillRect(x+p,y+p,w-2*p,h-2*p);
+ g.strokeStyle='rgba(200,200,190,.5)';g.lineWidth=1.5;g.setLineDash([4,3]);g.strokeRect(x+p,y+p,w-2*p,h-2*p);g.setLineDash([]);
+ for(let k=0;k<2;k++){const ex=x+w*(.32+k*.22),ew=w*.12;g.fillStyle='#3d3a35';g.fillRect(ex,y+h*.22,ew,h*.56);
+  g.strokeStyle='rgba(220,215,200,.35)';g.lineWidth=1;for(let yy=y+h*.25;yy<y+h*.76;yy+=5){g.beginPath();g.moveTo(ex+1,yy);g.lineTo(ex+ew-1,yy);g.stroke()}
+  g.fillStyle='rgba(236,234,227,.6)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(k?'▼':'▲',ex+ew/2,y+h*.17)}
+ g.fillStyle='rgba(236,234,227,.55)';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText(top?'挑空（頂層）':'挑空・電扶梯',x+w/2,y+h-3)}
 function tacFurn(g,r,kind,seed,dark){
  let sd=seed*9301+49297;const rnd=()=>((sd=(sd*9301+49297)%233280)/233280);
  const[x,y,w,h]=r,u=Math.min(w,h),p=u*.1;
@@ -94,6 +103,14 @@ function tacFurn(g,r,kind,seed,dark){
   for(let i=0;i<n2;i++){const bx=x+p+i*(w-2*p)/n2;box(bx,y+p,(w-2*p)/n2*.6,h*.32);g.fillStyle=dark?fc:'#7b7468';g.fillRect(bx+2,y+p+2,(w-2*p)/n2*.6-4,h*.06)}
   g.strokeStyle=lc;g.setLineDash([3,3]);g.beginPath();g.moveTo(x+p,y+h*.45);g.lineTo(x+w-p,y+h*.45);g.stroke();g.setLineDash([])}
  else if(kind==='shelf'){const n2=Math.max(2,Math.floor(h/(u*.28)));for(let i=0;i<n2;i++)box(x+w*.12,y+p+i*(h-2*p)/n2,w*.76,u*.07)}
+ else if(kind==='park'){ // 停車格與車輛
+  const n2=Math.max(2,Math.floor(w/(u*.34)));g.strokeStyle=dark?lc:'rgba(233,200,90,.35)';g.lineWidth=1;
+  for(let i=0;i<=n2;i++){const px=x+p+i*(w-2*p)/n2;g.beginPath();g.moveTo(px,y+p);g.lineTo(px,y+p+h*.38);g.stroke()}
+  for(let i=0;i<n2;i++)if(rnd()<.75){const px=x+p+i*(w-2*p)/n2,cw=(w-2*p)/n2;g.fillStyle=dark?fc:['#5a6470','#6e5a4a','#4a5a50','#707070'][Math.floor(rnd()*4)];scRR(g,px+cw*.18,y+p+2,cw*.64,h*.34,3);g.fill()}}
+ else if(kind==='mech'){box(x+p,y+p,w*.4,h*.45,dark?fc:'#4f555c');box(x+w*.55,y+p,w*.3,h*.3,dark?fc:'#4f555c');g.strokeStyle=lc;g.lineWidth=2;g.beginPath();g.moveTo(x+p,y+h*.75);g.lineTo(x+w-p,y+h*.75);g.stroke()}
+ else if(kind==='shop'){box(x+p,y+h*.62,w*.55,u*.12);const n2=Math.max(1,Math.floor(w/(u*.5)));for(let i=0;i<n2;i++)box(x+p+i*(w-2*p)/n2,y+p,(w-2*p)/n2*.7,u*.1)}
+ else if(kind==='lobby'){box(x+w*.35,y+h*.4,w*.3,u*.14);for(let k=0;k<2;k++)box(x+p+k*w*.6,y+h-p-u*.18,w*.25,u*.14)}
+ else if(kind==='nurse'){box(x+p,y+h*.45,w-2*p,u*.14);box(x+p,y+p,u*.18,h*.3)}
  else if(kind==='machine'){box(x+w*.12,y+h*.2,w*.45,h*.4,dark?fc:'#4f555c');g.strokeStyle=lc;g.lineWidth=2;
   for(let k=0;k<2;k++){g.beginPath();g.arc(x+w*.25+k*w*.2,y+h*.4,u*.07,0,TAU);g.stroke()}
   g.lineWidth=1;g.beginPath();g.moveTo(x+w*.1,y+h*.78);g.lineTo(x+w*.9,y+h*.78);g.moveTo(x+w*.1,y+h*.84);g.lineTo(x+w*.9,y+h*.84);g.stroke()}}
@@ -116,12 +133,12 @@ function tacSqPos(B,G,q,i){
  if(p&&n)return[p[0]+(n[0]-p[0])*k,p[1]+(n[1]-p[1])*k];
  return p||n}
 // 地板材質：木地板（臥室、客廳、辦公、病房）、磁磚（廚房、浴室）、水泥（倉庫、廠區、走廊、賣場）
-function tacFloorPat(g,r,n){
- const k=n.ty==='hall'?'hall':n.ty==='stair'?'':n.kind;if(!k)return;
+function tacFloorPat(g,r,n,kd){
+ const k=n.ty==='hall'?'hall':n.ty==='stair'?'':kd||n.kind;if(!k)return;
  g.save();g.beginPath();g.rect(r[0],r[1],r[2],r[3]);g.clip();g.lineWidth=1;
- if(k==='bed'||k==='living'||k==='office'||k==='ward'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
+ if(k==='bed'||k==='living'||k==='office'||k==='ward'||k==='shop'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
   for(let a=7;a<(hz?r[3]:r[2]);a+=7){g.beginPath();if(hz){g.moveTo(r[0],r[1]+a);g.lineTo(r[0]+r[2],r[1]+a)}else{g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3])}g.stroke()}}
- else if(k==='kitchen'||k==='bath'){g.strokeStyle='rgba(200,210,220,.12)';
+ else if(k==='kitchen'||k==='bath'||k==='lobby'||k==='nurse'){g.strokeStyle='rgba(200,210,220,.12)';
   for(let a=10;a<r[2];a+=10){g.beginPath();g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3]);g.stroke()}
   for(let a=10;a<r[3];a+=10){g.beginPath();g.moveTo(r[0],r[1]+a);g.lineTo(r[0]+r[2],r[1]+a);g.stroke()}}
  else{g.fillStyle='rgba(255,255,255,.04)';for(let k2=0;k2<18;k2++){const a=(n.c*31+k2*17)%97/97,b=(n.c*13+k2*29)%89/89;g.fillRect(r[0]+a*r[2],r[1]+b*r[3],2,2)}}
@@ -285,8 +302,10 @@ function drawTac(){
   const x=tacCel(B,vf,n.c),r=G.r(n.c);
   TAC.hits.push({t:'cell',f:vf,c:n.c,x:r[0],y:r[1],w:r[2],h:r[3]});
   g.fillStyle=burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c';g.fillRect(r[0],r[1],r[2],r[3]);
-  if(!burnt(x))tacFloorPat(g,r,n);
-  if(n.ty==='room')tacFurn(g,r,n.kind,n.c*7+vf*3+1,burnt(x)||x.fu<.3);
+  const kd=vf<B.F?tacK(B,vf,n.c):n.kind;
+  if(!burnt(x))tacFloorPat(g,r,n,kd);
+  if(n.ty==='room')tacFurn(g,r,kd,n.c*7+vf*3+1,burnt(x)||x.fu<.3);
+  if(n.atr)tacAtr(g,r,vf===B.F-1);
   if(n.ty==='hall'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;for(let k=1;k<4;k++){g.beginPath();g.moveTo(r[0]+r[2]*k/4,r[1]);g.lineTo(r[0]+r[2]*k/4,r[1]+r[3]);g.stroke()}}
   if(n.ty==='stair'){
    g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;
@@ -315,13 +334,17 @@ function drawTac(){
     g.fillText('?',r[0]+r[2]/2,r[1]+r[3]/2)}
    g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='right';g.textBaseline='top';
    g.fillText(tacRm(B,vf,n.no),r[0]+r[2]-5,r[1]+4);
-   g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[n.kind].n,r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}
+   g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[kd].n,r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}
   if(x.s>.03){g.fillStyle='rgba(66,68,74,'+(.12+.68*x.s).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3]);
    for(let k=0;k<3;k++){const ph=(T*.15+k/3+n.c*.13)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.18).toFixed(3)+')';
     g.beginPath();g.arc(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.37+n.c*.21)%1)),t*.18,0,TAU);g.fill()}}}
  // 牆與門
  g.strokeStyle='#8a857a';g.lineWidth=3;
  for(const n of L.N){const r=G.r(n.c);g.strokeRect(r[0],r[1],r[2],r[3])}
+ // 分戶：每戶外圍以較粗的分戶牆框起
+ if(L.nu&&vf>=B.bf){g.strokeStyle='#a69f90';g.lineWidth=5;
+  for(let u=0;u<L.nu;u++){const rs=L.N.filter(n=>n.u===u).map(n=>G.r(n.c));if(!rs.length)continue;
+   const x0=Math.min(...rs.map(r=>r[0])),y0=Math.min(...rs.map(r=>r[1])),x1=Math.max(...rs.map(r=>r[0]+r[2])),y1=Math.max(...rs.map(r=>r[1]+r[3]));g.strokeRect(x0,y0,x1-x0,y1-y0)}}
  g.strokeStyle='#bdb6a8';g.lineWidth=7;g.strokeRect(G.bx-1,G.by-1,G.bw+2,G.bh+2);
  g.strokeStyle='#5c574f';g.lineWidth=1.5;g.strokeRect(G.bx+2.5,G.by+2.5,G.bw-5,G.bh-5);
  const flr=c=>{const x=tacCel(B,vf,c),n=L.N[c];return burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c'};
@@ -568,7 +591,7 @@ function drawTac(){
  const hv=TAC.hov;
  if(hv&&vf<B.F){const h0=TAC.hits.find(h=>h.t==='cell'&&hv.x>=h.x&&hv.x<=h.x+h.w&&hv.y>=h.y&&hv.y<=h.y+h.h);
   if(h0){const x=tacCel(B,h0.f,h0.c),P=tacParam(B,x),n=L.N[h0.c];
-   const rows=[[tacNm(B,h0.f,h0.c)+(n.ty==='room'?'　'+TAC_RK[n.kind].n:''),'#eceae3'],
+   const nm0=tacNm(B,h0.f,h0.c),kn=n.ty==='room'?TAC_RK[tacK(B,h0.f,h0.c)].n:'';const rows=[[nm0+(kn&&!nm0.includes(kn)?'　'+kn:''),'#eceae3'],
     ['溫度　'+P.temp+' °C',P.temp>500?'#ff6a5a':P.temp>150?'#e9a13b':'#9d9a92'],
     ['能見度　'+P.vis+' m',P.vis<1?'#ff6a5a':P.vis<5?'#e9a13b':'#9d9a92'],
     ['燃燒面積　'+P.burn+' / '+P.area+' ㎡',P.burn?'#ff8a5a':'#9d9a92'],
