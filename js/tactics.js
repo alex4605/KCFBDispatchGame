@@ -305,8 +305,6 @@ function tacNm(B,f,c){
  return tacFlr(B,f)+(n.ty==='stair'?' 樓梯間':n.atr?' 挑空區':n.ty==='hall'?' 走廊':'-'+tacRm(B,f,f<B.bf?n.bi:n.no)+(n.u!==undefined||tacK(B,f,c)!==n.kind?' '+TAC_RK[tacK(B,f,c)].n:' 室'))}
 // 房號：3F 第 2 間為 302，B1 第 2 間為 B102
 const tacRm=(B,f,no)=>f<B.bf?'0'+no:(f-B.bf+1)*100+no;
-// 地面層（1F）的樓層索引；地下室樓層小於它
-const tacG=B=>B.bf;
 const tacGd=(B,a,b)=>{const x=B.L.N[a],y=B.L.N[b];return Math.abs(x.gx+x.gw/2-y.gx-y.gw/2)+Math.abs(x.gy+x.gh/2-y.gy-y.gh/2)};
 // 同層最近的符合條件節點（以平面距離計）
 function tacNear(B,f,c,ok){let best=null,bd=99;

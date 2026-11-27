@@ -214,14 +214,8 @@ function tacMan(g,x,y,r,col,a,opt){
  g.fillStyle=col;g.beginPath();g.arc(r*.1,0,r*.62,0,TAU);g.fill();
  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r*.35,-r*.25,r*.3,r*.5);
  g.restore()}
-// 屋外水帶沿道路繞過建物轉角：同側直拉，相鄰側經一個轉角，對側經兩個轉角（優先走有路的那側）
-function tacRoute(B,G,fs,es){
- const cx=s=>G.band[s][0]+G.band[s][2]/2,cy=s=>G.band[s][1]+G.band[s][3]/2;
- const corner=(a,b)=>{const v=a==='e'||a==='w'?a:b,h=a==='n'||a==='s'?a:b;return[cx(v),cy(h)]};
- if(fs===es)return[];
- if(!tacOpp(fs,es))return[corner(fs,es)];
- const via=(fs==='n'||fs==='s')?(B.sd.e.road||!B.sd.w.road?'e':'w'):(B.sd.s.road||!B.sd.n.road?'s':'n');
- return[corner(fs,via),corner(via,es)]}
+// 兩個相鄰空間之間的門（共用邊的中點）
+function tacDoorMid(G,a,b){const ra=G.r(a),rb=G.r(b);return[(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2]}
 // 屋外水帶：車 → 垂直拉到牆外通道 → 沿通道（轉角處轉彎）→ 入口門外 → 門口；o 為並排錯開量
 function tacHoseOut(B,G,ts,tp,es,d,o){
  const lane=s=>s==='n'?G.by-16-o:s==='s'?G.by+G.bh+16+o:s==='w'?G.bx-16-o:G.bx+G.bw+16+o;
@@ -430,8 +424,8 @@ function drawTac(){
   g.fillStyle='#ff8a6a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(up?'下層外牆火往上竄':'室外機火 '+Math.round(B.ext.h*100)+'%',fx+dv[0]*30+(dv[0]?0:0),fy+dv[1]*22+(dv[1]?0:-18))}
  // 防火門（樓梯間）：已知樓層才顯示狀態
  if(vf<B.F&&B.fd){g.font='600 9px '+FONT;g.textAlign='center';g.textBaseline='middle';
-  for(const[key,d]of B.fd){if(d.f!==vf)continue;const ra=G.r(d.s),rb=G.r(d.o);
-   const co=G.ctr(d.o),m0=(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,m1=(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2;
+  for(const[key,d]of B.fd){if(d.f!==vf)continue;
+   const co=G.ctr(d.o),[m0,m1]=tacDoorMid(G,d.s,d.o);
    // 標籤往走廊那側偏一點，避免蓋住樓梯間的文字
    const dl=Math.hypot(co[0]-m0,co[1]-m1)||1,mx=m0+(co[0]-m0)/dl*12,my=m1+(co[1]-m1)/dl*12;
    const kn=B.fdK.has(vf),shut=B.cd.has(key),held=B.fdO.has(key)&&B.fdO.get(key).w;
@@ -444,8 +438,7 @@ function drawTac(){
  if(vf<B.F){
   for(const a of L.N)for(const bc of a.nb){if(bc<a.c)continue;
    const lk=B.lk.has(tacDK(B,vf,a.c,bc))&&!!B.lkK&&B.lkK.has(tacDK(B,vf,a.c,bc)),dcx=B.dcN&&(B.dcN.has(vf*B.W+a.c)||B.dcN.has(vf*B.W+bc));
-   if(!lk&&!dcx)continue;const ca=G.ctr(a.c),cb=G.ctr(bc),ra=G.r(a.c),rb=G.r(bc);
-   const mx=(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,my=(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2;
+   if(!lk&&!dcx)continue;const [mx,my]=tacDoorMid(G,a.c,bc);
    if(lk){g.strokeStyle='#e2564f';g.lineWidth=2;g.beginPath();g.moveTo(mx-5,my-5);g.lineTo(mx+5,my+5);g.moveTo(mx+5,my-5);g.lineTo(mx-5,my+5);g.stroke()}}
   for(const x of B.cells){if(x.f!==vf)continue;const r=G.r(x.c),key=vf*B.W+x.c;
    // 民眾提供的資訊：指稱有人、瓦斯桶、起火點
@@ -1004,7 +997,7 @@ function tacClick(inc,B,hit,e,x,y){
   // 破壞進入／門控進入：點在門附近就指定那扇門（站在較安全的一側）
   let door=null,c2=c;
   if((k==='force'||k==='dctrl')&&f>=0){const G=tacGeo(B);let bd=20;
-   for(const o of B.L.N[c].nb){const ra=G.r(c),rb=G.r(o),mx=(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,my=(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2,d=Math.hypot(mx-x,my-y);
+   for(const o of B.L.N[c].nb){const [mx,my]=tacDoorMid(G,c,o),d=Math.hypot(mx-x,my-y);
     if(d<bd){bd=d;door=o}}
    if(door!==null){const a=tacCel(B,f,c),b=tacCel(B,f,door);if(a.h+a.s*.3>b.h+b.s*.3){c2=door;door=c}}}
   if(tacOrder(inc,q,k,f,c2,i>0,side,door))ok++});
