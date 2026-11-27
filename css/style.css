@@ -203,3 +203,24 @@ main.sw.mapc #mapbar button{padding:2px 8px}
 .mtag .ppe{font-style:normal;font-size:10px;padding:0 4px;margin-right:4px;border-radius:3px;background:#3d5a80;color:#fff}
 .mtag .ppe.cont{background:#a8362f}
 .mtag.ty-med .mh{background:#5dcaa5;color:#111}
+
+/* ICS 架構圖（戰術畫面右側） */
+.ics{position:relative;margin:4px 0 2px;font-size:11px}
+.ics-top{display:flex;justify-content:center;position:relative;padding-bottom:10px}
+.ics-top:after{content:'';position:absolute;left:50%;bottom:0;height:10px;border-left:1px solid var(--line2,#4a4842)}
+.ics-staff{display:flex;justify-content:space-between;gap:6px;position:relative;padding:0 0 10px}
+.ics-staff:before{content:'';position:absolute;left:22%;right:22%;top:50%;border-top:1px dashed var(--line2,#4a4842)}
+.ics-staff:after{content:'';position:absolute;left:50%;top:0;bottom:0;border-left:1px solid var(--line2,#4a4842)}
+.ics-secs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;position:relative;padding-top:10px}
+.ics-secs:before{content:'';position:absolute;left:16.6%;right:16.6%;top:0;border-top:1px solid var(--line2,#4a4842)}
+.ics-sec{display:flex;flex-direction:column;gap:4px;position:relative}
+.ics-sec:before{content:'';position:absolute;left:50%;top:-10px;height:10px;border-left:1px solid var(--line2,#4a4842)}
+.ics-h{text-align:center;font-weight:600;color:var(--fg2);background:rgba(255,255,255,.05);border-radius:5px;padding:3px 0}
+.icsn{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;padding:4px 3px;border:1px solid var(--line);border-radius:6px;background:var(--pnl2,#1c1b19);color:var(--fg);line-height:1.25;cursor:pointer;position:relative;z-index:1}
+.icsn b{font-weight:600;font-size:11px}
+.icsn i{font-style:normal;font-size:10px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.icsn.on{border-color:var(--grn);background:rgba(93,202,165,.12)}
+.icsn.on i{color:var(--grn)}
+.icsn:disabled{opacity:.45;cursor:not-allowed}
+.icsn.top{width:62%}
+.icsn.staff{width:46%}

@@ -19,7 +19,7 @@ function tacSite(inc,B){
  for(const s of TAC_SIDES){const v=TAC_SDV[s],x=inc.x+v[0],y=inc.y+v[1];
   const ok=x>=0&&y>=0&&x<N&&y<N,k=ok?K(x,y):-1,r=ok?RD[k]:0,t=ok?TR[k]:0;
   const road=r>0&&t!==1?r:0;
-  sd[s]={road,big:road>=2&&road!==5,nm:road?(TAC_RDN[road]||'道路'):t===1?'水域':'鄰棟'}}
+  sd[s]={road,big:road>=2&&road!==5,nm:road?(RGN[RG[k]]||TAC_RDN[road]||'道路'):t===1?'水域':t===5?'農田':t===6?'魚塭':t===2&&!inCity(x,y)?'樹林':'鄰棟'}}
  const arr=tacDirOf(inc.ax-inc.x,inc.ay-inc.y);
  if(!sd[arr].road)sd[arr]={road:2,big:true,nm:'道路'};
  B.sd=sd;B.arr=arr;

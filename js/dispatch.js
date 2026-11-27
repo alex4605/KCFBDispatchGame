@@ -2,7 +2,7 @@
 'use strict';
 function spawnDuty(){
  const t=pick(DUTY),cand=[];
- for(let x=2;x<N-2;x++)for(let y=2;y<N-2;y++){const k=K(x,y);
+ for(let x=2;x<CITY-2;x++)for(let y=2;y<CITY-2;y++){const k=K(x,y);
   if(!RD[k]&&!TR[k]&&(cls(x+1,y)||cls(x,y+1)))cand.push([x,y])}
  if(!cand.length)return;
  const c=pick(cand),a=nbRoad(c[0],c[1]);

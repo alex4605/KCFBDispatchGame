@@ -46,6 +46,7 @@ function tacHints(inc,B){
  const H=[],add=(p,s)=>H.push([p,s]);
  const inside=B.sq.filter(q=>tacIn(q)&&!q.down);
  if(B.mayday)add(0,'MAYDAY 進行中：確認 RIT 已出動，其他小組維持水線掩護。');
+ if(!B.st.air&&!onScene(inc).some(u=>u.code==='71'))add(1,'現場沒有救助器材車，無法開設氣瓶充填區：各組車上備用瓶用完就不能換瓶，請求救助車增援。');
  if(B.dmg>=.5)add(1,'結構受損 '+Math.round(B.dmg*100)+'%：'+(B.dmg>=.8?'立即撤出起火樓層以上小組，改外部防禦。':'注意撤退路線，避免深入起火樓層。'));
  if(inside.length&&!B.sq.some(q=>q.task==='rit'||q.task==='ritgo'))add(1,'已有小組入室，但尚未編成 RIT。');
  if(!tacAcc(B))add(2,'尚未設置人員管制板，建議指派安全官。');

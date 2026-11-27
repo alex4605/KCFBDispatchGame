@@ -150,7 +150,7 @@ function wfScene(inc,g){
  const X=v=>ox+(v-x0)*c,Y=v=>oy+(v-y0)*c,T=S.t;
  g.fillStyle='#0b0b0a';g.fillRect(0,0,scW,scH);
  for(let x=Math.max(0,x0);x<=Math.min(N-1,x1);x++)for(let y=Math.max(0,y0);y<=Math.min(N-1,y1);y++){const k=K(x,y),t=TR[k],r=RD[k],sh=SH[k];
-  g.fillStyle=t===1?'#0e2436':t===2?(sh<.5?'#18291d':'#1d3322'):t===3?'#202836':(sh<.5?'#1c1c1a':'#21211e');g.fillRect(X(x),Y(y),c+.6,c+.6);
+  g.fillStyle=t===1?'#0e2436':t===2?(sh<.5?'#18291d':'#1d3322'):t===3?'#202836':t===5?'#1e2618':t===6?'#142c33':(sh<.5?'#1c1c1a':'#21211e');g.fillRect(X(x),Y(y),c+.6,c+.6);
   if(t===2&&c>14){g.fillStyle='#24402a';g.beginPath();g.arc(X(x)+c*.5,Y(y)+c*.5,c*.18,0,TAU);g.fill()}
   // 等高（以地形起伏著色的細線）
   if(t===2&&sh>.6){g.strokeStyle='rgba(120,160,110,.12)';g.lineWidth=1;g.strokeRect(X(x)+2,Y(y)+2,c-4,c-4)}

@@ -4,7 +4,7 @@
 const TAC_STN=[
  {k:'icp',n:'指揮站',need:'指揮車',codes:['41'],fx:'作業效率 +15%；每輛指揮車提供 2 名幕僚可指派職務'},
  {k:'stage',n:'待命集結區',need:'指揮車或一組幫浦組',codes:['41','11','16','57'],fx:'新到小組在集結區整裝即可派用；幫浦組不足時自動請求增援'},
- {k:'air',n:'氣瓶充填區',need:'救助器材車（氣瓶灌充機）',codes:['71'],fx:'換瓶 3 秒、不限數量；未開設時每組只有 2 支備用瓶，用完換瓶要 25 秒'},
+ {k:'air',n:'氣瓶充填區',need:'救助器材車（氣瓶灌充機）',codes:['71'],drv:1,fx:'任一輛救助器材車到場即由司機自動開設（不佔用救助組）；換瓶 3 秒、不限數量。未開設前每組只有車上 2 支備用瓶，用完就無法再換瓶'},
  {k:'rehab',n:'後勤照護區',need:'救護車一輛',codes:['91'],fx:'隊員休息、補水與生命徵象監測，疲勞恢復快 5 倍'},
  {k:'triage',n:'救護檢傷站',need:'救護車一輛',codes:['91'],fx:'依傷勢優先後送；裝載較快；紅色傷患惡化減緩'},
  {k:'treat',n:'救護醫療站',need:'有 EMT-P 的救護車',codes:['91'],tp:1,fx:'等待後送的傷患惡化減為三成'},
@@ -28,6 +28,7 @@ function tacStnPick(inc,B,k){
  if(k==='decon'){const e=B.sq.find(q=>q.epa&&!tacIn(q)&&q.task==='idle');if(e)return{u:e.u}}
  for(const code of d.codes)for(const u of onScene(inc)){
   if(u.code!==code||u.st!=='work'||tacStnBusy(B,u.id)||u.load)continue;
+  if(d.drv)return{u:u.id};                 // 由司機操作，不看小組狀態
   if(d.tp&&!u.tp)continue;
   const q=B.sq.find(x=>x.u===u.id);
   if(q&&(tacIn(q)||q.down||(q.task!=='idle'&&q.task!=='rit')||q.tmv))continue;
@@ -38,6 +39,11 @@ function tacStnOpen(inc,B,k,quiet){
  const r=tacStnPick(inc,B,k);
  if(r.why){if(!quiet)msg=tacStnDef(k).n+'：'+r.why;return false}
  B.st[k]={u:r.u,side:B.arr,t:S.t};
+ if(k==='air')B.airOff=0;
+ if(tacStnDef(k).drv){const u=S.units.find(x=>x.id===r.u);tacEvt(inc,B,'milestone','開設'+tacStnDef(k).n);
+  radio(inc,u?u.cs:'現場',(u?u.cs+'司機':'司機')+'開設氣瓶充填區，灌充機運轉，各組可前來換瓶。');
+  for(const q of B.sq)if(q.refill==='none')q.refill=null;
+  return true}
  const q=B.sq.find(x=>x.u===r.u);if(q){q.task='station';q.stn=k;q.prev=null}
  tacEvt(inc,B,'milestone','開設'+tacStnDef(k).n);
  if(k==='fwd'&&q){B.fwd={f:B.fwdF,stock:8};q.task='fwdgo';q.tf=B.fwd.f;q.tc=0;q.ent=null;
@@ -69,6 +75,8 @@ function tacStnStep(inc,B,dt){
   if(was<10&&B.accT>=10){const e=B.ents.find(x=>x.side===B.arr)||B.ents[0];
    radio(inc,'安全官','已於'+(e?TAC_SDN[e.side]+'側':'')+'入口設置人員管制板，開始登錄各組入室時間與氣量。');tacEvt(inc,B,'milestone','設置人員管制板')}}
  else B.accT=0;
+ // 氣瓶充填區：任一輛救助器材車到場即由司機自動開設（指揮官手動撤除後不再自動開設）
+ if(!B.st.air&&!B.airOff&&onScene(inc).some(u=>u.code==='71'&&u.st==='work'))tacStnOpen(inc,B,'air',1);
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
   if(s.u!==null&&!B.sq.some(q=>q.epa&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}

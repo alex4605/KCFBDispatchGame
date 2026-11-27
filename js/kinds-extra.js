@@ -107,4 +107,9 @@ const ZN=['city','forest','water','hiway','port','airport'],POOL={},POOLB={};
     a.push(k);if(!d.big)b.push(k)}
    if(z==='city'){const ex=['ems','ems','ems','mfire','rtc','carfire'];a.push(...ex);b.push(...ex)}
    POOL[z][lv]=a;POOLB[z][lv]=b}}
+ // 鄉間：沿用市區案類，但去掉高樓、百貨、捷運等都會型案件，加入雜草火與鐵皮屋
+ const NORURAL=['hifire','skyscraper','deptfire','hospfire','transit','crowd','lonewolf','sinkhole','chemfire','majorind','poolgas','polsta','tactical','armedfight','schoollab'];
+ POOL.rural=[];POOLB.rural=[];
+ for(let lv=0;lv<=3;lv++){const f=k=>NORURAL.indexOf(k)<0,add=['grassfire','grassfire','tinfire','ems','moto'];
+  POOL.rural[lv]=POOL.city[lv].filter(f).concat(add);POOLB.rural[lv]=POOLB.city[lv].filter(f).concat(add)}
 })();

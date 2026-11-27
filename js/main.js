@@ -68,7 +68,7 @@ document.body.addEventListener('click',e=>{
  document.querySelector('main').classList.toggle('lc',!leftOpen);
  dirty();ui();size()});
 // 進線列表在按下時就選取（列表每 0.28 秒重繪，等放開才算點擊容易落空）
-function selInc(id){sel=id;selU=null;const o=S.inc.find(x=>x.id===sel)||S.duties.find(x=>x.id===sel);if(o)center(o);dirty();ui()}
+function selInc(id){sel=id;selU=null;const o=S.inc.find(x=>x.id===sel)||S.duties.find(x=>x.id===sel);if(o){if(scMode==='map'&&S.inc.includes(o)&&!o.wf)flyTo(o);else center(o)}dirty();ui()}
 $('calls').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-sel]');if(!b||e.button!==0)return;msg='';selInc(+b.dataset.sel)});
 $('calls').addEventListener('pointerenter',()=>{callsHover=true});
 $('calls').addEventListener('pointerleave',()=>{callsHover=false});
@@ -183,8 +183,9 @@ $('btnFs').onclick=()=>{
  if(document.fullscreenElement)document.exitFullscreen();
  else document.documentElement.requestFullscreen().catch(()=>{})};
 function setZoom(z){
+ fly=null;
  const mx=cam.x+cw/2,my=cam.y+ch/2,old=cell();
- zoom=Math.max(.45,Math.min(6,z));zoomT=performance.now();
+ zoom=Math.max(.18,Math.min(6,z));zoomT=performance.now();
  cam.x=mx/old*cell()-cw/2;cam.y=my/old*cell()-ch/2;clamp()}
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);
@@ -194,7 +195,15 @@ let mapMin=false;
 function setMapMin(v){mapMin=v;document.querySelector('main').classList.toggle('mapc',v);size()}
 $('zMin').onclick=()=>setMapMin(true);
 $('zMax').onclick=()=>setMapMin(false);
-$('zSwap').onclick=e=>{wantSwap=!wantSwap;e.currentTarget.style.background=wantSwap?'#2a4a6a':'';applySwap()};
+// 現場顯示方式循環切換：地圖現場 → 現場面板放大 → 現場小窗
+const SCM_LB={map:['◎','現場顯示：直接在大地圖放大（點按切換為現場面板放大）'],big:['⇄','現場顯示：現場面板放大到中央（點按切換為右欄小窗）'],small:['▭','現場顯示：右欄小窗（點按切換為大地圖放大）']};
+function scModeBtn(){const b=$('zSwap');b.textContent=SCM_LB[scMode][0];b.title=SCM_LB[scMode][1];b.setAttribute('aria-label',SCM_LB[scMode][1]);b.style.background=scMode==='small'?'':'#2a4a6a'}
+$('zSwap').onclick=()=>{scMode=scMode==='map'?'big':scMode==='big'?'small':'map';wantSwap=scMode==='big';
+ try{localStorage.setItem('kcfb.scMode',scMode)}catch(e){}
+ scModeBtn();drawScene();applySwap();size();
+ const inc=S.inc.find(x=>x.id===sel);if(inc&&scMode==='map'&&!inc.wf)flyTo(inc);
+ msg=SCM_LB[scMode][1].split('（')[0];dirty()};
+scModeBtn();
 function scSetZoom(z){scZoom=Math.max(.5,Math.min(3.5,z))}
 $('sIn').onclick=()=>scSetZoom(scZoom*1.25);
 $('sOut').onclick=()=>scSetZoom(scZoom/1.25);
@@ -203,7 +212,9 @@ scv.addEventListener('wheel',e=>{e.preventDefault();scSetZoom(scZoom*(e.deltaY<0
 cv.addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.12:1/1.12))},{passive:false});
 let dg=null;
 cv.addEventListener('pointerdown',e=>{
- dg={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,m:0};
+ const rb=cv.getBoundingClientRect();
+ if(mapOverlayHit((e.clientX-rb.left)/rb.width*cw,(e.clientY-rb.top)/rb.height*ch)){dg=null;dirty();return}
+ fly=null;dg={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,m:0};
  cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'});
 cv.addEventListener('pointermove',e=>{
  if(!dg)return;
@@ -218,7 +229,13 @@ cv.addEventListener('pointerup',e=>{
  let best=null,bd=Math.max(1.4,22/c);
  for(const i of S.inc){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
  for(const i of S.duties){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
- sel=best;selU=null;dirty()});
+ // 地圖現場模式：點到車輛時選取車輛（案件選取不變）
+ if(c>=SC_MAP){const uh=mapUnitHit(x,y);if(uh){selU=uh;dirty();return}}
+ sel=best;selU=null;
+ const bi=S.inc.find(i=>i.id===best);if(bi&&scMode==='map'&&!bi.wf&&c<SC_MAP)flyTo(bi);
+ dirty()});
+// 地圖現場模式：雙擊放大中的案件進入戰術指揮
+cv.addEventListener('dblclick',()=>{if(cell()<SC_MAP)return;const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)){fly=null;tacOpen(inc);dirty()}});
 function size(){
  const w=$('mapwrap');dpr=window.devicePixelRatio||1;bgScale=0;
  cw=w.clientWidth;ch=w.clientHeight;
@@ -238,7 +255,7 @@ function loop(ts){
   // 戰術畫面開著時整體時間放慢（戰略與戰術共用同一個時鐘）
   if(!paused)step(dt*(TAC.open?TAC.spd:1));
   if(TAC.open)drawTac();
-  else{draw();if((++frameN&1)===0)drawScene()}
+  else{flyStep(ts);draw();if((++frameN&1)===0)drawScene()}
   uiT+=dt;if(uiT>.28){uiT=0;ui();if(TAC.open)tacUI()}
   if(msg){mt+=dt;if(mt>5){msg='';mt=0;dh=''}}else mt=0;
  }catch(err){
