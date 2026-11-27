@@ -307,7 +307,7 @@ function sceneFx(g,inc,d,crew,c,cx,cy){
   const gr=g.createRadialGradient(cx,cy,c*.3,cx,cy,c*4.5);
   gr.addColorStop(0,(on?'rgba(255,60,50,':'rgba(70,130,255,')+(a*2).toFixed(3)+')');
   gr.addColorStop(1,'rgba(0,0,0,0)');
-  g.fillStyle=gr;g.fillRect(0,0,scW,scH)}
+  g.fillStyle=gr;g.fillRect(cx-c*4.5,cy-c*4.5,c*9,c*9)}
  if(d.fire&&inc.work<inc.dur){
   const lit=Math.max(.2,1-inc.work/inc.dur);
   for(let i=0;i<16;i++){

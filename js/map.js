@@ -110,8 +110,20 @@ function draw(){
   if(sel===d.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
    ctx.beginPath();ctx.arc(x,y,m*.66,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  wfDrawMap(ctx,c);
+ // 放大到門檻以上：畫面內的案件直接在地圖上畫出現場圖層（車輛、水線、人員、火煙），與現場面板共用繪製
+ const live=new Set(),liveU=new Set();
+ if(c>=SC_MAP){const X=v=>v*c;
+  const g=fontCap(ctx,15);
+  for(const inc of S.inc){
+   if(inc.wf||inc.x<x0-3||inc.x>x1+3||inc.y<y0-3||inc.y>y1+3)continue;
+   live.add(inc.id);
+   for(const u of onScene(inc))if(u.st!=='idle'&&u.st!=='oos'&&u.st!=='back')liveU.add(u.id);
+   ctx.save();
+   try{sceneLayers(inc,g,c,X,X,x0,x1,y0,y1,0,true)}catch(e){console.error(e)}
+   ctx.restore();ctx.textAlign='center';ctx.textBaseline='middle'}}
  for(const inc of S.inc){
   const d=KIND[inc.k];
+  if(live.has(inc.id)){mapIncTag(inc,d,c,m);continue}
   if(inc.rev&&d.w&&inc.hp&&inc.hy&&inc.hooked&&!inc.tender){
    ctx.strokeStyle='rgba(93,202,165,.85)';ctx.lineWidth=Math.max(1.5,m*.12);
    ctx.lineCap='round';ctx.lineJoin='round';
@@ -143,7 +155,7 @@ function draw(){
   if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
    ctx.beginPath();ctx.arc(cx,cy,rad*1.6,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  for(const u of S.units){
-  if(u.st==='idle'||u.st==='oos'||u.st==='away')continue;
+  if(u.st==='idle'||u.st==='oos'||u.st==='away'||liveU.has(u.id))continue;
   const cx=(u.x+.5+(u.ox||0))*c,cy=(u.y+.5+(u.oy||0))*c;
   const wk=K(Math.round(u.x),Math.round(u.y)),afloat=!RD[wk]&&TR[wk]===1;
   ctx.save();ctx.translate(cx,cy);ctx.rotate(u.hd||0);
@@ -172,3 +184,26 @@ function draw(){
    ctx.fillStyle='#e6e3db';ctx.fillText(lb,cx,cy+m*.37)}}
   epaDraw(ctx,c);
  ctx.restore()}
+// 地圖現場模式的門檻（每格像素）
+const SC_MAP=56;
+// 現場模式下的案件標籤：案類、報數與受困、作業進度，畫在災點上方
+function mapIncTag(inc,d,c,m){
+ const cx=(inc.x+.5)*c,cy=(inc.y+.5)*c-c*1.15;
+ const lb=(inc.rev?d.n:'未到場 · 災情未明')+(inc.rev&&inc.pm.lvl>1?'　第'+inc.pm.lvl+'報':'')+(inc.rev&&inc.pm.trap>0?'　困'+inc.pm.trap:'');
+ ctx.font='600 '+Math.max(11,m*.3)+'px '+FONT;
+ const tw=ctx.measureText(lb).width+16,th=Math.max(18,m*.48),col=inc.rev?d.col:C.unk;
+ ctx.fillStyle='rgba(10,10,9,.82)';rr(cx-tw/2,cy-th/2,tw,th,4);ctx.fill();
+ ctx.fillStyle=col;ctx.fillRect(cx-tw/2,cy-th/2,4,th);
+ const fr=Math.max(0,Math.min(1,inc.work>0?inc.work/inc.dur:inc.left/inc.max));
+ ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(cx-tw/2+4,cy+th/2-3,tw-4,3);
+ ctx.fillStyle=col;ctx.fillRect(cx-tw/2+4,cy+th/2-3,(tw-4)*fr,3);
+ ctx.fillStyle='#eceae3';ctx.fillText(lb,cx+2,cy-1);
+ if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  rr(cx-tw/2-3,cy-th/2-3,tw+6,th+6,6);ctx.stroke();ctx.setLineDash([])}}
+// 現場圖層的文字原本隨格子放大；地圖放大時格子很大，用代理把字級限制在 max 像素內
+function fontCap(g,max){
+ if(g._cap&&g._capMax===max)return g._cap;
+ g._capMax=max;
+ return g._cap=new Proxy(g,{
+  get:(o,k)=>{const v=o[k];return typeof v==='function'?v.bind(o):v},
+  set:(o,k,v)=>{if(k==='font')v=String(v).replace(/([\d.]+)px/,(a,n)=>Math.min(+n,max)+'px');o[k]=v;return true}})}

@@ -17,26 +17,15 @@ function drawScene(){
  if(wrap.style.display==='none'){wrap.style.display='block';sizeScene()}
  applySwap();
  if(inc.wf){wfScene(inc,sctx);return}
- const g=sctx,d=KIND[inc.k],crew=onScene(inc);
+ const g=sctx,crew=onScene(inc);
  const dayT=(S.t%200)/200;
  const nf=Math.max(0,Math.min(1,(dayT-.55)/.15)-Math.min(1,Math.max(0,(dayT-.9)/.08)));
- const work=[],pumpsV=[],ambV=[],rescV=[],cmdV=[];
- for(const u of crew){
-  if(u.st!=='work')continue;
-  work.push(u);
-  const cd=u.code;
-  if(CODE[cd].cap&&cd!=='61')pumpsV.push(u);
-  if(cd==='91')ambV.push(u);
-  if(cd==='71'||cd==='搜')rescV.push(u);
-  if(cd==='41')cmdV.push(u)}
- const safeNow=emsSafe(inc),effNow=d.w?Math.max(0,effLines(inc)-(inc.burst>0?1:0)):0,wOK=waterOK(inc);
  const ct=Math.max(12,(isSwapped?Math.max(46,Math.min(scW/13,scH/9)):Math.min(scW/11,scH/7))*scZoom);
  const HW=Math.max(2,Math.ceil(scW/ct/2)),HH=Math.max(1,Math.ceil(scH/ct/2));
  const txU=crew.filter(u=>u.st==='tx'||u.st==='give'||u.st==='clean')[0];
  const fx=txU?txU.x:inc.x,fy=txU?txU.y:inc.y;
  let x0=Math.round(fx)-HW,x1=Math.round(fx)+HW;
  let y0=Math.round(fy)-HH,y1=Math.round(fy)+HH;
- const showHyd=d.w&&!inc.tender&&inc.hy&&inc.hy[0]>=x0&&inc.hy[0]<=x1&&inc.hy[1]>=y0&&inc.hy[1]<=y1;
  const cols=x1-x0+1,rows=y1-y0+1;
  const c=ct;
  const ox=(scW-c*cols)/2,oy=(scH-c*rows)/2;
@@ -59,11 +48,28 @@ function drawScene(){
      if(r>=2&&r<=3&&c>13){tg.strokeStyle='rgba(255,255,255,.07)';tg.lineWidth=1;
       tg.beginPath();tg.moveTo(px,py+c/2);tg.lineTo(px+c,py+c/2);tg.stroke()}}}}
  g.drawImage(SCACHE.cv,0,0,scW,scH);
- // 建物窗光隨晝夜變化，另外疊畫（量少）
  scWindowLights(g,nf,x0,x1,y0,y1,c,X,Y);
+ if(nf>0){g.fillStyle='rgba(10,16,34,'+(.5*nf).toFixed(3)+')';g.fillRect(0,0,scW,scH)}
+ const eff=sceneLayers(inc,g,c,X,Y,x0,x1,y0,y1,nf,false);
+ scHeader(inc,g,KIND[inc.k],crew,nf,eff)}
+// 現場圖層：現場面板與大地圖放大時共用。X、Y 把格座標換成畫布座標，x0~y1 是可見格範圍；onMap 時省略醫院、邊緣指標與抬頭
+function sceneLayers(inc,g,c,X,Y,x0,x1,y0,y1,nf,onMap){
+ const d=KIND[inc.k],crew=onScene(inc);
+ const work=[],pumpsV=[],ambV=[],rescV=[],cmdV=[];
+ for(const u of crew){
+  if(u.st!=='work')continue;
+  work.push(u);
+  const cd=u.code;
+  if(CODE[cd].cap&&cd!=='61')pumpsV.push(u);
+  if(cd==='91')ambV.push(u);
+  if(cd==='71'||cd==='搜')rescV.push(u);
+  if(cd==='41')cmdV.push(u)}
+ const safeNow=emsSafe(inc),effNow=d.w?Math.max(0,effLines(inc)-(inc.burst>0?1:0)):0,wOK=waterOK(inc);
+ const txU=crew.filter(u=>u.st==='tx'||u.st==='give'||u.st==='clean')[0];
+ const fx=txU?txU.x:inc.x,fy=txU?txU.y:inc.y;
+ const showHyd=d.w&&!inc.tender&&inc.hy&&inc.hy[0]>=x0&&inc.hy[0]<=x1&&inc.hy[1]>=y0&&inc.hy[1]<=y1;
  // 災點中心座標；夜間整體壓暗
  const cx=X(inc.x)+c/2,cy=Y(inc.y)+c/2;
- if(nf>0){g.fillStyle='rgba(10,16,34,'+(.5*nf).toFixed(3)+')';g.fillRect(0,0,scW,scH)}
  // 災點建物與景物
  scSite(inc,g,d,nf,c,X,Y,cx,cy);
  // 圍觀民眾
@@ -103,7 +109,7 @@ function drawScene(){
 // 後送路線
  scTxRoute(g,crew,c,X,Y);
  // 醫院與交接動畫
- scHospital(g,crew,nf,x0,x1,y0,y1,c,X,Y);
+ if(!onMap)scHospital(g,crew,nf,x0,x1,y0,y1,c,X,Y);
  // 火場出入口管制
  scEntryControl(inc,g,d,crew,work,c,X,Y,cx,cy);
  // 空氣瓶更換站
@@ -130,7 +136,7 @@ function drawScene(){
  // 照明燈塔
  scLightTower(g,crew,nf,c,X,Y,cx,cy);
  // 視野外車輛的邊緣指標
- scEdgePointers(inc,g,crew,x0,x1,y0,y1,c,cx,cy);
+ if(!onMap)scEdgePointers(inc,g,crew,x0,x1,y0,y1,c,cx,cy);
  // ===== 大量傷病患：檢傷帆布、檢傷組、醫療指揮官 =====
  scMci(inc,g,d,c,X,Y,cx,cy);
  // ===== 化災：區劃、插旗、除污走廊、A/B/C 級防護 =====
@@ -140,6 +146,4 @@ function drawScene(){
  sceneFx(g,inc,d,crew,c,cx,cy);sceneFx2(g,inc,d,crew,c,X,Y,cx,cy);
  // 空中水柱（畫在車輛與人員之上，避免被遮住）
  scWaterStream(inc,g,c);
- // 抬頭資訊
- scHeader(inc,g,d,crew,nf,eff);
-}
+ return eff}
