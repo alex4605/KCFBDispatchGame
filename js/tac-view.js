@@ -4,7 +4,7 @@ const tcv=document.getElementById('tcv'),tctx=tcv.getContext('2d');
 let tW=800,tH=500,tTopH='',tSideH='',tBotH='';
 // 指令列：依類別分組；[代碼, 名稱, 快捷鍵, 說明]
 const TAC_GRP=[
- ['水線',[['attack','入室攻擊','A','帶水線進入火點射水'],['sky','朝天射水','','直流水柱朝天花板大量射水，快速冷卻熱煙層、防止閃燃，也可作為快速過渡攻擊；用水量是一般水線的兩倍（占兩條水線），降溫後自動轉入室攻擊'],['trans','過渡射水','E','先從 1F、2F 窗外射水降溫，再自動轉入室攻擊'],
+ ['水線',[['attack','入室攻擊','A','帶水線進入火點射水'],['sky','車頂砲塔','','幫浦車車頂砲塔（朝天瞄）從車旁經窗口大流量射水（1F～3F、窗戶面向道路），快速降溫、壓制火勢，也可作為快速過渡攻擊；用水量是一般水線的兩倍（占兩條水線），壓制後自動轉入室攻擊；室內有小組時會把熱煙蒸汽壓回去'],['trans','過渡射水','E','先從 1F、2F 窗外射水降溫，再自動轉入室攻擊'],
   ['guard','周界防護','H','守住一個空間不讓火延燒進來；點鄰棟則為鄰棟周界防護'],['confine','侷限火勢','F','到火點旁關門，減緩延燒與濃煙擴散'],
   ['overhaul','殘火處理','Q','翻搜餘燼並澆熄，避免復燃；有餘燼未處理不會結案']]],
  ['進入',[['force','破壞進入','B','破壞上鎖的入口（點道路）或房門（點房間）'],['dctrl','門控進入','K','守在入口（點道路）或門邊（點空間）控制開度，阻斷進氣路徑']]],
@@ -149,7 +149,7 @@ function tacSqPos(B,G,q,i){
     return[w[0]+dv[0]*26+(dv[1]?(i-1)*16:0),w[1]+dv[1]*26+(dv[0]?(i-1)*16:0)]}
    // 屋外待命：站在自己的車旁（面向建物）；車在畫面外就站在該側道路末端
    const tp=TAC.tp&&TAC.tp[q.u];
-   if(tp&&(q.task==='idle'||q.task==='hold')&&!q.prev&&!q.refill){const s=q.tside||q.side,hz=s==='n'||s==='s';
+   if(tp&&(q.task==='idle'||q.task==='hold'||q.task==='sky')&&!q.prev&&!q.refill){const s=q.tside||q.side,hz=s==='n'||s==='s';
     const lane=s==='n'?G.by-22:s==='s'?G.by+G.bh+22:s==='w'?G.bx-22:G.bx+G.bw+22,o=((i%3)-1)*12;
     return hz?[tp[0]+o,lane]:[lane,tp[1]+o]}
    return tacStage(G,q.side,i)}
@@ -517,7 +517,8 @@ function drawTac(){
     on.forEach((p,k)=>{const c=G.ctr(p[1]);if(k===0&&q.f!==vf&&!(q.f<0&&q.ent&&vf===tacEF(B,q.ent)))g.moveTo(c[0],c[1]);else g.lineTo(c[0],c[1])});
     g.stroke();g.setLineDash([])}}
   // 指定空間
-  const tf=q.task==='trans'||q.ty==='ladder'?q.lf:q.task==='vvent'?B.F-1:q.tf,tc=q.task==='trans'||q.ty==='ladder'?q.lc:q.task==='vvent'?q.vc:q.tc;
+  const ex=q.task==='trans'||q.task==='sky'||q.ty==='ladder';
+  const tf=ex?q.lf:q.task==='vvent'?B.F-1:q.tf,tc=ex?q.lc:q.task==='vvent'?q.vc:q.tc;
   if(tf===vf&&tc!==undefined&&tf>=0&&q.task!=='idle'&&q.task!=='rit'&&q.task!=='exit'){const r=G.r(tc),pu=.5+.5*Math.sin(T*5+q.u);
    g.strokeStyle='rgba('+cc+','+(al*(.5+.5*pu)).toFixed(2)+')';g.lineWidth=sel?3:2;g.setLineDash([6,4]);g.lineDashOffset=T*20;
    g.strokeRect(r[0]+4+pu*2,r[1]+4+pu*2,r[2]-8-pu*4,r[3]-8-pu*4);g.setLineDash([])}
@@ -545,6 +546,7 @@ function drawTac(){
    g.setLineDash([]);continue}
   const ts=(B.sq.find(x=>x.u===(q.line?q.lu:q.u))||q).tside;
   // 過渡射水：車 → 沿道路 → 窗外的射水手
+  if(q.task==='sky'){g.setLineDash([]);continue} // 車頂砲塔：不拉水帶
   if(q.task==='trans'){const pp=tacSqPos(B,G,q,0);if(tp&&pp){g.beginPath();g.moveTo(tp[0],tp[1]);
     const ps=tacHoseOut(B,G,ts,tp,q.ws||q.side,pp,eo);for(let k=1;k<ps.length;k++)g.lineTo(ps[k][0],ps[k][1]);g.stroke()}
    g.setLineDash([]);continue}
@@ -603,6 +605,9 @@ function drawTac(){
    const ox=Math.cos(a)*(-i*fr*sp2)+Math.cos(a+Math.PI/2)*lat+Math.cos(a)*gait*fr*.15,oy=Math.sin(a)*(-i*fr*sp2)+Math.sin(a+Math.PI/2)*lat+Math.sin(a)*gait*fr*.15;
    const col=q.ty==='resc'?'#f6f6f2':'#f3c43b',coat=q.ty==='resc'?'#c8332c':'#1e2c52';
    tacMan(g,p[0]+ox,p[1]+oy,fr,col,q.down?a+Math.PI/2:a+gait*.18,{scba:q.f>=0||q.task==='rit',coat,step:gait})}
+  if(q.task==='sky'&&q.line&&q.pf>0&&q.lf===vf){const tp2=TAC.tp&&TAC.tp[q.u],c2=G.ctr(q.lc);
+   if(tp2){g.fillStyle='rgba(170,210,245,.6)';for(let k=0;k<12;k++){const ph=(T*2.8+k/12)%1,sp=(k%3-1)*.1;
+    const ex=tp2[0]+(c2[0]-tp2[0])*ph,ey=tp2[1]+(c2[1]-tp2[1])*ph-Math.sin(ph*Math.PI)*22;g.beginPath();g.arc(ex+sp*24,ey,2.5+ph*7,0,TAU);g.fill()}}}
   if(q.task==='trans'&&q.line&&q.pf>0&&q.lf===vf&&q.side===q.ws){const c2=G.ctr(q.lc);
    g.fillStyle='rgba(170,210,245,.55)';for(let k=0;k<8;k++){const ph=(T*2.4+k/8)%1,sp=(k%3-1)*.12;
     const ex=p[0]+(c2[0]-p[0])*ph,ey=p[1]+(c2[1]-p[1])*ph-Math.sin(ph*Math.PI)*12;g.beginPath();g.arc(ex+sp*20,ey,2+ph*6,0,TAU);g.fill()}}
