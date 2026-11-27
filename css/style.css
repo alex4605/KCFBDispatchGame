@@ -236,3 +236,11 @@ button.hand:hover{background:#2d5a4a}
 .ttabs button.on{background:#2a4a6a;border-color:#4a7aa8}
 .ttabs button.on i{color:#cfe2f5}
 .ttabc>.hd.mt:first-child{margin-top:4px}
+
+/* 戰術指令列的 Emoji */
+.emo{font-style:normal;margin-right:3px;font-size:12px}
+
+/* 消防學校 */
+.trlv{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--pnl2)}
+.trlv.ok{border-color:#3f7d66;background:rgba(93,202,165,.08)}
+.trlv .sub{margin-top:4px;line-height:1.5}

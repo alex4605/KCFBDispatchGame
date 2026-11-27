@@ -31,7 +31,11 @@ function spawn(){
  if(!pool.length)return;
  const pickKind=()=>{for(let t2=0;t2<6;t2++){const kk=pick(pool);const r2=KIND[kk].rare;
   if(!r2||Math.random()<Math.min(1,r2*4.2))return kk}return 'ems'};
- const k=pickKind(),d=KIND[k];
+ const k=pickKind();
+ return makeInc(k,c,a,z,bigOK,probe)}
+// 建立一件案件並加入進線列表（spawn 與消防學校訓練共用）；c 為災點格、a 為臨路進場格
+function makeInc(k,c,a,z,bigOK,probe){
+ const d=KIND[k];
  const o=d.hoax?{need:d.base.map(g=>({c:g.c.slice(),n:g.n,l:g.l,als:g.als,k:g.k})),pm:{mal:Math.random()<.35},dur:d.dur,pay:d.pay,pen:d.pen}:
   d.fire?mkFire(d):d.med?mkMed():d.trap?mkTrap():
   {need:d.base.map(g=>({c:g.c.slice(),n:g.n,l:g.l,als:g.als,k:g.k})),pm:{},dur:d.dur,pay:d.pay,pen:d.pen};
@@ -108,4 +112,4 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
   const m=Math.min(extra.length,inc.calls>=6?3:inc.calls>=4?2:1);
   for(let i2=0;i2<m;i2++)
    inc.log.push({w:'民',s:'（'+extra[i2][0]+'）'+extra[i2][1],t:6+i2*5.5})}
- S.inc.push(inc)}
+ S.inc.push(inc);return inc}

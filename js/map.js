@@ -6,7 +6,7 @@ function clamp(){
  const c=cell(),mx=c*N-cw,my=c*N-ch;
  cam.x=mx<0?mx/2:Math.max(0,Math.min(mx,cam.x));
  cam.y=my<0?my/2:Math.max(0,Math.min(my,cam.y))}
-function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.18,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
+function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.12,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
 let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
@@ -23,6 +23,7 @@ function drawTerrain(c,x0,x1,y0,y1){
   else if(t===4)ctx.fillStyle=RUN[k]?'#34343a':CROP[k]===10?'#4a4e56':CROP[k]===11?'#3a3b3e':(s<.5?'#1f2a21':'#212d23');
   else if(t===5){const cp=CROP[k];ctx.fillStyle=cp===2?(s<.5?'#1e3019':'#21341b'):cp===3?(s<.5?'#1b2b1d':'#1d2e1f'):cp===4?'#34362f':cp===5?(s<.5?'#22301b':'#25331d'):cp===6?(s<.5?'#2e2b1d':'#322e1f'):(s<.5?'#262f1b':'#29321d')}
   else if(t===6)ctx.fillStyle=CROP[k]===7?'#1d2633':s<.5?'#12282f':'#142c33';
+  else if(t===7)ctx.fillStyle=s<.5?'#262a2f':'#2a2e33';
   else if(!inCity(x,y)||isSub(x,y))ctx.fillStyle=CROP[k]===9?'#262a2e':s<.5?'#1d1c19':'#211f1b';
   else ctx.fillStyle=s<.33?'#171716':s<.66?'#1b1b19':'#1f1f1c';
   ctx.fillRect(px,py,c+.6,c+.6);
@@ -90,7 +91,23 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
  else if(t===3){const cols=['#6b3b2a','#2f4f6b','#5a5a3a','#3d5a48'];
   for(let j=0;j<4;j++)for(let i=0;i<2;i++){if(hsh(k,i*4+j)<.3)continue;
    ctx.fillStyle=cols[hsh(k,i*4+j+50)*4|0];ctx.fillRect(px+c*(.1+i*.42),py+c*(.1+j*.21),c*.36,c*.16)}}
- else if(t===4)airportDetail(x,y,k,px,py,c)}
+ else if(t===4)airportDetail(x,y,k,px,py,c);
+ else if(t===7)industryDetail(k,px,py,c)}
+// 石化工業區：儲槽（圓頂、浮頂）、管架、廠房、燃燒塔
+function industryDetail(k,px,py,c){
+ const a=hsh(k,1);
+ if(a<.45){const n=a<.2?1:4,r=n===1?c*.38:c*.18;
+  for(let i=0;i<n;i++){const cx=px+(n===1?c/2:c*(.27+(i%2)*.46)),cy=py+(n===1?c/2:c*(.27+(i>>1)*.46));
+   ctx.fillStyle='#5f646b';ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.fill();
+   ctx.strokeStyle='rgba(230,230,225,.35)';ctx.lineWidth=Math.max(1,c*.02);ctx.beginPath();ctx.arc(cx,cy,r*.72,0,TAU);ctx.stroke();
+   ctx.fillStyle='rgba(255,255,255,.12)';ctx.beginPath();ctx.arc(cx-r*.25,cy-r*.25,r*.35,0,TAU);ctx.fill()}}
+ else if(a<.7){ctx.fillStyle='#454a52';ctx.fillRect(px+c*.08,py+c*.12,c*.84,c*.7);
+  ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1;for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(px+c*.08+i*c*.14,py+c*.12);ctx.lineTo(px+c*.08+i*c*.14,py+c*.82);ctx.stroke()}}
+ else if(a<.92){ctx.strokeStyle='#8a8470';ctx.lineWidth=Math.max(1.5,c*.05);
+  for(const o of[.35,.5,.65]){ctx.beginPath();ctx.moveTo(px,py+c*o);ctx.lineTo(px+c,py+c*o);ctx.stroke()}
+  ctx.fillStyle='#5a564a';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.15+i*.33),py+c*.28,c*.05,c*.44)}
+ else{ctx.fillStyle='#6a6e74';ctx.fillRect(px+c*.45,py+c*.2,c*.1,c*.6);
+  const f=.6+.4*Math.sin((S?S.t:0)*6+k);ctx.fillStyle='rgba(255,150,60,'+(.6*f).toFixed(2)+')';ctx.beginPath();ctx.ellipse(px+c*.5,py+c*.14,c*.08,c*.14*f,0,0,TAU);ctx.fill()}}
 // 機場：跑道標線與跑道頭、滑行道黃線、停機坪與飛機、航廈、圍籬
 function airportDetail(x,y,k,px,py,c){
  const A=AP;if(!A)return;
@@ -139,6 +156,9 @@ function draw(){
   ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;ctx.stroke();
   if(c>=13){ctx.fillStyle='#fff';ctx.font='500 '+(s*.4)+'px '+FONT;ctx.fillText(t,x,y)}
   if(sub&&c>=26){ctx.fillStyle='#b9b5ac';ctx.font='400 '+(m*.28)+'px '+FONT;ctx.fillText(sub,x,y+s*.8)}};
+ // 消防學校（楠梓）
+ if(SCHOOL){mk(SCHOOL.p,'#6a4fb0','校','消防學校');
+  if(sel===SCHOOL_ID){const x=(SCHOOL.p[0]+.5)*c,y=(SCHOOL.p[1]+.5)*c;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(x,y,Math.max(9,m*.9),0,TAU);ctx.stroke();ctx.setLineDash([])}}
  HOSP.forEach(h=>{
   const w=h.w||1,h2=h.h||1,x=h.p[0]*c,y=h.p[1]*c;
   ctx.fillStyle='#1a6bb8';rr(x+2,y+2,c*w-4,c*h2-4,Math.max(3,m*.2));ctx.fill();
@@ -306,7 +326,7 @@ function miniMap(c){
  if(MINI.key!==key){MINI.key=key;const mc=MINI.cv||(MINI.cv=document.createElement('canvas'));
   mc.width=Math.round(s*dpr);mc.height=Math.round(s*dpr);const g=mc.getContext('2d'),q=s*dpr/N;
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){const k=K(i,j),tt=TR[k];
-   g.fillStyle=RD[k]?(RD[k]===4?'#6a6050':'#3a3a35'):tt===1?'#14324a':tt===2?'#1c3322':tt===3?'#263040':tt===4?'#26282c':tt===5?'#242d1c':tt===6?'#173540':'#1c1c1a';
+   g.fillStyle=RD[k]?(RD[k]===4?'#6a6050':'#3a3a35'):tt===1?'#14324a':tt===2?'#1c3322':tt===3?'#263040':tt===4?'#26282c':tt===5?'#242d1c':tt===6?'#173540':tt===7?'#33373d':'#1c1c1a';
    g.fillRect(i*q,j*q,q+.5,q+.5)}}
  ctx.fillStyle='rgba(10,10,9,.85)';rr(x-4,y-4,s+8,s+8,6);ctx.fill();
  ctx.drawImage(MINI.cv,x,y,s,s);
@@ -404,8 +424,11 @@ function mapLabels(c){
   ctx.lineWidth=3;ctx.strokeStyle='rgba(8,8,7,'+(.7*al).toFixed(2)+')';ctx.strokeText(s,0,0);ctx.fillStyle=col.replace('A',(al*.85).toFixed(2));ctx.fillText(s,0,0);ctx.restore()};
  for(const t of RTOWN)lb(t.n+'區',t.c[0]+.5,t.c[1]-t.r-1.2,13,'rgba(236,230,210,A)');
  lb('高 屏 溪',riverX(84)+.5,84,13,'rgba(125,179,232,A)',Math.PI/2);
- lb('台 灣 海 峽',9,122,13,'rgba(125,179,232,A)');
- lb('山　區',128,14,13,'rgba(140,190,140,A)');
+ lb('台 灣 海 峽',5,OY+62,13,'rgba(125,179,232,A)',Math.PI/2);
+ lb('台 灣 海 峽',OX+12,OY+128,13,'rgba(125,179,232,A)');
+ lb('山　區',OX+128,OY+14,13,'rgba(140,190,140,A)');
+ lb('二 仁 溪',OX+40,3.5,12,'rgba(125,179,232,A)');
+ lb('林園工業區',OX+93,OY+131,12,'rgba(200,205,215,A)');
  ctx.restore()}
 // ===== 道路分級繪製 =====
 // 地面道路樣式（依 RG）：w 路寬（格寬比例）、col 路面、cl 中線（yy 雙黃、y 單黃、w 白虛線）、ed 路緣

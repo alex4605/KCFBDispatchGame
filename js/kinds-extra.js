@@ -109,6 +109,11 @@ const ZN=['city','forest','water','hiway','port','airport'],POOL={},POOLB={};
    POOL[z][lv]=a;POOLB[z][lv]=b}}
  // 鄉間：沿用市區案類，但去掉高樓、百貨、捷運等都會型案件，加入雜草火與鐵皮屋
  const NORURAL=['hifire','skyscraper','deptfire','hospfire','transit','crowd','lonewolf','sinkhole','chemfire','majorind','poolgas','polsta','tactical','armedfight','schoollab'];
+ // 工業區：化工、工廠、工安、儲槽與管線相關案件
+ const IND=['chemfire','fact','majorind','warehouse','tanker','gas','gasblast','confined','fall','machine','electro','burn','hazmat','fact','chemfire','ems','ems'];
+ POOL.industry=[];POOLB.industry=[];
+ for(let lv=0;lv<=3;lv++){const ok=k=>KIND[k]&&KIND[k].lv<=lv;POOL.industry[lv]=IND.filter(ok);POOLB.industry[lv]=IND.filter(k=>ok(k)&&!KIND[k].big);
+  if(!POOL.industry[lv].length)POOL.industry[lv]=['ems'];if(!POOLB.industry[lv].length)POOLB.industry[lv]=['ems']}
  POOL.rural=[];POOLB.rural=[];
  for(let lv=0;lv<=3;lv++){const f=k=>NORURAL.indexOf(k)<0,add=['grassfire','grassfire','tinfire','ems','moto'];
   POOL.rural[lv]=POOL.city[lv].filter(f).concat(add);POOLB.rural[lv]=POOLB.city[lv].filter(f).concat(add)}

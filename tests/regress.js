@@ -1,4 +1,4 @@
-// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|load|map|normal|tac|handoff]
+// 回歸測試（Playwright，無頭 Chromium）：node tests/regress.js [all|load|map|normal|tac|handoff|school]
 // 需要可 require('playwright') 的環境；直接開啟 index.html，不需要伺服器
 'use strict';
 const path=require('path'),{chromium}=require('playwright');
@@ -42,4 +42,10 @@ const TAC_RUN=`(k)=>{S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POO
    tacOpen(inc);tacHandoff(inc,B);const left=onScene(inc).length;let t2=0;for(;t2<6000&&S.inc.includes(inc);t2++)step(.05);
    return{left,closed:!S.inc.includes(inc),open:TAC.open}});
   ok('交給轄區分隊善後',r.skip||(r.left<=2&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
+ if(which==='all'||which==='school'){const {p,errs}=await page(b);
+  const r=await p.evaluate(()=>{localStorage.removeItem('kcfb.train');TRAIN.pass=[0,0,0];const lock=!tacUnlocked();trainStart(1);let t=0;for(;t<400&&!TAC.open;t++){step(.05);trainStep()}
+   const inc=S.inc.find(i=>i.id===TRAIN.inc),B=inc&&inc.tac;if(!B)return{lock,noTac:1};
+   for(;t<30000&&TRAIN.inc;t++){step(.05);trainStep();if(t%40===0)for(const q of B.sq){if(q.ty!=='pump'||!tacReady(q)||q.task==='attack')continue;const h=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>b.h-a.h)[0];if(h)tacOrder(inc,q,'attack',h.f,h.c,1)}}
+   return{lock,pass1:TRAIN.pass[0],extra:onScene(inc).length}});
+  ok('消防學校第一關（未通過前鎖定戰術指揮）',r.lock&&r.pass1&&!errs.length,r);await p.close()}
  await b.close();console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)})();

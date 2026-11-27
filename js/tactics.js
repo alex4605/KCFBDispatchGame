@@ -61,14 +61,16 @@ const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.3,autoPause:true,ms:
 const TAC_AIR=110; // 滿瓶可在室內作業的秒數
 const TAC_LADR={'21':10,'31':7}; // 雲梯可達樓層數
 // 車種 → 小組類型；水庫車、指揮車、救護車不編成入室小組
-const TAC_SQ={'99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
+const TAC_SQ={'43':'resc','99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
 const TAC_TYN={med:'特搜醫療組',hazmat:'化災組',epa:'化災應變隊',pump:'幫浦組',ladder:'雲梯組',resc:'救助組',vent:'排煙組',robot:'機器人'};
-const TAC_TASK={beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
+const TAC_TASK={sky:'朝天射水',beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
  guard:'周界防護',cover:'周界防護（鄰棟）',confine:'侷限火勢',search:'初期搜索',search2:'次級搜索',carry:'搬運傷者',
  vent:'破窗排煙',hydro:'水霧排煙',roof:'屋頂排煙',ppv:'正壓排煙',npv:'負壓排煙',vvent:'垂直排煙',force:'破壞進入',dctrl:'門控進入',overhaul:'殘火處理',ladder:'雲梯救援',master:'雲梯射水',roofres:'屋頂救援',
  rit:'RIT 待命',ritgo:'RIT 救援',exit:'撤出',station:'駐守站點'};
 // 需要水線的任務
-const TAC_WET={attack:1,hold:1,trans:1,guard:1,hydro:1,cover:1,master:1};
+const TAC_WET={attack:1,sky:1,hold:1,trans:1,guard:1,hydro:1,cover:1,master:1};
+// 用水量較大的任務：占用兩條水線的流量
+const TAC_WET2={sky:1};
 // 門的開關：關上的門延燒與煙的流動都大幅降低（人員通過時會打開）
 const tacDK=(B,f,a,b)=>f*B.W*B.W+Math.min(a,b)*B.W+Math.max(a,b);
 const tacShut=(B,f,a,b)=>B.cd&&B.cd.has(tacDK(B,f,a,b));
@@ -404,7 +406,7 @@ function tacSync(inc){
   if(u.st!=='work'||!TAC_SQ[u.code])continue;
   if(B.sq.some(q=>q.u===u.id))continue;
   const ty=TAC_SQ[u.code];
-  B.sq.push({usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+  B.sq.push({cafs:u.cafs?1:0,usar:u.usar?1:0,ma:u.ma||null,u:u.id,cs:u.cs,code:u.code,ty,n:ty==='robot'?1:crewOf(u),f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
    task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
    tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:2})}
  tacEpaSync(inc,B);
@@ -478,7 +480,7 @@ function tacCan(B,q,k,f,c){
   return'雲梯組只能雲梯救援、雲梯射水或破窗排煙'}
  if(k==='master'||k==='ladder')return'需要雲梯車';
  if(k==='move'||k==='gas'||k==='ident'||k==='plug')return'';
- if(k==='attack'||k==='guard')return(q.ty==='pump'||q.ty==='robot')?'':'此組沒有水線';
+ if(k==='attack'||k==='guard'||k==='sky')return(q.ty==='pump'||q.ty==='robot')?'':'此組沒有水線';
  if(k==='confine')return q.ty==='robot'?'機器人無法關門':'';
  if(k==='force'||k==='dctrl')return q.ty==='robot'?'機器人無法執行':'';
  if(k==='overhaul')return q.ty==='robot'?'機器人無法翻搜殘火':B.L.N[c].ty!=='room'?'請點選房間':'';
@@ -537,7 +539,7 @@ function tacOrder(inc,q,k,f,c,quiet,side){
   q.prev=null;q.wk=0;q.task='trans';q.tf=-1;q.tc=0;q.lf=f;q.lc=c;q.ws=sd;q.lt=S.t;q.ent=null;
   if(!quiet)radio(inc,q.cs,'收到，由'+TAC_SDN[sd]+'側窗口對'+tacNm(B,f,c)+'過渡射水，降溫後入室。');
   return true}
- if(k==='attack'||k==='guard'||k==='hydro'){ln=tacLineTo(B,q,f,c);
+ if(k==='attack'||k==='guard'||k==='hydro'||k==='sky'){ln=tacLineTo(B,q,f,c);
   if(!ln){if(!quiet)msg=q.cs+'：水帶長度不足（上限 '+TAC_HOSE+' 條）'+(B.sp&&f>=1?'，請先做送水口加壓，改由各樓層出水口接線':'')+'，或移車到較近入口那側';return false}}
  if(B.sp&&B.sp.u===q.u&&k!=='stand'){B.sp.on=0;B.sp.u=null;radio(inc,q.cs,'離開送水口，連結送水管停止加壓！')}
  q.prev=null;q.wk=0;q.ext=0;q.ws=null;
@@ -587,7 +589,7 @@ function tacSquad(inc,B,q,dt,eff){
    q.gone=1;if(S.rep<=0){S.rep=0;S.over=true}}
   return}
  if(inside&&q.ty!=='robot'){
-  const hv=q.task==='attack'||q.task==='search'||q.task==='ritgo'||q.carry;
+  const hv=q.task==='attack'||q.task==='sky'||q.task==='search'||q.task==='ritgo'||q.carry;
   q.air-=dt/TAC_AIR*(hv?1.15:1)*(q.carry?1.3:1)*(1+q.fat*.3);
   q.fat=Math.min(1.2,q.fat+dt/220*(hv?1.4:1));
   // 體力透支：撤出到屋外休息，恢復後回原任務
@@ -603,7 +605,7 @@ function tacSquad(inc,B,q,dt,eff){
    q.low=1;q.prev=(q.task==='idle'||q.task==='rit')?null:{task:q.task,tf:q.tf,tc:q.tc};
    if(fw){q.task='fwdref';q.tf=B.fwd.f;q.tc=0}else{q.task='exit';q.tf=-1;q.tc=0}}
   else if(q.air<lowAt&&!q.low){q.low=1;radio(inc,q.cs,'空氣瓶低壓警報，完成手上任務後撤出。')}
-  const prot=(q.task==='attack'||q.task==='guard'||q.task==='hydro')&&q.line&&eff>0&&q.pf>.15&&q.f===q.tf&&q.c===q.tc;
+  const prot=(q.task==='attack'||q.task==='sky'||q.task==='guard'||q.task==='hydro')&&q.line&&eff>0&&q.pf>.15&&q.f===q.tf&&q.c===q.tc;
   if(cl.h>.68)q.hp-=dt*(cl.h-.62)*(prot?.015:.07);
   // 沒有水線保護、所在空間過熱：自動撤退（搬運與 RIT 救援除外）
   if(!prot&&cl.h>.6&&q.ty!=='robot'&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'&&!q.mt){
@@ -706,9 +708,18 @@ function tacSquad(inc,B,q,dt,eff){
    q.task='idle'}
   return}
  // 室內任務
+ // 朝天射水：直流水柱朝天花板大量射水，快速冷卻熱煙層（溫度降得快、也壓低一些煙，但燃料不太會熄），
+ // 用水量是一般水線的兩倍；本室降到不會閃燃後自動轉入室攻擊
+ if(k==='sky'){
+  if(q.line&&eff>0&&q.pf>0){const pw=.085*eff*q.pf*(q.n/3)*cmd*2.6;
+   cl.h=Math.max(.12,cl.h-dt*pw);cl.s=Math.max(0,cl.s-dt*pw*.25);cl.wet=1;
+   for(const cc of B.L.N[q.c].nb){const nb=tacCel(B,q.f,cc);nb.h=Math.max(Math.min(nb.h,.12),nb.h-dt*pw*.5)}
+   if(cl.h<=.3){q.task='attack';radio(inc,q.cs,tacNm(B,q.f,q.c)+'朝天射水降溫完成，轉入室攻擊。')}}
+  return}
  if(k==='attack'){
   if(q.line&&eff>0&&q.pf>0){
-   const fo=cl.fuel?(q.code==='57'||q.code==='01'?1.2:.3):q.code==='57'?1.3:1,pw=.085*eff*q.pf*fo*(q.n/3)*cmd;
+   // 泡沫：泡沫車、特殊化學車與 CAFS 幫浦車（泡沫瞄）對油火有效，對一般火也比清水好
+   const foam=q.code==='57'||q.code==='01'||q.cafs,fo=cl.fuel?(foam?(q.cafs?1:1.2):.3):(q.code==='57'?1.3:q.cafs?1.25:1),pw=.085*eff*q.pf*fo*(q.n/3)*cmd;
    cl.h=Math.max(0,cl.h-dt*pw);cl.wet=1;if(cl.h<.03){cl.h=0;cl.dw=1}
    // 水霧也會冷卻門另一側的空間
    for(const cc of B.L.N[q.c].nb){const nb=tacCel(B,q.f,cc);nb.h=Math.max(0,nb.h-dt*pw*.2);if(nb.h<.02)nb.h=0}
@@ -919,7 +930,7 @@ function tacLines(inc,B,dt){
  for(const q of B.sq){q.line=0;if(q.burst>0)q.burst-=dt}
  let n=0,spN=0;
  for(const q of want){
-  if(n>=L)break;
+  if(n>=L||(TAC_WET2[q.task]&&n+2>L))break;
   if(q.task==='trans'){if(q.side!==q.ws)continue;q.src='pump';q.len=tacOutLen(q.tside,q.ws)+1;q.pf=.95;q.lu=q.u;q.lent=null;q.line=1;n++;continue}
   if(q.task==='cover'){if(q.tmv)continue;q.src='pump';q.len=4;q.pf=.9;q.lu=q.u;q.lent=null;q.line=1;n++;continue}
   if(q.ty==='ladder'){ // 雲梯射水由同側幫浦車供水，沒有則壓力不足
@@ -930,7 +941,7 @@ function tacLines(inc,B,dt){
   const ln=tacLineTo(B,q,f,c);
   if(!ln||(ln.src==='sp'&&spN>=TAC_SPMAX)){q.pf=0;q.src=null;continue}
   if(ln.src==='sp')spN++;
-  q.line=1;n++;q.src=ln.src;q.len=ln.len;q.pf=ln.pf;q.lent=ln.ent;q.lu=ln.u;
+  q.line=1;n+=TAC_WET2[q.task]?2:1;q.src=ln.src;q.len=ln.len;q.pf=ln.pf;q.lent=ln.ent;q.lu=ln.u;
   // 經過高溫空間的水帶可能燒破
   if(ln.src==='pump'&&q.f>=0&&!q.burst){
    const path=tacPath(B,tacEF(B,ln.ent),ln.ent.c,q.f,q.c);
@@ -1164,14 +1175,14 @@ function tacIncident(inc,dt,first,flow){
   if(B.doneT>=3&&!B.done){B.done=1;
    B.burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
    const half=B.burnt>B.R*B.F*.5;
-   if(half){S.rep-=5;if(S.rep<=0){S.rep=0;S.over=true}}
+   if(half&&!inc.train){S.rep-=5;if(S.rep<=0){S.rep=0;S.over=true}}
    if(B.hoax)radio(inc,first?first.cs:'現場',tacFlr(B,B.hint)+' 各戶查證完畢，查無火煙與傷患，'+(inc.pm.mal?'研判為惡作劇謊報，建議轉報 110 究辦。':'研判為善意誤報。'));
    else radio(inc,first?first.cs:'現場',(half?'建物大部分燒毀，火勢因燃料耗盡熄滅（評鑑 -5）':'火勢完全撲滅、殘火處理完成')+'，救出 '+B.resc+' 名、送醫 '+B.tx+' 名'+(B.lost?'、罹難 '+B.lost+' 名':'')+(B.burnt?'，燒毀 '+B.burnt+' 室':'')+'。');
    if(B.st.media)repGain(2);
    // 親自指揮的戰術案件：依結案報告等級累積評鑑
-   const rg=B.played?{S:6,A:4,B:2,C:1}[(B.report0=tacReport(inc,B)).grade]||0:0;
+   const rg=B.played&&!inc.train?{S:6,A:4,B:2,C:1}[(B.report0=tacReport(inc,B)).grade]||0:0;
    if(rg){const g=repGain(rg);radio(inc,'受理','戰術指揮成果（'+B.report0.grade+' 級）：評鑑 +'+g.toFixed(1)+'。')}
-   if(!B.paid){B.paid=1;S.money+=B.tx*400;S.score+=B.tx*50+(B.lodd?0:60)}
+   if(!B.paid&&!inc.train){B.paid=1;S.money+=B.tx*400;S.score+=B.tx*50+(B.lodd?0:60)}
    tacEvt(inc,B,'milestone','結案');
    B.report=tacReport(inc,B);if(B.played)tacShowRep(B.report)}}
  else B.doneT=0;

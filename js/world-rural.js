@@ -2,14 +2,17 @@
 // 地形：高屏溪（東緣）、山區（東北）、南側海岸與魚塭、其餘為農田；道路為不規則的省道、鄉道與農路
 'use strict';
 // 鄉鎮中心（分隊在中心右下一格，見 SABS）
-const RTOWN=[{n:'旗山',c:[118,62],r:5},{n:'美濃',c:[131,50],r:4},{n:'大樹',c:[116,94],r:4},{n:'林園',c:[78,128],r:5},{n:'六龜',c:[138,21],r:3}];
-const riverX=y=>141+3*Math.sin(y/9)+1.2*Math.sin(y/3.7);
-const mtnEdge=x=>36+5*Math.sin(x/6.5)+(x>=133?(x-133)*2.6:0);   // 這條線以北為山區；越往東山區越往南延伸
-const seaEdge=x=>141+2*Math.sin(x/6)+Math.sin(x/2.3);
+// 座標為相對市區左上角 (OX,OY)；每次生成地圖時由 RTOWN0 重設，位移後加上 (OX,OY)
+const RTOWN0=[[118,62],[131,50],[116,94],[78,128],[138,21],[41,-16],[65,-12]];
+const RTOWN=[{n:'旗山',r:5},{n:'美濃',r:4},{n:'大樹',r:4},{n:'林園',r:5},{n:'六龜',r:3},{n:'路竹',r:4},{n:'阿蓮',r:3}];
+const riverX=y=>OX+141+3*Math.sin((y-OY)/9)+1.2*Math.sin((y-OY)/3.7);
+const mtnEdge=x=>OY+36+5*Math.sin((x-OX)/6.5)+(x-OX>=133?(x-OX-133)*2.6:0);   // 這條線以北為山區；越往東山區越往南延伸
+const seaEdge=x=>OY+141+2*Math.sin((x-OX)/6)+Math.sin((x-OX)/2.3);
 function ruralTerrain(){
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){
   if(inCity(x,y))continue;
   const k=K(x,y),rx=riverX(y);
+  if(TR[k]===1)continue;                              // 先前畫好的海面（西南海岸）保留
   let t=5;                                            // 預設農田
   if(Math.abs(x-rx)<1.6)t=1;                          // 高屏溪
   else if(y>seaEdge(x)&&x<rx)t=1;                     // 南側海岸
@@ -24,6 +27,10 @@ function ruralTerrain(){
  // 東側丘陵小樹林
  for(let i=0;i<10;i++){const cx=CITY+2+Math.random()*30,cy=60+Math.random()*60,r=1+Math.random()*2;
   for(let x=Math.floor(cx-r);x<=cx+r;x++)for(let y=Math.floor(cy-r);y<=cy+r;y++){if(x>=0&&y>=0&&x<N&&y<N&&TR[K(x,y)]===5&&!inCity(x,y)&&Math.random()<.8)TR[K(x,y)]=2}}
+ // 林園石化工業區（TR 7）：林園東南、近海，儲槽與廠房
+ for(let x=84;x<=101;x++)for(let y=123;y<=139;y++){const k=K(x,y);
+  if(TR[k]===1||y>seaEdge(x)-1)continue;
+  if((x===84||x===101||y===123)&&Math.sin(x*2.1+y*1.3)>.4)continue;TR[k]=7}
  // 鄉鎮與聚落用地
  for(const t of RTOWN){const [cx,cy]=t.c;
   for(let x=cx-t.r;x<=cx+t.r;x++)for(let y=cy-t.r;y<=cy+t.r;y++){
@@ -57,7 +64,10 @@ function rroad(a,b,c,wig,g,name){
 function routeAStar(a,b,c,g){
  const cost=(x,y,k)=>{const r=RD[k],t=TR[k];
   if(t===4||inFacility(x,y))return INF;
-  if(t===1&&!HG[k])return r?.4:(c>=2?14:INF);
+  if(t===1&&!HG[k]){if(r)return .4;if(c<2)return INF;
+   // 開闊海面不鋪路（5×5 內幾乎都是水），窄河道才架橋
+   let w=0;for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++){const xx=x+a,yy=y+b;if(xx<0||yy<0||xx>=N||yy>=N||TR[K(xx,yy)]===1)w++}
+   return w>=20?INF:14}
   if(r===4)return 3;if(r===7)return 1.2;if(r)return .35;
   let adj=0;for(let j=0;j<4;j++){const xx=x+DIR[j][0],yy=y+DIR[j][1];if(xx>=0&&yy>=0&&xx<N&&yy<N&&RD[K(xx,yy)])adj=1}
   return (t===2?(g===RGK.PROV?1.6:2.2):t===6?3:t===0?.9:1)+(adj?1.6:0)+(inCity(x,y)?.6:0)};
@@ -77,7 +87,7 @@ function routeAStar(a,b,c,g){
 // 市區接線點：從市區邊緣附近找最接近 (x,y) 的既有幹道格（郊區的次要道路可能沒有通到邊緣）
 function cityEntry(x,y){
  let best=null,bd=1e9;
- for(let a=Math.max(0,x-14);a<=Math.min(CITY-1,x+14);a++)for(let b=Math.max(0,y-14);b<=Math.min(CITY-1,y+14);b++){
+ for(let a=Math.max(OX,x-14);a<=Math.min(OX+CITY-1,x+14);a++)for(let b=Math.max(OY,y-14);b<=Math.min(OY+CITY-1,y+14);b++){
   const r=RD[K(a,b)];if(!r||r===1||r===4||r===5||r===7||HG[K(a,b)])continue;
   const d=Math.hypot(a-x,b-y)-(r===3?2:0);if(d<bd){bd=d;best=[a,b]}}
  return best||[Math.min(CITY-1,x),Math.min(CITY-1,y)]}
@@ -93,6 +103,10 @@ function ruralRoads(){
     if(s>0&&nb>1&&!RD[K(x,y)])break;
     rset(x,y,1,RGK.PATH);
     if(Math.random()<.25)hz=!hz;if(hz)x+=Math.random()<.85?1:-1;else y+=Math.random()<.85?1:-1}}}
+ // 工業區道路：大街廓棋盤（每 4 格一條），再接到林園市區
+ for(let x=84;x<=101;x++)for(let y=123;y<=139;y++){const k=K(x,y);if(TR[k]!==7)continue;
+  if((x-84)%5===0||(y-123)%4===0){RD[k]=2;RGF[k]=RGK.TWN}}
+ rroad(T['林園'],[86,127],2,.05,RGK.TWN,'工業一路');
  // 省道與縣道：市區邊緣接到各鄉鎮，再串連鄉鎮
  const edgeY=y=>RR.reduce((b,v)=>Math.abs(v-y)<Math.abs(b-y)?v:b,RR[0]);
  const edgeX=x=>RC.reduce((b,v)=>Math.abs(v-x)<Math.abs(b-x)?v:b,RC[0]);
@@ -111,7 +125,10 @@ function ruralRoads(){
  // 山區道路只有少數幾條：美濃往六龜為省道（台 27，可通大型車），其餘為產業道路
  rroad(T['美濃'],T['六龜'],3,.22,RGK.PROV,'台27');
  rroad(T['六龜'],[136,2],5,.25,RGK.IND,'台20');
- rroad([T['旗山'][0]-2,T['旗山'][1]-5],[110,8],5,.25,RGK.IND);
+ // 市區東北山林：從市區邊緣兩條產業道路進山，接到台 20 與美濃，不留死路
+ rroad(cityEntry(86,30),T['六龜'],5,.2,RGK.IND,'高36');
+ rroad(cityEntry(96,12),[118,14],5,.2,RGK.IND);
+ rroad([118,14],T['美濃'],5,.2,RGK.IND);
  // 農路：從鄉間道路分岔出去的短路，會轉彎、有些是死路
  const seeds=[];for(let x=0;x<N;x++)for(let y=0;y<N;y++)if(!inCity(x,y)&&RD[K(x,y)]>=2&&RD[K(x,y)]<=3)seeds.push([x,y]);
  for(let i=0;i<120&&seeds.length;i++){let [x,y]=seeds[Math.floor(Math.random()*seeds.length)],d=Math.floor(Math.random()*4);
@@ -135,8 +152,9 @@ function ruralRoads(){
   if(!near)continue;
   for(let a=0;a<2;a++)for(let b=0;b<2;b++){const kk=K(Math.min(N-1,x+a),Math.min(N-1,y+b));if(!RD[kk]&&TR[kk]===5)TR[kk]=0}}}
 // 鄉間地址：最近的鄉鎮＋里名／路名
-const RADDR={'旗山':['中山路','延平一路','旗甲路','中華路'],'美濃':['中山路','美興街','泰安路','中正路'],'大樹':['中興路','龍目路','竹寮路','檨腳路'],'林園':['林園北路','沿海路','東林西路','王公路'],'六龜':['光復路','中正路','新威路','荖濃路']};
+const RADDR={'路竹':['中山路','大社路','國昌路','竹東街'],'阿蓮':['中正路','民生路','崗山北路','復安路'],'旗山':['中山路','延平一路','旗甲路','中華路'],'美濃':['中山路','美興街','泰安路','中正路'],'大樹':['中興路','龍目路','竹寮路','檨腳路'],'林園':['林園北路','沿海路','東林西路','王公路'],'六龜':['光復路','中正路','新威路','荖濃路']};
 function ruralAddr(x,y){
+ for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const xx=x+a,yy=y+b;if(xx>=0&&yy>=0&&xx<N&&yy<N&&TR[K(xx,yy)]===7)return'林園石化工業區 工業'+pick(['一','二','三','四'])+'路'+(1+Math.floor(Math.random()*90))+'號'}
  let b=RTOWN[0],bd=1e9;for(const t of RTOWN){const d=Math.hypot(t.c[0]-x,t.c[1]-y);if(d<bd){bd=d;b=t}}
  const near=bd<=b.r+1;
  return b.n+'區'+(near?pick(RADDR[b.n])+(1+Math.floor(Math.random()*400))+'號':pick(['農路','產業道路','鄉道','堤防道路'])+'旁 '+pick(['一','二','三','五','七','九'])+'鄰')}
@@ -171,9 +189,9 @@ function ruralDetail(){
  for(const t of RTOWN){for(let tries=0;tries<30;tries++){const x=t.c[0]+Math.round((Math.random()-.5)*2*t.r),y=t.c[1]+Math.round((Math.random()-.5)*2*t.r),k=K(x,y);
   if(x<0||y<0||x>=N||y>=N||RD[k]||TR[k]!==0||inFacility(x,y))continue;CROP[k]=8;break}}
  // 灌溉水圳：從高屏溪或山腳往平原流，沿田埂轉折，不穿越道路以外的設施（遇路以涵洞通過）
- const starts=[[riverX(70)-2,70],[riverX(100)-2,100],[riverX(125)-2,125],[124,mtnEdge(124)+1],[112,mtnEdge(112)+1],[128,mtnEdge(128)+2]];
+ const starts=[[riverX(OY+70)-2,OY+70],[riverX(OY+100)-2,OY+100],[riverX(OY+125)-2,OY+125],[OX+124,mtnEdge(OX+124)+1],[OX+112,mtnEdge(OX+112)+1],[OX+128,mtnEdge(OX+128)+2],[OX+30,OY-10],[OX+55,OY-6]];
  for(const s of starts){let x=Math.round(s[0]),y=Math.round(s[1]),d=x>CITY+18?1:2;
-  const tx=CITY+2+Math.random()*20,ty=s[1]+20+Math.random()*25;
+  const tx=s[1]<OY?s[0]+(Math.random()-.5)*30:OX+CITY+2+Math.random()*20,ty=s[1]<OY?OY-1:s[1]+20+Math.random()*25;
   for(let i=0;i<70;i++){
    if(x<0||y<0||x>=N||y>=N||inCity(x,y))break;const k=K(x,y);
    if(TR[k]===1||TR[k]===2&&i>3)break;
@@ -182,7 +200,7 @@ function ruralDetail(){
    if(Math.random()<.25)d=Math.abs(dx)>Math.abs(dy)?(dx>0?0:1):(dy>0?2:3);
    x+=DIR[d][0];y+=DIR[d][1]}}
  // 高壓電塔線：從市區東緣往東南穿過農田到高屏溪
- PYLON=[];const a=[CITY+1,56],b=[138,116],n=14;
+ PYLON=[];const a=[OX+CITY+1,OY+56],b=[OX+138,OY+116],n=14;
  for(let i=0;i<=n;i++)PYLON.push([a[0]+(b[0]-a[0])*i/n+.5,a[1]+(b[1]-a[1])*i/n+.5])}
 // 台 88 快速道路：國道一號往東，高架經大寮一帶到高屏溪（往屏東），沿途幾處匝道
 function expressway88(){
@@ -197,8 +215,8 @@ function expressway88(){
 // 道路分級：依生成時的指定（RGF）、功能類別（RD）與所在區域決定每格的地面道路等級 RG
 function roadGrades(){
  // 市區的台 1 線：中段一條南北向幹道
- const c1=RC.reduce((b,v)=>Math.abs(v-36)<Math.abs(b-36)?v:b,RC[0]),cells=[];
- for(let y=0;y<CITY;y++){const k=K(c1,y);if(RD[k]>=2&&RD[k]!==4&&RD[k]!==7){RGF[k]=RGK.PROV;cells.push([c1,y])}}
+ const c1=RC.reduce((b,v)=>Math.abs(v-OX-36)<Math.abs(b-OX-36)?v:b,RC[0]),cells=[];
+ for(let y=OY;y<OY+CITY;y++){const k=K(c1,y);if(RD[k]>=2&&RD[k]!==4&&RD[k]!==7){RGF[k]=RGK.PROV;cells.push([c1,y])}}
  ROUTES.push({n:'台1',g:RGK.PROV,cells});
  const inTown=(x,y)=>RTOWN.some(t=>Math.hypot(x-t.c[0],y-t.c[1])<=t.r+1.5);
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y),r=RD[k];

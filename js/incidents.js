@@ -13,7 +13,9 @@ function arrNeed(level,wild,trap){
  const order=['11','21','57','61','75','71','履','41','91'];
  return order.filter(c=>acc[c]).map(c=>{
   const als=c==='91'&&trap>=1;
-  return G(ALT[c]||[c],acc[c],LB[c]+(c==='91'?(als?' ALS':' BLS'):''),als?1:0)})}
+  // 山區（WARR）：越野警備車可代替指揮車與救助車
+  const codes=(ALT[c]||[c]).concat(wild&&(c==='41'||c==='71')?['43']:[]);
+  return G(codes,acc[c],LB[c]+(c==='91'?(als?' ALS':' BLS'):''),als?1:0)})}
 function mkFire(d){
  const area=Math.round((30+Math.random()*Math.random()*(d.wild?520:300))/5)*5;
  const load=d.fac?wpick({'高':.45,'極高':.4,'中':.15}):d.wild?wpick({'中':.5,'高':.4,'低':.1}):
@@ -156,6 +158,8 @@ function mkLog(k,d,inc){
   return calmPass(L,d,inc)}
 function zoneOf(x,y){
  for(let i=0;i<4;i++){const c=cls(x+DIR[i][0],y+DIR[i][1]);if(c===4||c===7)return 'hiway'}
+ if(ter(x,y)===7)return 'industry';
+ for(let i=0;i<4;i++)if(ter(x+DIR[i][0],y+DIR[i][1])===7)return 'industry';
  if(ter(x,y)===4)return 'airport';
  for(let i=0;i<4;i++)if(ter(x+DIR[i][0],y+DIR[i][1])===4)return 'airport';
  if(ter(x,y)===3)return 'port';

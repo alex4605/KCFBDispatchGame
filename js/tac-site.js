@@ -19,7 +19,7 @@ function tacSite(inc,B){
  for(const s of TAC_SIDES){const v=TAC_SDV[s],x=inc.x+v[0],y=inc.y+v[1];
   const ok=x>=0&&y>=0&&x<N&&y<N,k=ok?K(x,y):-1,r=ok?RD[k]:0,t=ok?TR[k]:0;
   const road=r>0&&t!==1?r:0;
-  sd[s]={road,big:road>=2&&road!==5,nm:road?(RGN[RG[k]]||TAC_RDN[road]||'道路'):t===1?'水域':t===5?'農田':t===6?'魚塭':t===2&&!inCity(x,y)?'樹林':'鄰棟'}}
+  sd[s]={road,big:road>=2&&road!==5,nm:road?(RGN[RG[k]]||TAC_RDN[road]||'道路'):t===1?'水域':t===5?'農田':t===6?'魚塭':t===7?'廠區':t===2&&!inCity(x,y)?'樹林':'鄰棟'}}
  const arr=tacDirOf(inc.ax-inc.x,inc.ay-inc.y);
  if(!sd[arr].road)sd[arr]={road:2,big:true,nm:'道路'};
  B.sd=sd;B.arr=arr;
@@ -148,8 +148,8 @@ function tacExtraEnts(B){const L=B.L;
 // ===== 車輛停放模型（模擬端，以公尺計；畫面依此繪製） =====
 // 每側可停長度＝建物面寬＋兩側各 8 公尺（鄰棟門前）；一般道路兩排、窄路一排；車距 2 公尺
 // 停放順序依車種優先度由正面中央往兩側排；作業中的雲梯車固定在目標窗戶正對處；停不下的停在畫面外，步行與水帶都要多算
-const TAC_VLEN={'11':8.5,'16':6.5,'21':11,'31':10.5,'41':5.5,'51':9,'57':8.5,'61':9.5,'71':8.5,'75':7.5,'91':6,'01':9.5,'搜':9,'99':6,'警':5.5,'履':4,'艇':7};
-const TAC_VPRI={'21':0,'31':0,'11':1,'16':1,'57':1,'71':2,'搜':2,'51':2,'01':2,'75':3,'履':3,'61':4,'41':5,'91':6,'99':6,'警':7,'艇':8};
+const TAC_VLEN={'11':8.5,'16':6.5,'21':11,'31':10.5,'41':5.5,'51':9,'57':8.5,'61':9.5,'71':8.5,'75':7.5,'91':6,'01':9.5,'搜':9,'99':6,'警':5.5,'43':5.3,'履':4,'艇':7};
+const TAC_VPRI={'21':0,'31':0,'11':1,'16':1,'57':1,'71':2,'搜':2,'51':2,'01':2,'75':3,'履':3,'61':4,'41':5,'91':6,'99':6,'警':7,'43':6,'艇':8};
 const TAC_VGAP=2;
 function tacMPU(inc,B){const d=KIND[inc.k];return d.fac||/warehouse|chemfire|wastefire/.test(inc.k)?10:(B.F>=7||/dept|hosp/.test(inc.k))?8:4.5}
 function tacParkModel(inc,B){

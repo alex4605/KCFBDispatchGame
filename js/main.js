@@ -92,12 +92,19 @@ document.body.addEventListener('click',e=>{
  if(D.hire){if(S.money>=2500){S.money-=2500;S.tp[shopSt]++}dirty();return}
  if(D.buy){const c=D.buy;if(S.money>=CODE[c].c){S.money-=CODE[c].c;addU(shopSt,c)}dirty();return}
  if(D.newst){if(S.money>=12000&&S.nst<SPOT.length){S.money-=12000;
-  const i=S.nst++;addU(i,'11');addU(i,'11');addU(i,'11');addU(i,'91');addU(i,'41')}dirty();return}
+  const i=S.nst++;addU(i,'11');addU(i,'11');addU(i,'11');addU(i,'91');addU(i,'41');
+  // 鄉間分隊另配越野警備車；新設分隊的第一輛幫浦車為新式 CAFS
+  if(SABS[SPOT[i].n]||SABSN[SPOT[i].n])addU(i,'43');
+  const nu=S.units.find(u=>u.si===i&&u.code==='11');if(nu)nu.cafs=1}dirty();return}
  if(D.u){selU=+D.u;const u=S.units.find(x=>x.id===selU);if(u&&u.st!=='idle')center(u);dirty();return}
  if(D.uc){selU=null;dirty();return}
  if(D.oos){const u=S.units.find(x=>x.id===+D.oos);if(u&&u.st==='idle'){u.st='oos';u.oosT=60}dirty();return}
  if(D.ret){const u=S.units.find(x=>x.id===+D.ret);if(u&&u.st==='oos'){u.st='idle';u.oosT=0}dirty();return}
  if(D.sel){if(!b.closest('#calls'))selInc(+D.sel);return}
+ // 消防學校
+ if(D.gosch){sel=SCHOOL_ID;selU=null;if(SCHOOL)center({x:SCHOOL.p[0],y:SCHOOL.p[1]});dirty();return}
+ if(D.train){trainStart(+D.train);return}
+ if(D.trainstop){trainEnd('已放棄訓練。');return}
  if(D.duty){
   const u=S.units.find(x=>x.id===+D.duty),d=S.duties.find(x=>x.id===sel);
   if(u&&d&&!d.unit){const p=chase(getF(d,modeOf(u.code)),u);
@@ -105,7 +112,7 @@ document.body.addEventListener('click',e=>{
    else msg=u.cs+' 無法抵達勤務地點'}
   dirty();return}
  const inc=S.inc.find(x=>x.id===sel);if(!inc)return;
- if(D.tac){tacOpen(inc);dirty();return}
+ if(D.tac){if(tacUnlocked()||inc.train)tacOpen(inc);else msg='需先通過消防學校三關訓練，才能接管現場指揮權';dirty();return}
  if(D.note){
   const el=$('note'),er=$('nerr');
   if(!el.value.trim()){if(er)er.textContent='輸入內容後再儲存';return}
@@ -185,7 +192,7 @@ $('btnFs').onclick=()=>{
 function setZoom(z){
  fly=null;
  const mx=cam.x+cw/2,my=cam.y+ch/2,old=cell();
- zoom=Math.max(.18,Math.min(6,z));zoomT=performance.now();
+ zoom=Math.max(.12,Math.min(6,z));zoomT=performance.now();
  cam.x=mx/old*cell()-cw/2;cam.y=my/old*cell()-ch/2;clamp()}
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);
@@ -231,11 +238,13 @@ cv.addEventListener('pointerup',e=>{
  for(const i of S.duties){const d=Math.hypot(i.x+.5-x,i.y+.5-y);if(d<bd){bd=d;best=i.id}}
  // 地圖現場模式：點到車輛時選取車輛（案件選取不變）
  if(c>=SC_MAP){const uh=mapUnitHit(x,y);if(uh){selU=uh;dirty();return}}
+ // 點到消防學校
+ if(SCHOOL&&Math.hypot(SCHOOL.p[0]+.5-x,SCHOOL.p[1]+.5-y)<Math.max(1,18/c)&&best===null){sel=SCHOOL_ID;selU=null;dirty();return}
  sel=best;selU=null;
  const bi=S.inc.find(i=>i.id===best);if(bi&&scMode==='map'&&!bi.wf&&c<SC_MAP)flyTo(bi);
  dirty()});
 // 地圖現場模式：雙擊放大中的案件進入戰術指揮
-cv.addEventListener('dblclick',()=>{if(cell()<SC_MAP)return;const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)){fly=null;tacOpen(inc);dirty()}});
+cv.addEventListener('dblclick',()=>{if(cell()<SC_MAP)return;const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)&&(tacUnlocked()||inc.train)){fly=null;tacOpen(inc);dirty()}});
 function size(){
  const w=$('mapwrap');dpr=window.devicePixelRatio||1;bgScale=0;
  cw=w.clientWidth;ch=w.clientHeight;
@@ -245,7 +254,7 @@ function size(){
  if(document.getElementById('scenewrap').style.display!=='none')sizeScene()}
 window.addEventListener('resize',()=>{size();if(TAC.open)sizeTac()});
 // 雙擊現場畫面進入戰術指揮
-scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)){tacOpen(inc);dirty()}});
+scv.addEventListener('dblclick',()=>{const inc=S.inc.find(x=>x.id===sel);if(inc&&tacHas(inc)&&(tacUnlocked()||inc.train)){tacOpen(inc);dirty()}});
 size();reset();size();
 let faults=0;
 let frameN=0;
@@ -254,6 +263,7 @@ function loop(ts){
  try{
   // 戰術畫面開著時整體時間放慢（戰略與戰術共用同一個時鐘）
   if(!paused)step(dt*(TAC.open?TAC.spd:1));
+  trainStep();
   if(TAC.open)drawTac();
   else{flyStep(ts);draw();if((++frameN&1)===0)drawScene()}
   uiT+=dt;if(uiT>.28){uiT=0;ui();if(TAC.open)tacUI()}
