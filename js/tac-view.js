@@ -777,7 +777,7 @@ function tacSideHTML(inc){
   h+='<div class="hd mt">現場'+tacCivWho(inc)+(tacCivOn(B)?'（'+B.civ.n+' 人，可詢問屋內資訊）':'（已離開）')+'</div><div class="civlog">';
   for(const l of(B.civ.log||[]).slice().reverse())h+='<div class="'+(l.w==='民'?'cm':'cf')+'"><b>'+(l.w==='民'?tacCivWho(inc):'指揮官')+'</b>'+esc(l.s)+'</div>';
   h+='</div>';
-  if(tacCivOn(B)){h+='<div class="tasks">';for(const a of TAC_ASK)if(!B.civ.asked[a.k])h+='<button data-task="'+a.k+'">'+a.q+'</button>';h+='</div>'}}
+  if(tacCivOn(B)&&TAC_ASK.some(a=>!B.civ.asked[a.k]))h+='<div class="sub">指揮官持續詢問中…</div>'}
  // ===== 分頁：水線 =====
  h+='\u0001wt';
  // 水源與水線

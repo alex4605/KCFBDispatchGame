@@ -155,7 +155,15 @@ function tacCivOpen(inc,B){
  say(s);
  say(B.vtot>0?(Math.random()<.65?'裡面好像還有人沒出來！拜託快一點！':'我不確定大家有沒有都出來。'):(Math.random()<.8?'我們這邊的人都出來了。':'不知道樓上還有沒有人。'));
  if(B.gas!==undefined&&Math.random()<.35)say('廚房好像有瓦斯桶，要小心。');
- me('收到，請先退到警戒線外，有其他狀況再告訴我們。')}
+ me('收到，請先退到警戒線外，有其他狀況再告訴我們。');
+ B.civ.next=S.t+5}
+// 對談自動進行：指揮官每隔約 6 秒依序追問下一個問題（不需玩家按按鈕），民眾離開或問完為止
+function tacCivStep(inc,B){
+ if(!tacCivOn(B))return;
+ if(!B.civ.log){tacCivOpen(inc,B);return}
+ if(S.t<(B.civ.next||0))return;
+ const a=TAC_ASK.find(x=>!B.civ.asked[x.k]);if(!a)return;
+ tacAsk(inc,B,a.k);B.civ.next=S.t+6}
 const tacCivOn=B=>B.civ&&S.t<B.civ.until&&Object.keys(B.civ.asked).length<TAC_ASK.length;
 function tacAsk(inc,B,k){
  if(!tacCivOn(B)||B.civ.asked[k])return;B.civ.asked[k]=1;
