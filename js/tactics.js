@@ -5,7 +5,7 @@
 // 可進入戰術指揮的案類：樓層數、格局（house 透天、corridor 走廊式、open 開放賣場／廠房）、每排空間數、樓梯座數
 // b：有地下一層（B1）的機率
 const TACK={mfire:{f:[2,4],lay:'house',k:[1,1],b:0},hifire:{f:[7,10],lay:'corridor',k:[3,4],b:.6},fact:{f:[1,2],lay:'open',k:[3,3],st:1,b:.3},
- deptfire:{f:[5,7],lay:'open',k:[3,4],st:2,b:.7},skyscraper:{f:[11,14],lay:'corridor',k:[3,3],b:.8},hospfire:{f:[4,6],lay:'corridor',k:[4,4],b:.5},
+ deptfire:{f:[5,7],lay:'open',k:[3,4],st:2,b:.7,spk:1},skyscraper:{f:[11,14],lay:'corridor',k:[3,3],b:.8,spk:1},hospfire:{f:[4,6],lay:'corridor',k:[4,4],b:.5},
  // 煮食不慎：公寓或透天的廚房起火；誤報謊報：沒有火，查證報案的樓層
  cook:{f:[3,7],lay:'corridor',k:[2,3],b:0,cook:1},hoax:{f:[3,8],lay:'corridor',k:[3,3],b:.3,hoax:1},
  // 工廠類：倉庫、農地工廠、鐵皮屋、化工廠、傳統市場（開放廠區，可燃物多）
@@ -13,7 +13,7 @@ const TACK={mfire:{f:[2,4],lay:'house',k:[1,1],b:0},hifire:{f:[7,10],lay:'corrid
  tinfire:{f:[1,2],lay:'open',k:[1,2],st:1,b:0,vic:[0,1],thin:1},chemfire:{f:[1,2],lay:'open',k:[3,4],st:1,b:0,vic:[0,2],gas:.8},
  market:{f:[1,2],lay:'open',k:[3,4],st:1,b:.3,vic:[0,2],gas:.7},
  // 機構類：養護機構（臥床住民）、外籍移工宿舍（鐵皮隔間、防火門常被拆）
- nursing:{f:[2,4],lay:'corridor',k:[3,4],b:0,vic:[1,2],bed:[3,6]},dorm:{f:[2,4],lay:'corridor',k:[3,4],b:0,vic:[2,5],thin:1,poor:.7},
+ nursing:{f:[2,4],lay:'corridor',k:[3,4],b:0,vic:[1,2],bed:[3,6],spk:1,staff:1},dorm:{f:[2,4],lay:'corridor',k:[3,4],b:0,vic:[2,5],thin:1,poor:.7},
  // 地下室濃煙：地下停車場起火
  smoke:{f:[3,7],lay:'corridor',k:[3,3],b:1,bas:1,vic:[0,2]},
  // 離火未熄：屋主不在、戶門上鎖，廚房悶燒（缺氧，開門可能爆燃）
@@ -375,6 +375,10 @@ function tacInit(inc){
   if(ks.length){B.gas=pick(ks);B.gasF=Math.max(bf,Math.min(F-1,of+tacRint(-1,1)))}}
  tacCivInit(inc,B);
  B.thin=!!T.thin;B.fdK=new Set([bf]);
+ // 自動撒水設備：約 20% 因關閉、故障或水源不足而未動作
+ if(T.spk)B.spk={ok:Math.random()>.2,fl:{}};
+ // 養護機構：值班護理人員進行水平避難
+ if(T.staff)B.staff={n:tacRint(2,3),t:20};
  if(T.blast)B.dmg=.4;
  // 屋主不在：起火戶的戶門上鎖
  if(T.away||T.elder){const u=L.N[oc].u,en=u!==undefined?L.N.find(n=>n.u===u&&n.uent):L.N[oc];
@@ -826,6 +830,11 @@ function tacFire(inc,B,dt){
   x.o2+=(tg-x.o2)*Math.min(1,dt*.3);
   if(x.ty==='stair')continue;
   const nd=B.L.N[x.c];
+  // 自動撒水設備：房間溫度升高（h>.25）時撒水頭動作，壓制火勢、阻止經門與外牆延燒；送水口加壓時效果較好；火勢過猛（閃燃後）只能減緩
+  if(B.spk&&B.spk.ok&&x.ty==='room'&&x.f>=B.bf&&x.h>.25&&x.fu>0){
+   if(!x.spkOn){x.spkOn=1;if(!B.spk.fl[x.f]){B.spk.fl[x.f]=1;radio(inc,'受理','火警受信總機顯示'+tacFlr(B,x.f)+'撒水頭動作。');tacEvt(inc,B,'milestone',tacFlr(B,x.f)+'撒水頭動作')}}
+   // 撒水是「控制」：把火壓在約三成並阻止延燒，仍需小組進入撲滅；煙照樣會累積
+   x.wet=1;if(x.h>.32)x.h=Math.max(.32,x.h-dt*(x.h>.85?.004:.01)*(B.sp&&B.sp.on?1.5:1))}
   if(x.h>.2){x.bd=1;x.ovh=0}
   if(x.fu>0&&x.h>.02){
    let ox=.45+.55*x.v+(x.v&&B.ppvS&&B.ppvS.has(x.f*W+x.c)?.6:0)+(x.vv?.2:0)-(x.s>.85&&!x.v?.2:0);
@@ -1105,6 +1114,7 @@ function tacIncident(inc,dt,first,flow){
  B.sq=B.sq.filter(q=>!q.gone);
  tacFire(inc,B,dt);
  tacChemStep(inc,B,dt);
+ tacStaff(inc,B,dt);
  tacYardStep(inc,B,dt);
  tacExpo(inc,B,dt);
  tacGas(inc,B);

@@ -70,6 +70,8 @@ function tacHints(inc,B){
  if(B.T&&B.T.away&&B.cells.some(x=>x.o2<13&&x.h>.2))add(1,'起火戶門窗緊閉悶燒：破門前先備妥水線，開門後立即射水，防範爆燃。');
  if(B.cells.some(x=>x.li&&(x.emb||x.h>.05)))add(2,'鋰電池火災：撲滅後仍會熱失控復燃，需持續灌水冷卻並做殘火處理。');
  tacHazHints(inc,B,add);
+ if(B.spk&&!B.spk.ok&&B.cells.some(x=>x.h>.3))add(1,'自動撒水設備未動作：火勢會快速擴大，請優先壓制起火層並防止往上層延燒。');
+ if(B.spk&&B.spk.ok&&B.sp&&!B.sp.on&&Object.keys(B.spk.fl).length)add(2,'撒水頭已動作：送水口加壓可增強撒水效果。');
  // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
  const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
  if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
@@ -182,3 +184,14 @@ function tacGasMeas(inc,B,q,x){
  radio(inc,q.cs,tacNm(B,x.f,x.c)+'氣體偵測：O₂ '+r.o2+'%、LEL '+r.lel+'%、CO '+r.co+' ppm、H₂S '+r.h2s+' ppm、HCN '+r.hcn+' ppm'+
   (r.lel>=10?'。可燃氣體超標，禁止開口與任何火源！':bad.length?'。'+bad.join('、')+'超標，全程著空氣呼吸器。':'，各項正常。'));
  tacEvt(inc,B,r.lel>=10?'danger':bad.length?'warn':'milestone',tacNm(B,x.f,x.c)+'氣體偵測'+(bad.length?'：'+bad.join('、')+'超標':'正常'),r.lel>=25)}
+// 養護機構值班人員：每隔一段時間把起火層濃煙中的一名住民推床移到同層遠離火點、還沒有煙的房間（水平避難）；人員有限、濃煙太重就無法進行
+function tacStaff(inc,B,dt){
+ const S2=B.staff;if(!S2||S2.n<=0)return;
+ S2.t-=dt;if(S2.t>0)return;S2.t=45/S2.n;
+ const src=B.cells.filter(x=>x.ty==='room'&&x.vic>0&&x.s>.15&&x.s<.75&&x.h<.45).sort((a,b)=>b.s-a.s)[0];
+ if(!src)return;
+ const dst=B.cells.filter(x=>x.f===src.f&&x.ty==='room'&&x.c!==src.c&&x.s<.08&&x.h<.02&&tacPath(B,src.f,src.c,x.f,x.c).length).sort((a,b)=>tacGd(B,b.c,B.oc)-tacGd(B,a.c,B.oc))[0];
+ if(!dst){S2.n--;radio(inc,'受理','機構人員回報同層已無安全區域，人員撤離。');return}
+ src.vic--;dst.vic++;dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
+ radio(inc,'受理','機構護理人員將一名住民由'+tacNm(B,src.f,src.c)+'水平避難至'+tacNm(B,dst.f,dst.c)+'。');
+ if(src.s>.5&&Math.random()<.3){S2.n--;radio(inc,'受理','一名機構人員吸入濃煙不適，退出避難作業。')}}

@@ -400,6 +400,9 @@ function drawTac(){
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}}
  // 化學品危害區、場區遮雨棚與風向
  tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);
+ // 撒水頭動作的空間：藍色水滴
+ if(B.spk&&B.spk.ok&&vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.spkOn)continue;const r=G.r(n.c);
+  for(let k=0;k<5;k++){const ph=(T*1.5+k/5)%1;g.fillStyle='rgba(125,179,232,'+(.7*(1-ph)).toFixed(2)+')';g.beginPath();g.arc(r[0]+r[2]*(.15+.7*((k*37+n.c*11)%17/17)),r[1]+r[3]*(.15+ph*.7),2.2,0,TAU);g.fill()}}
  // 氣體偵測標記：量過的空間角落顯示「偵」，超標為紅色
  if(vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.gm)continue;const r=G.r(n.c),bad=tacGasBad(x.gm).length;
   g.fillStyle=bad?'#a8362f':'#2f5f8a';g.fillRect(r[0]+4,r[1]+r[3]-20,20,16);g.fillStyle='#eceae3';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('偵',r[0]+14,r[1]+r[3]-12)}
@@ -722,6 +725,8 @@ function tacSideHTML(inc){
  h+='<div class="hd mt">結構與設施</div><div class="twater">';
  if(!B.hoax){const dm=Math.min(1,B.dmg||0);h+='<div class="row"><span>結構受損（穩定度'+(inc.pm.stab||'—')+'）</span><span>'+Math.round(dm*100)+'% <span class="tbar"><i style="width:'+Math.round(dm*100)+'%;background:'+(dm>=.8?'var(--red)':dm>=.5?'var(--amb)':'var(--grn)')+'"></i></span></span></div>';
   if(B.cz)h+='<div class="row"><span>坍塌樓層</span><b style="color:var(--red)">'+[...B.cz].map(f=>tacFlr(B,f)).join('、')+'</b></div>'}
+ if(B.spk)h+='<div class="row"><span>自動撒水設備</span><span>'+(!B.spk.ok?'<b style="color:var(--red)">未動作（關閉或故障）</b>':Object.keys(B.spk.fl).length?'<b style="color:#7db3e8">動作中：'+Object.keys(B.spk.fl).map(f=>tacFlr(B,+f)).join('、')+'</b>'+(B.sp&&!B.sp.on?'（送水口加壓可增強）':''):'待機')+'</span></div>';
+ if(B.staff)h+='<div class="row"><span>機構人員</span><span>'+(B.staff.n>0?B.staff.n+' 名進行水平避難':'已撤離')+'</span></div>';
  if(B.gasL)h+='<div class="row"><span>瓦斯管線</span><span>'+(B.gasL.t>0?'<b style="color:var(--red)">持續供氣，欣高關閥約 '+Math.ceil(B.gasL.t)+' 秒</b>':'已關閥')+'</span></div>';
  if(B.rf)h+='<div class="row"><span>屋頂光電板</span><span>'+(B.rf.h>0?'<b style="color:var(--red)">燃燒 '+Math.round(B.rf.h*100)+'%</b>　'+(inc.pow>=2?'已斷電':'帶電中'):'已撲滅')+'</span></div>';
  if(B.ext)h+='<div class="row"><span>外牆室外機</span><span>'+(B.ext.h>0?'<b style="color:var(--red)">燃燒 '+Math.round(B.ext.h*100)+'%</b>（'+tacNm(B,B.ext.f,B.ext.c)+'窗外）':'已撲滅')+'</span></div>';
