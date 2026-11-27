@@ -10,7 +10,7 @@ function shiftWorld(dx,dy){
  for(let i=0;i<RC.length;i++)RC[i]+=dx;for(let i=0;i<RR.length;i++)RR[i]+=dy;
  FX+=dx;FY+=dy;FYE+=dx;OX=dx;OY=dy;
  for(const s of SPOT){if(s.p){s.p[0]+=dx;s.p[1]+=dy}if(s.x){s.x=[s.x[0]+dx,s.x[1]+dy]}if(s.cells)s.cells=s.cells.map(q=>[q[0]+dx,q[1]+dy])}
- for(const h of HOSP){h.p[0]+=dx;h.p[1]+=dy;h.cells=h.cells.map(q=>[q[0]+dx,q[1]+dy])}
+ for(const h of HOSP){h.p[0]+=dx;h.p[1]+=dy;h.cells=h.cells.map(q=>[q[0]+dx,q[1]+dy]);if(h.x)h.x=[h.x[0]+dx,h.x[1]+dy]}
  if(AP){AP.x0+=dx;AP.x1+=dx;AP.y0+=dy;AP.y1+=dy}
  RTOWN.forEach((t,i)=>t.c=[RTOWN0[i][0]+dx,RTOWN0[i][1]+dy]);
  for(const r of ROUTES)r.cells=r.cells.map(q=>[q[0]+dx,q[1]+dy])}

@@ -196,6 +196,7 @@ function build(){
  extendNorth();
  pruneIslands();
  for(const s of SPOT)if(!s.x||!RD[K(s.x[0],s.x[1])]){const e=nbRoad(s.p[0],s.p[1]);s.x=e||s.p}   // 接線點被清掉時重找
+ for(const h of HOSP)if(!h.x||!RD[K(h.x[0],h.x[1])]){let e=null;for(const q of h.cells){e=nbRoad(q[0],q[1]);if(e)break}h.x=e||h.p}
  roadGrades();
  indexLayers();
  ruralDetail();
