@@ -38,6 +38,10 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
     const full=[[A.x[0],A.x[1]],...pa];for(let i=1;i<full.length-1;i++){const k=K(...full[i]),kp=K(...full[i-1]),kn=K(...full[i+1]);
      if(HWL[k]&&(RD[kp]===4&&RD[kn]&&RD[kn]!==4&&RD[kn]!==7&&!HWL[kn]||RD[kn]===4&&RD[kp]&&RD[kp]!==4&&RD[kp]!==7&&!HWL[kp]))bad++}}
    return{un,bad,routes:ROUTES.length}});
+  // 救護車在國道（含高架層）上要能找到醫院
+  const hw=await p.evaluate(()=>{const bad=[];for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);if(!HWL[k]&&RD[k]!==4)continue;
+   const t=toHosp({x,y,code:'91'});if(!t.h||!t.p)bad.push([x,y])}return bad});
+  ok('國道上的救護車可到醫院',!hw.length,hw.slice(0,5));
   ok('所有分隊可達',!r.un.length,r.un);ok('國道不在交會格轉換層',!r.bad,r);ok('地圖無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='normal'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{S.day=4;for(let i=0;i<12000;i++){step(.05);if(i%50===0){reindex();for(const inc of S.inc)if(!onScene(inc).length)auto(inc)}}
