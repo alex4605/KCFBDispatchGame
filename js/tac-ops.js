@@ -78,7 +78,7 @@ function tacStnStep(inc,B,dt){
  // 氣瓶充填區：任一輛救助器材車到場即由司機自動開設（指揮官手動撤除後不再自動開設）
  if(!B.st.air&&!B.airOff&&onScene(inc).some(u=>u.code==='71'&&u.st==='work'))tacStnOpen(inc,B,'air',1);
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
-  if(s.u!==null&&!B.sq.some(q=>q.epa&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
+  if(s.u!==null&&!B.sq.some(q=>(q.epa||q.vol)&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
  // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，每 90 秒扣評鑑（最多 4 次）
  if(B.vtot&&!B.st.media&&!B.done){B.mediaT=(B.mediaT||60)-dt;

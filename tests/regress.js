@@ -72,5 +72,5 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    const B=inc.tac;if(!B)return{lock,crew,noTac:1};
    for(let i=0;i<40;i++){step(.05);trainStep()}for(const x of B.cells){x.h=0;x.emb=0}for(let i=0;i<40&&TRAIN.inc;i++){step(.05);trainStep()}
    return{lock,crew,open:TAC.open,pass1:TRAIN.pass[0],trainee:S.units.filter(u=>u.trainee&&!u.gone).length,msg}});
-  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^高雄/.test(c))&&!errs.length,r);await p.close()}
+  ok('消防學校第一關（訓練隊出動、判定通過、解散）',r.lock&&r.pass1&&!r.open&&!r.trainee&&r.crew.every(c=>/^訓中/.test(c))&&!errs.length,r);await p.close()}
  await b.close();console.log(fail?fail+' 項失敗':'全部通過');process.exit(fail?1:0)})();

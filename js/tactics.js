@@ -61,8 +61,14 @@ const TAC={open:false,id:null,sq:null,ord:null,hits:[],spd:.3,autoPause:true,ms:
 const TAC_AIR=110; // 滿瓶可在室內作業的秒數
 const TAC_LADR={'21':10,'31':7}; // 雲梯可達樓層數
 // 車種 → 小組類型；水庫車、指揮車、救護車不編成入室小組
+// 人員能力分級：移動與動作時間 t、作業效率 w、疲勞累積 fat
+// 菜鳥（僅教學）＜義消＝菜鳥（且不執行高危險任務）＜義消+（接近正職）＜正職＜特搜
+const TAC_SKL={rookie:{n:'菜鳥',t:1.25,w:.7,fat:1.3},vol:{n:'義消',t:1.25,w:.7,fat:1.3},volp:{n:'義消+',t:1.1,w:.9,fat:1.15},reg:{n:'正職',t:1,w:1,fat:1},usar:{n:'特搜',t:.88,w:1.2,fat:.85}};
+const tacSk=q=>TAC_SKL[q.sk||(q.rookie?'rookie':q.usar?'usar':'reg')];
+// 義消（一般）不執行的高危險任務：深入火場、容易發生 MAYDAY
+const TAC_VOLNO={attack:1,search:1,search2:1,rit:1,ritgo:1,vvent:1,hydro:1,confine:1,sky:1,fwdgo:1,roofres:1,dctrl:1,npv:1,vent:1};
 const TAC_SQ={'機':'pump','43':'resc','99':'med','51':'hazmat','01':'pump','11':'pump','16':'pump','57':'pump','21':'ladder','31':'ladder','71':'resc','搜':'resc','75':'vent','履':'robot'};
-const TAC_TYN={med:'特搜醫療組',hazmat:'化災組',epa:'化災應變隊',pump:'幫浦組',ladder:'雲梯組',resc:'救助組',vent:'排煙組',robot:'機器人'};
+const TAC_TYN={crew:'人力組',med:'特搜醫療組',hazmat:'化災組',epa:'化災應變隊',pump:'幫浦組',ladder:'雲梯組',resc:'救助組',vent:'排煙組',robot:'機器人'};
 const TAC_TASK={sky:'車頂砲塔射水',beat:'撲打',brk:'開設防火線',gas:'氣體偵測',ident:'化物辨識',plug:'止漏',dress:'換裝',decon:'除污',fwdref:'前進指揮所換瓶',fwdgo:'前往設置前進指揮所',idle:'待命',move:'移動',truck:'移車',stand:'送水口加壓',hold:'守線',attack:'入室攻擊',trans:'過渡射水',
  guard:'周界防護',cover:'周界防護（鄰棟）',confine:'侷限火勢',search:'初期搜索',search2:'次級搜索',carry:'搬運傷者',
  vent:'破窗排煙',hydro:'水霧排煙',roof:'屋頂排煙',ppv:'正壓排煙',npv:'負壓排煙',vvent:'垂直排煙',force:'破壞進入',dctrl:'門控進入',overhaul:'殘火處理',ladder:'雲梯救援',master:'雲梯射水',roofres:'屋頂救援',
@@ -414,7 +420,8 @@ function tacSync(inc){
  tacEpaSync(inc,B);
  // 集結區開設後，新到小組直接在集結區那側整裝待命
  if(B.st&&B.st.stage)for(const q of B.sq)if(!q.seen){q.seen=1;if(q.ty!=='ladder')q.side=B.st.stage.side}
- B.sq=B.sq.filter(q=>{if(q.epa)return true;const u=S.units.find(x=>x.id===q.u);
+ tacVolSync(inc,B);
+ B.sq=B.sq.filter(q=>{if(q.epa||q.vol)return true;const u=S.units.find(x=>x.id===q.u);
   if(u&&u.inc===inc.id&&u.st==='work')return true;
   if(q.down)B.mayday=Math.max(0,B.mayday-1);
   if(B.sp&&B.sp.u===q.u){B.sp.on=0;B.sp.u=null}
@@ -450,13 +457,15 @@ function tacStepTime(B,q,ns){
  if(q.task==='attack'&&q.line)t*=1.4;
  if(q.carry)t*=1.5;
  if(q.ty==='robot')t*=1.6;
- if(q.rookie)t*=1.15;                      // 訓練假想單位（新進人員）動作較慢
+ t*=tacSk(q).t;                            // 能力分級：菜鳥、義消較慢，特搜較快
  if(q.task==='ritgo')t*=.8;
  return t*(1+(q.fat||0)*.6)}
 // 能力：回傳 '' 表示可以，否則為不可執行的原因
 function tacCan(B,q,k,f,c){
  if(q.down)return'該組已倒地，等待 RIT 救援';
  {const w=tacHazCan(B,q,k);if(w)return w}
+ if(q.sk==='vol'&&(TAC_VOLNO[k]||(k==='move'&&f>=0&&(tacCel(B,f,c).h>.05||tacCel(B,f,c).s>.4))||(k==='dctrl'&&f>=0)))return'義消（一般）不執行入室攻擊、搜索等高危險任務（可由義消+執行）';
+ if(q.vol&&(k==='attack'||k==='sky'||k==='confine'||k==='trans'||k==='cover'||k==='hydro'))return'義消徒步到場、沒有車輛水線';
  if(q.ty==='med'&&k!=='move'&&k!=='exit')return'特搜醫療組在屋外支援傷患處置，不進入建物';
  if(k==='beat'||k==='brk')return tacWildCan(B,q,k,c);
  if(q.task==='station')return'駐守'+tacStnDef(q.stn).n+'，請先撤除站點';
@@ -588,7 +597,7 @@ function tacDown(inc,B,q,why){
 // 小組每幀更新：空氣、受傷、移動、任務執行
 function tacSquad(inc,B,q,dt,eff){
  if(tacHazStep(inc,B,q,dt))return;
- const inside=tacIn(q),cl=inside?tacCel(B,q.f,q.c):null,cmd=B.st.icp?1.15:1;
+ const inside=tacIn(q),cl=inside?tacCel(B,q.f,q.c):null,cmd=(B.st.icp?1.15:1)*tacSk(q).w;
  if(q.task==='station')return;
  if(q.down){
   q.hp-=dt*.0025*(1+(cl?cl.h*2:0));
@@ -603,7 +612,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(inside&&q.ty!=='robot'){
   const hv=q.task==='attack'||q.task==='search'||q.task==='ritgo'||q.carry;
   q.air-=dt/TAC_AIR*(hv?1.15:1)*(q.carry?1.3:1)*(1+q.fat*.3);
-  q.fat=Math.min(1.2,q.fat+dt/220*(hv?1.4:1));
+  q.fat=Math.min(1.2,q.fat+dt/220*(hv?1.4:1)*tacSk(q).fat);
   // 體力透支：撤出到屋外休息，恢復後回原任務
   if(q.fat>=1&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'){
    radio(inc,q.cs,'隊員體力透支，撤出休息。');q.prev=(q.task==='idle'||q.task==='rit')?null:{task:q.task,tf:q.tf,tc:q.tc};q.task='exit';q.tf=-1;q.tc=0}
@@ -1247,3 +1256,25 @@ function tacExtFire(inc,B,dt){
  if(G&&G.t>0){G.t-=dt;const x=tacCel(B,B.bf,G.c);
   if(G.t<=0)radio(inc,'受理','欣高瓦斯已關閉管線總閥，起火點失去氣源。');
   else if(x.fu>0)x.h=Math.max(x.h,.32)}}
+
+// ===== 義消 =====
+// 中大型火場偶爾有義消徒步到場（人到、不綁車），呼號為轄區與鄰近分隊名加「義」或「義+」。
+// 義消能力等同菜鳥、不執行高危險任務；義消+ 受過火場搶救訓練、平時配合出勤，能力接近正職，可入室
+function tacVolPlan(inc,B){
+ if(B.volQ)return;B.volQ=[];
+ if(inc.train){if(inc.train>=1)B.volQ.push({t:S.t+8,cs:'訓中義',sk:'vol',n:3});return}
+ const big=(inc.pm&&inc.pm.lvl>=2)||B.F>=4||B.L.N.filter(n=>n.ty==='room').length*B.F>=20;
+ if(!big||B.out||B.wui||!KIND[inc.k]||!/火警/.test(KIND[inc.k].cls)||Math.random()>.3)return;
+ const r=Math.random(),kinds=r<.4?['vol']:r<.7?['volp']:['vol','volp'];
+ const st=SPOT.filter(s=>!/^特|^機場|^局本部/.test(s.n)&&s.p).map(s=>[Math.hypot(s.p[0]-inc.x,s.p[1]-inc.y),s.n]).sort((a,b)=>a[0]-b[0]).slice(0,4).map(x=>x[1]);
+ const nG=1+Math.floor(Math.random()*Math.random()*4),used=new Set();
+ for(let i=0;i<nG;i++){const sk=kinds[i%kinds.length],nm=st[Math.min(st.length-1,Math.floor(Math.random()*Math.random()*st.length))]+(sk==='vol'?'義':'義+');
+  if(used.has(nm))continue;used.add(nm);B.volQ.push({t:S.t+60+Math.random()*240,cs:nm,sk,n:3+(Math.random()<.4?1:0)})}}
+function tacVolSync(inc,B){
+ tacVolPlan(inc,B);
+ for(const v of B.volQ){if(v.on||S.t<v.t)continue;v.on=1;
+  B.sq.push({u:'vol:'+v.cs,vol:1,sk:v.sk,cs:v.cs,code:'義',ty:'crew',n:v.n,f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+   task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
+   tside:B.st&&B.st.stage?B.st.stage.side:B.arr,side:B.st&&B.st.stage?B.st.stage.side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:1});
+  radio(inc,v.cs,(v.sk==='vol'?'義消':'義消（具火場搶救訓練）')+' '+v.n+' 名徒步到場，向指揮站報到'+(v.sk==='vol'?'，支援外圍與後勤作業。':'，可配合入室作業。'));
+  tacEvt(inc,B,'milestone',v.cs+' 到場（'+TAC_SKL[v.sk].n+'）')}}

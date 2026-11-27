@@ -16,9 +16,9 @@ function leftHTML(){
     (u.mode?'<span style="color:var(--fg3)">'+(u.mode==='ALS'?'ᴀ':'ʙ')+'</span>':'')+
     '</span><span class="dot" style="background:'+st[1]+'" title="'+st[0]+'"></span></div>')}
   out.push('</div>')}
- // 消防學校訓練假想單位（高雄分隊）
+ // 消防學校訓練假想單位（訓中）
  {const us=S.units.filter(u=>u.trainee&&!u.gone);if(us.length){
-  out.push('<div class="stn" style="color:#bfaaf0"><span>🎓 高雄分隊（訓練） <b>'+us.length+'</b></span><span class="mono" style="color:var(--fg3)">菜鳥</span></div><div class="units">');
+  out.push('<div class="stn" style="color:#bfaaf0"><span>🎓 訓中（訓練） <b>'+us.length+'</b></span><span class="mono" style="color:var(--fg3)">菜鳥</span></div><div class="units">');
   for(const u of us){const st=ST[u.st];out.push('<div class="u'+(selU===u.id?' sel':'')+'" data-u="'+u.id+'"><span class="mono">'+u.cs+'</span><span class="dot" style="background:'+st[1]+'" title="'+st[0]+'"></span></div>')}
   out.push('</div>')}}
  // 跨縣市支援車隊另外分組

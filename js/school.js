@@ -14,13 +14,13 @@ function trainSkip(){TRAIN.pass=[1,1,1];trainSave();msg='已跳過教學，取�
 function trainSave(){try{localStorage.setItem('kcfb.train',JSON.stringify({pass:TRAIN.pass}))}catch(e){}}
 // 關卡：車輛、受困人數、說明與目標（每個目標回傳是否達成）
 const TRAIN_LV=[
- {n:'第一關：基礎滅火',units:['11','11'],trap:0,
-  brief:'兩組幫浦組。點選小組（或按 1、2），再按「入室攻擊 A」點起火房間；水線會自動從車拉到入口。把所有火點撲滅。',
+ {n:'第一關：基礎滅火',units:['11','11','16'],trap:0,
+  brief:'三組幫浦組（訓中11、訓中12、訓中16）與一組訓中義（人力組，可做外圍、破壞進入、殘火處理）。點選小組（或按 1、2），再按「入室攻擊 A」點起火房間；水線會自動從車拉到入口。把所有火點撲滅。',
   goals:[['撲滅所有火點',(inc,B)=>tacFireOut(B)]]},
- {n:'第二關：搜索救人',units:['11','11','71','91'],trap:1,
+ {n:'第二關：搜索救人',units:['11','11','16','71','91'],trap:1,
   brief:'屋內有一名受困者。以「初期搜索 S」找到受困者，救助組會把人帶出，交由救護車後送；同時以幫浦組壓制火勢掩護。',
   goals:[['找到並救出受困者',(inc,B)=>B.vtot>0&&B.resc>=B.vtot],['傷患送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]},
- {n:'第三關：安全管理與指揮',units:['11','11','71','41','91'],trap:1,
+ {n:'第三關：安全管理與指揮',units:['11','11','16','71','41','91'],trap:1,
   brief:'開設指揮站（右側 ICS 分頁點「指揮站」），指派安全官，以一組小組「RIT R」在入口待命，再入室救人滅火。過程不能有人員倒地。',
   goals:[['開設指揮站',(inc,B)=>!!B.st.icp],['指派安全官',(inc,B)=>!!B.role.safety],['編成 RIT',(inc,B)=>B.sq.some(q=>q.task==='rit'||q.task==='ritgo')||!!B.trRit],
    ['救出受困者並送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]}];
@@ -74,13 +74,13 @@ function trainStart(lv){
  inc.pm.trap=L.trap;inc.pm.special=false;inc.calls=1;
  // 教學用的火勢較小：燃燒面積與火警分級壓低
  inc.pm.area=Math.min(inc.pm.area||40,40+lv*15);inc.pm.lvl=1;
- inc.log=[{w:'台',s:'消防學校'+L.n+'：'+L.brief,t:0},{w:'台',s:'本關由訓練假想單位「高雄分隊」（新進人員組成的菜鳥救災團隊）出動，車輛為訓練中心的除役消防車。',t:0}];
+ inc.log=[{w:'台',s:'消防學校'+L.n+'：'+L.brief,t:0},{w:'台',s:'本關由訓練假想單位「訓中」（新進人員組成的菜鳥救災團隊，訓中11、訓中12、訓中16…，另有訓中義人力組）出動，車輛為訓練中心的除役消防車。',t:0}];
  TRAIN.inc=inc.id;TRAIN.lv=lv;
- // 訓練假想單位：高雄11、高雄12…（新進人員；車輛為除役消防車），訓練結束即解散
+ // 訓練假想單位：訓中11、訓中12、訓中16…（新進人員；車輛為除役消防車），訓練結束即解散
  const st=SPOT.findIndex(s=>s.n==='楠梓'),cnt={};
  for(const code of L.units){
   const n=parseInt(code,10)+(cnt[code]||0);cnt[code]=(cnt[code]||0)+1;
-  addU(st,code);const u=S.units[S.units.length-1];u.cs='高雄'+n;u.trainee=1;u.x=SCHOOL.x[0];u.y=SCHOOL.x[1];
+  addU(st,code);const u=S.units[S.units.length-1];u.cs='訓中'+n;u.trainee=1;u.x=SCHOOL.x[0];u.y=SCHOOL.x[1];
   if(code==='91')u.tp=1;
   if(send(inc,u,code==='91'?'ALS':null)){u.x=inc.ax;u.y=inc.ay;u.path=[[inc.ax,inc.ay]]}}
  reindex();sel=inc.id;msg='開始'+L.n+'：車輛到場後自動進入戰術指揮。';dirty()}
