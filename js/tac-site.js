@@ -9,6 +9,8 @@ const TAC_SPMAX=3; // 連結送水管同時可供的線數
 const tacDirOf=(dx,dy)=>Math.abs(dx)>=Math.abs(dy)?(dx>=0?'e':'w'):(dy>=0?'s':'n');
 const tacOpp=(a,b)=>(a==='n'&&b==='s')||(a==='s'&&b==='n')||(a==='e'&&b==='w')||(a==='w'&&b==='e');
 // 繞建物走到另一側的秒數、從車輛到入口的水帶條數
+// 入口所在樓層（一般入口在 1F；地下車道入口在 B1）
+const tacEF=(B,e)=>e.f===undefined?B.bf:e.f;
 const tacWalk=(a,b)=>a===b?0:tacOpp(a,b)?14:8;
 const tacOutLen=(a,b)=>a===b?2:tacOpp(a,b)?8:5;
 // 依大地圖上建物四周的格子判斷道路：巷弄大型車禁入，水域與鄰棟無法停車
@@ -25,6 +27,7 @@ function tacSite(inc,B){
  const roads=TAC_SIDES.filter(s=>sd[s].road);
  // 出入口：北、南、西側開在樓梯間，東側開在走廊盡頭
  B.ents=roads.map(s=>({side:s,c:B.L.ent[s]}));
+ tacExtraEnts(B);
  // 消防栓：依實際位置方向，落在最近的有路一側
  B.hyd=null;
  if(inc.hy&&!inc.tender&&!inc.shuttle){
@@ -43,12 +46,12 @@ function tacCanSide(B,q,s){
 function tacBestEnt(B,side,f,c,hose){
  let best=null,bd=INF;
  for(const e of B.ents){
-  const d=(hose?tacOutLen(side,e.side):tacWalk(side,e.side)/2)+tacPath(B,B.bf,e.c,f,c).length+(e.lock?3:0);
+  const d=(hose?tacOutLen(side,e.side):tacWalk(side,e.side)/2)+tacPath(B,tacEF(B,e),e.c,f,c).length+(e.lock?3:0)+(e.ramp?2:0);
   if(d<bd){bd=d;best=e}}
  return best}
 // 人員離開建物時落在哪一側：同一節點有多個出口時，優先自己車輛那側
-function tacExitSide(B,q,c){
- const es=B.ents.filter(e=>e.c===c);
+function tacExitSide(B,q,c,f){
+ const es=B.ents.filter(e=>e.c===c&&tacEF(B,e)===(f===undefined?B.bf:f));
  return(es.find(e=>e.side===q.tside)||es.find(e=>e.side===q.side)||es[0]||{side:B.arr}).side}
 // 水壓：水帶越長、樓層越高，出水越弱；連結送水管由地面加壓，只計樓層內的水帶
 function tacPf(len,f,sp){
@@ -59,7 +62,7 @@ function tacLineTo(B,q,f,c){
  const pumps=q.ty==='pump'?[q]:B.sq.filter(x=>x.ty==='pump'&&!x.tmv);
  for(const p of pumps){
   const e=tacBestEnt(B,p.tside,f,c,true);if(!e)continue;
-  const len=tacOutLen(p.tside,e.side)+tacPath(B,B.bf,e.c,f,c).length+1;
+  const len=tacOutLen(p.tside,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1;
   if(len>TAC_HOSE)continue;
   const pf=tacPf(len,Math.max(0,f-B.bf),0);
   if(!best||pf>best.pf)best={src:'pump',u:p.u,len,pf,ent:e}}
@@ -98,7 +101,7 @@ function tacPpvSet(B){
  const outs=B.cells.filter(x=>x.v).map(x=>[x.f,x.c]);
  if(B.roof)for(const n of B.L.N)if(n.ty==='stair')outs.push([B.F-1,n.c]);
  for(const o of outs){set.add(o[0]*B.W+o[1]);
-  for(const p of tacPath(B,B.bf,e.c,o[0],o[1]))set.add(p[0]*B.W+p[1]);set.add(B.bf*B.W+e.c)}
+  for(const p of tacPath(B,tacEF(B,e),e.c,o[0],o[1]))set.add(p[0]*B.W+p[1]);set.add(tacEF(B,e)*B.W+e.c)}
  return set}
 const TAC_NBH=4; // 鄰棟高度（層）：只有這個高度以下的房間會烤到鄰棟
 // 鄰棟受熱：貼著鄰棟那面牆的房間燒得越旺越快累積（開窗加倍）；有防護射水會降溫；滿了就延燒過去
@@ -126,10 +129,19 @@ function tacBestSide(B,q,f,c){
  let best=null;
  for(const s of TAC_SIDES){if(tacCanSide(B,q,s))continue;
   const e=tacBestEnt(B,s,f,c,true);if(!e)continue;
-  const len=tacOutLen(s,e.side)+tacPath(B,B.bf,e.c,f,c).length+1;
+  const len=tacOutLen(s,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1;
   if(!best||len<best.len)best={side:s,len}}
  return best}
 // 同層最近的樓梯間（連結送水管的出水口在各樓梯間）
 function tacNearStair(B,f,c){let best=0,bd=INF;
  for(const n of B.L.N)if(n.ty==='stair'){const d=tacGd(B,c,n.c);if(d<bd){bd=d;best=n.c}}
  return best}
+// 額外入口：1F 店面臨街的鐵捲門（多半拉下上鎖）、地下停車場的車道坡道
+function tacEntPt(L,n,s){return s==='n'?[n.gx+n.gw/2,0]:s==='s'?[n.gx+n.gw/2,L.GH]:s==='w'?[0,n.gy+n.gh/2]:[L.GW,n.gy+n.gh/2]}
+function tacExtraEnts(B){const L=B.L;
+ for(const n of L.N){if(n.ty!=='room')continue;const x=tacCel(B,B.bf,n.c);
+  if(x.k==='shop')for(const s of n.edge)if(B.sd[s].road&&!B.ents.some(e=>e.c===n.c&&e.side===s)){B.ents.push({side:s,c:n.c,shop:1,pt:tacEntPt(L,n,s)});break}}
+ if(B.bf){const sides=TAC_SIDES.filter(s=>B.sd[s].road&&B.sd[s].big),f=B.bf-1;
+  const rs=L.N.filter(n=>n.ty==='room'&&!n.small&&n.edge.some(s=>sides.includes(s)));
+  if(rs.length){const n=rs[Math.floor(Math.random()*rs.length)],s=n.edge.find(x=>sides.includes(x));
+   B.ents.push({side:s,c:n.c,f,ramp:1,pt:tacEntPt(L,n,s)});B.ramp={f,c:n.c,side:s}}}}

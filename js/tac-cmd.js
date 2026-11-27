@@ -58,6 +58,12 @@ function tacHints(inc,B){
  if(B.pts.length>tacAmbFree(inc,B))add(2,'傷患 '+B.pts.length+' 名待送醫，救護車不足，建議請求救護車。');
  const em=B.cells.filter(x=>x.emb).length;if(em&&!B.cells.some(x=>x.h>.05))add(3,'火勢已滅，仍有 '+em+' 間房有餘燼，建議殘火處理。');
  const lowB=B.sq.filter(q=>tacIn(q)&&q.air<.4&&q.task!=='exit').length;if(lowB&&tacAcc(B))add(2,'管制板顯示 '+lowB+' 組氣量偏低，注意撤出時機。');
+ // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
+ const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
+ if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
+ const st=B.L.N.filter(n=>n.ty==='stair');
+ if(st.length>1&&B.of>B.bf&&B.atkS&&B.atkS.size&&B.atkS.size<st.length){const ev=st.find(n=>!B.atkS.has(n.c));
+  add(3,'水線走'+(st.findIndex(n=>B.atkS.has(n.c))+1)+'號梯（攻擊梯，防火門被水帶卡住會進煙），'+(st.indexOf(ev)+1)+'號梯維持關門作為避難梯。')}
  H.sort((a,b)=>a[0]-b[0]);return H.slice(0,5).map(h=>h[1])}
 // ===== 戰術畫面請求增援 =====
 const TAC_REQ=[['pump','幫浦車',['11','16']],['ladder','雲梯車',['21','31']],['resc','救助車',['71','搜']],['vent','排煙車',['75']],
@@ -109,3 +115,32 @@ function tacShowRep(r){
   '<div class="hd mt">時間軸</div><div class="rev">'+r.ev.map(e=>'<div><span class="mono">'+fmt(e.t)+'</span><span style="color:'+(col[e.ty]||'var(--fg2)')+'">'+esc(e.s)+'</span></div>').join('')+'</div></div>';
  el.hidden=false}
 document.addEventListener('click',e=>{if(e.target.closest('[data-rclose]')){document.getElementById('tacRep').hidden=true}});
+// ===== 防火門 =====
+const TAC_FDN={auto:'常閉',mag:'常開（連動）',wedge:'被卡住常開',gone:'已被拆除'};
+// 小組經過樓梯間的防火門：常閉門開門通過後自動關回；有水帶通過時門被卡住無法關閉
+function tacFDPass(inc,B,q,key,d){
+ if(!B.fdK.has(d.f)){B.fdK.add(d.f);
+  const bad=[...B.fd.values()].filter(x=>x.f===d.f&&(x.t==='gone'||x.t==='wedge'));
+  if(bad.length){const g=bad.some(x=>x.t==='gone');
+   radio(inc,q.cs,tacFlr(B,d.f)+'樓梯間防火門'+(g?'已被拆除':'被雜物卡住常開')+'，樓梯間無法阻煙！');
+   tacEvt(inc,B,'warn',tacFlr(B,d.f)+'樓梯間防火門'+(g?'被拆除':'卡住常開'))}}
+ if(d.t!=='auto')return;
+ B.cd.delete(key);
+ const o=B.fdO.get(key)||{h:new Set()};o.t=S.t;if(q.line)o.h.add(q.u);B.fdO.set(key,o)}
+// 每秒：常開式防火門偵煙後關閉（少數故障）；通過後的常閉門自動關回；統計攻擊梯
+function tacFDStep(inc,B,dt){
+ B.fdT=(B.fdT||0)-dt;if(B.fdT>0)return;B.fdT=1;
+ for(const[key,d]of B.fd){
+  if(d.t==='mag'&&tacCel(B,d.f,d.o).s>.15){
+   if(Math.random()<.85){d.t='auto';if(!B.fdO.has(key))B.cd.add(key)}else d.t='wedge'}}
+ for(const[key,o]of B.fdO){const d=B.fd.get(key);if(!d||d.t!=='auto'){B.fdO.delete(key);continue}
+  const hold=[...o.h].some(u=>{const q=B.sq.find(y=>y.u===u);return q&&q.line&&tacIn(q)&&!q.down});
+  if(hold){if(!o.w){o.w=1;const q=B.sq.find(y=>o.h.has(y.u));
+    radio(inc,q?q.cs:'安全官','水帶通過'+tacNm(B,d.f,d.s)+'防火門，門無法關閉，注意樓梯間進煙。')}continue}
+  if(S.t-o.t>2){B.cd.add(key);B.fdO.delete(key)}}
+ // 攻擊梯：有水線的入室小組所走的樓梯
+ B.atkS=new Set();
+ for(const q of B.sq)if(q.line&&tacIn(q)&&q.f>B.bf&&q.lent){const p=tacPath(B,tacEF(B,q.lent),q.lent.c,q.f,q.c);
+  for(let i=1;i<p.length;i++)if(p[i][0]!==p[i-1][0]){B.atkS.add(p[i][1]);break}}}
+// 侷限火勢關門：被拆除的防火門關不了；卡住或常開的防火門關上後恢復自動關閉
+function tacFDClose(B,key){const d=B.fd.get(key);if(!d)return true;if(d.t==='gone')return false;d.t='auto';B.fdO.delete(key);return true}

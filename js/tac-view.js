@@ -57,6 +57,8 @@ function tacGeo(B){
   fy:f=>top+(B.F-f)*sh}}
 // 入口門的位置（依格局）
 function tacDoor(G,s){const d=G.L.door[s]||[0,0];return[G.bx+d[0]*G.t,G.by+d[1]*G.t]}
+// 某個入口的位置（店面鐵捲門、車道入口有自己的位置）
+function tacEDoor(G,e){if(!e.pt)return tacDoor(G,e.side);return[G.bx+e.pt[0]*G.t,G.by+e.pt[1]*G.t]}
 // 屋外人員在某側的站位（沿外牆排開）
 function tacStage(G,s,i){
  const d=tacDoor(G,s),a=34+(i%8)*36,b=0;
@@ -103,6 +105,12 @@ function tacFurn(g,r,kind,seed,dark){
   for(let i=0;i<n2;i++){const bx=x+p+i*(w-2*p)/n2;box(bx,y+p,(w-2*p)/n2*.6,h*.32);g.fillStyle=dark?fc:'#7b7468';g.fillRect(bx+2,y+p+2,(w-2*p)/n2*.6-4,h*.06)}
   g.strokeStyle=lc;g.setLineDash([3,3]);g.beginPath();g.moveTo(x+p,y+h*.45);g.lineTo(x+w-p,y+h*.45);g.stroke();g.setLineDash([])}
  else if(kind==='shelf'){const n2=Math.max(2,Math.floor(h/(u*.28)));for(let i=0;i<n2;i++)box(x+w*.12,y+p+i*(h-2*p)/n2,w*.76,u*.07)}
+ else if(kind==='care')tacFurn(g,r,'ward',seed,dark);
+ else if(kind==='rack')tacFurn(g,r,'shelf',seed,dark);
+ else if(kind==='bunk'){const n2=Math.max(2,Math.floor(w/(u*.32)));for(let i=0;i<n2;i++){const bx=x+p+i*(w-2*p)/n2,bw=(w-2*p)/n2*.7;
+  box(bx,y+p,bw,h*.36);box(bx,y+h-p-h*.36,bw,h*.36);g.strokeStyle=lc;g.beginPath();g.moveTo(bx,y+p+h*.18);g.lineTo(bx+bw,y+p+h*.18);g.stroke()}}
+ else if(kind==='stall'){const nx=Math.max(2,Math.floor(w/(u*.35))),ny=Math.max(1,Math.floor(h/(u*.55)));
+  for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const sx=x+p+i*(w-2*p)/nx,sy=y+p+j*(h-2*p)/ny;box(sx,sy,(w-2*p)/nx*.8,(h-2*p)/ny*.45,dark?fc:['#5a4a3c','#4a5a46','#5a4048'][(i+j)%3])}}
  else if(kind==='park'){ // 停車格與車輛
   const n2=Math.max(2,Math.floor(w/(u*.34)));g.strokeStyle=dark?lc:'rgba(233,200,90,.35)';g.lineWidth=1;
   for(let i=0;i<=n2;i++){const px=x+p+i*(w-2*p)/n2;g.beginPath();g.moveTo(px,y+p);g.lineTo(px,y+p+h*.38);g.stroke()}
@@ -136,7 +144,7 @@ function tacSqPos(B,G,q,i){
 function tacFloorPat(g,r,n,kd){
  const k=n.ty==='hall'?'hall':n.ty==='stair'?'':kd||n.kind;if(!k)return;
  g.save();g.beginPath();g.rect(r[0],r[1],r[2],r[3]);g.clip();g.lineWidth=1;
- if(k==='bed'||k==='living'||k==='office'||k==='ward'||k==='shop'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
+ if(k==='bed'||k==='living'||k==='office'||k==='ward'||k==='shop'||k==='care'||k==='bunk'){g.strokeStyle='rgba(120,90,60,.22)';const hz=r[2]>=r[3];
   for(let a=7;a<(hz?r[3]:r[2]);a+=7){g.beginPath();if(hz){g.moveTo(r[0],r[1]+a);g.lineTo(r[0]+r[2],r[1]+a)}else{g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3])}g.stroke()}}
  else if(k==='kitchen'||k==='bath'||k==='lobby'||k==='nurse'){g.strokeStyle='rgba(200,210,220,.12)';
   for(let a=10;a<r[2];a+=10){g.beginPath();g.moveTo(r[0]+a,r[1]);g.lineTo(r[0]+a,r[1]+r[3]);g.stroke()}
@@ -313,7 +321,11 @@ function drawTac(){
    g.fillStyle='rgba(236,234,227,.55)';g.font='600 11px '+FONT;g.textAlign='center';g.textBaseline='middle';
    g.fillText('▲ '+(vf<B.F-1?tacFlr(B,vf+1):(B.roof?'屋頂 開':'屋頂')),r[0]+r[2]/2,r[1]+14);
    g.fillText(vf===B.bf?'▼ 出口'+(B.bf?'／B1':''):vf>0?'▼ '+tacFlr(B,vf-1):'',r[0]+r[2]/2,r[1]+r[3]-14);
-   if(B.sp){g.fillStyle=B.sp.on?'#7db3e8':'#6b6960';g.font='10px '+FONT;g.fillText(B.sp.on?'出水口 ●':'出水口',r[0]+r[2]/2,r[1]+r[3]*.32)}}
+   if(B.sp){g.fillStyle=B.sp.on?'#7db3e8':'#6b6960';g.font='10px '+FONT;g.fillText(B.sp.on?'出水口 ●':'出水口',r[0]+r[2]/2,r[1]+r[3]*.32)}
+   // 多座樓梯：編號與攻擊梯／避難梯
+   const sts=L.N.filter(m=>m.ty==='stair');
+   if(sts.length>1){const no=sts.indexOf(n)+1,atk=B.atkS&&B.atkS.has(n.c),ev=B.atkS&&B.atkS.size&&!atk;
+    g.font='600 10px '+FONT;g.fillStyle=atk?'#e9a13b':ev?'#5dcaa5':'rgba(236,234,227,.45)';g.fillText(no+'號梯'+(atk?'・攻擊':ev?'・避難':''),r[0]+r[2]/2,r[1]+r[3]*.68)}}
   if(x.h>.02){g.fillStyle='rgba(255,'+(110-x.h*60|0)+',30,'+(x.h*.45).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3])}
   if(x.h>.15){const nF=Math.ceil(x.h*6);
    for(let k=0;k<nF;k++){const sd=(n.c*7+k*13)%17/17,sd2=(n.c*3+k*29)%19/19;
@@ -333,14 +345,23 @@ function drawTac(){
     g.fillStyle='rgba(236,234,227,.2)';g.font='600 '+Math.max(12,t*.22|0)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
     g.fillText('?',r[0]+r[2]/2,r[1]+r[3]/2)}
    g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='right';g.textBaseline='top';
-   g.fillText(tacRm(B,vf,n.no),r[0]+r[2]-5,r[1]+4);
+   g.fillText(tacRm(B,vf,vf<B.bf?n.bi:n.no),r[0]+r[2]-5,r[1]+4);
    g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[kd].n,r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}
   if(x.s>.03){g.fillStyle='rgba(66,68,74,'+(.12+.68*x.s).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3]);
    for(let k=0;k<3;k++){const ph=(T*.15+k/3+n.c*.13)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.18).toFixed(3)+')';
     g.beginPath();g.arc(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.37+n.c*.21)%1)),t*.18,0,TAU);g.fill()}}}
  // 牆與門
  g.strokeStyle='#8a857a';g.lineWidth=3;
- for(const n of L.N){const r=G.r(n.c);g.strokeRect(r[0],r[1],r[2],r[3])}
+ const opn=vf<B.bf; // 地下停車場：開放空間，只畫柱列與停車區標線
+ for(const n of L.N){const r=G.r(n.c);
+  if(opn&&n.nbO){g.save();g.strokeStyle='rgba(233,200,90,.18)';g.lineWidth=1;g.setLineDash([6,5]);g.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);g.restore();
+   g.fillStyle='#8a857a';for(const p of[[r[0],r[1]],[r[0]+r[2],r[1]],[r[0],r[1]+r[3]],[r[0]+r[2],r[1]+r[3]]])g.fillRect(p[0]-4,p[1]-4,8,8)}
+  else g.strokeRect(r[0],r[1],r[2],r[3])}
+ if(opn&&B.ramp&&B.ramp.f===vf){const r=G.r(B.ramp.c),s2=B.ramp.side;g.save();g.fillStyle='rgba(233,200,90,.12)';
+  const rw=s2==='n'||s2==='s'?[r[0]+r[2]*.3,s2==='n'?r[1]:r[1]+r[3]*.55,r[2]*.4,r[3]*.45]:[s2==='w'?r[0]:r[0]+r[2]*.55,r[1]+r[3]*.3,r[2]*.45,r[3]*.4];
+  g.fillRect(rw[0],rw[1],rw[2],rw[3]);g.strokeStyle='rgba(233,200,90,.4)';g.lineWidth=1;for(let k=1;k<6;k++){g.beginPath();
+   if(s2==='n'||s2==='s'){const yy=rw[1]+rw[3]*k/6;g.moveTo(rw[0],yy);g.lineTo(rw[0]+rw[2],yy)}else{const xx=rw[0]+rw[2]*k/6;g.moveTo(xx,rw[1]);g.lineTo(xx,rw[1]+rw[3])}g.stroke()}
+  g.fillStyle='#e9c85a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('車道坡道',rw[0]+rw[2]/2,rw[1]+rw[3]/2);g.restore()}
  // 分戶：每戶外圍以較粗的分戶牆框起
  if(L.nu&&vf>=B.bf){g.strokeStyle='#a69f90';g.lineWidth=5;
   for(let u=0;u<L.nu;u++){const rs=L.N.filter(n=>n.u===u).map(n=>G.r(n.c));if(!rs.length)continue;
@@ -348,7 +369,7 @@ function drawTac(){
  g.strokeStyle='#bdb6a8';g.lineWidth=7;g.strokeRect(G.bx-1,G.by-1,G.bw+2,G.bh+2);
  g.strokeStyle='#5c574f';g.lineWidth=1.5;g.strokeRect(G.bx+2.5,G.by+2.5,G.bw-5,G.bh-5);
  const flr=c=>{const x=tacCel(B,vf,c),n=L.N[c];return burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c'};
- for(const a of L.N)for(const bc of a.nb){if(bc<a.c)continue;const ra=G.r(a.c),rb=G.r(bc);let s;
+ for(const a of L.N)for(const bc of a.nb){if(bc<a.c||(opn&&a.nbO&&L.N[bc].nbO))continue;const ra=G.r(a.c),rb=G.r(bc);let s;
   if(Math.abs(ra[1]+ra[3]-rb[1])<1||Math.abs(rb[1]+rb[3]-ra[1])<1){const y=Math.abs(ra[1]+ra[3]-rb[1])<1?rb[1]:ra[1];
    const x0=Math.max(ra[0],rb[0]),x1=Math.min(ra[0]+ra[2],rb[0]+rb[2]);s=[(x0+x1)/2-t*.14,y-3,t*.28,6]}
   else{const x=Math.abs(ra[0]+ra[2]-rb[0])<1?rb[0]:ra[0];const y0=Math.max(ra[1],rb[1]),y1=Math.min(ra[1]+ra[3],rb[1]+rb[3]);s=[x-3,(y0+y1)/2-t*.14,6,t*.28]}
@@ -359,6 +380,18 @@ function drawTac(){
    else{const hx=s[0]+3,hy=s[1],dir=rr[0]>hx-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx+dir*dw,hy);g.arc(hx,hy,dw,dir>0?0:Math.PI,Math.PI/2,dir<0)}
    g.stroke()}
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}}
+ // 防火門（樓梯間）：已知樓層才顯示狀態
+ if(vf<B.F&&B.fd){g.font='600 9px '+FONT;g.textAlign='center';g.textBaseline='middle';
+  for(const[key,d]of B.fd){if(d.f!==vf)continue;const ra=G.r(d.s),rb=G.r(d.o);
+   const co=G.ctr(d.o),m0=(Math.max(ra[0],rb[0])+Math.min(ra[0]+ra[2],rb[0]+rb[2]))/2,m1=(Math.max(ra[1],rb[1])+Math.min(ra[1]+ra[3],rb[1]+rb[3]))/2;
+   // 標籤往走廊那側偏一點，避免蓋住樓梯間的文字
+   const dl=Math.hypot(co[0]-m0,co[1]-m1)||1,mx=m0+(co[0]-m0)/dl*12,my=m1+(co[1]-m1)/dl*12;
+   const kn=B.fdK.has(vf),shut=B.cd.has(key),held=B.fdO.has(key)&&B.fdO.get(key).w;
+   const lb=!kn?'防?':d.t==='gone'?'拆除':d.t==='wedge'?'卡住':held?'水帶卡':shut?'防火門':d.t==='mag'?'常開':'開';
+   const col=!kn?'#9d9a92':d.t==='gone'||d.t==='wedge'||held?'#e2564f':shut?'#d0a050':'#7db3e8';
+   g.fillStyle='rgba(20,18,16,.85)';g.fillRect(mx-16,my-7,32,14);g.strokeStyle=col;g.lineWidth=1.2;g.strokeRect(mx-16,my-7,32,14);
+   if(kn&&d.t==='gone'){g.setLineDash([2,2]);g.strokeRect(mx-16,my-7,32,14);g.setLineDash([])}
+   g.fillStyle=col;g.fillText(lb,mx,my+.5)}}
  // 上鎖的房門（紅叉）、門控位置
  if(vf<B.F){
   for(const a of L.N)for(const bc of a.nb){if(bc<a.c)continue;
@@ -396,7 +429,9 @@ function drawTac(){
    else{g.fillStyle=x.h>.3?'rgba(255,160,70,.9)':'#5d86a8';g.fillRect(rx,ry,rw,rh)}}}
  }
  // 出入口（1F）、送水口、正壓排煙送風機
- for(const e of B.ents){const d=tacDoor(G,e.side),hz=e.side==='n'||e.side==='s';
+ for(const e of B.ents){const d=tacEDoor(G,e),hz=e.side==='n'||e.side==='s',ef=tacEF(B,e);
+  if(e.shop||e.ramp){if(vf===ef){g.fillStyle=e.lock&&e.known?'#8a2f2a':'#6b6960';if(hz)g.fillRect(d[0]-t*.22,d[1]-3,t*.44,6);else g.fillRect(d[0]-3,d[1]-t*.22,6,t*.44);
+   g.fillStyle='#cfc9bb';g.font='9px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText((e.ramp?'車道':'鐵捲門')+(e.lock&&e.known?'（鎖）':''),d[0]+TAC_SDV[e.side][0]*22,d[1]+TAC_SDV[e.side][1]*12)}continue}
   if(e.lock&&e.known&&vf===B.bf){g.fillStyle='#8a2f2a';if(hz)g.fillRect(d[0]-t*.18,d[1]-4,t*.36,8);else g.fillRect(d[0]-4,d[1]-t*.18,8,t*.36);
    g.fillStyle='#ff8a6a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('上鎖',d[0]-TAC_SDV[e.side][0]*16,d[1]-TAC_SDV[e.side][1]*14)}
   if(tacAcc(B)&&vf===B.bf&&e===(B.ents.find(x=>x.side===B.arr)||B.ents[0])){const dv=TAC_SDV[e.side],bx2=d[0]+dv[0]*40+(dv[0]?0:-34),by2=d[1]+dv[1]*40+(dv[1]?0:-34);
@@ -426,12 +461,12 @@ function drawTac(){
   if(q.tf>=0&&(q.f!==q.tf||q.c!==q.tc)){
    let pts=[];
    if(q.f>=0)pts=[[q.f,q.c]].concat(tacPath(B,q.f,q.c,q.tf,q.tc));
-   else{const e=q.ent||tacBestEnt(B,q.side,q.tf,q.tc,false);if(e)pts=[[B.bf,e.c]].concat(tacPath(B,B.bf,e.c,q.tf,q.tc))}
+   else{const e=q.ent||tacBestEnt(B,q.side,q.tf,q.tc,false);if(e)pts=[[tacEF(B,e),e.c]].concat(tacPath(B,tacEF(B,e),e.c,q.tf,q.tc))}
    const on=pts.filter(p=>p[0]===vf);
    if(on.length){g.strokeStyle='rgba('+cc+','+al+')';g.lineWidth=sel?2:1.4;g.setLineDash([2,5]);g.lineDashOffset=-T*12;g.beginPath();
     if(q.f===vf){const pp=tacSqPos(B,G,q,0);if(pp)g.moveTo(pp[0],pp[1])}
-    else if(q.f<0&&vf===B.bf&&q.ent){const d=tacDoor(G,q.ent.side);g.moveTo(d[0],d[1])}
-    on.forEach((p,k)=>{const c=G.ctr(p[1]);if(k===0&&q.f!==vf&&!(q.f<0&&vf===B.bf&&q.ent))g.moveTo(c[0],c[1]);else g.lineTo(c[0],c[1])});
+    else if(q.f<0&&vf===tacEF(B,q.ent||{})&&q.ent){const d=tacEDoor(G,q.ent);g.moveTo(d[0],d[1])}
+    on.forEach((p,k)=>{const c=G.ctr(p[1]);if(k===0&&q.f!==vf&&!(q.f<0&&q.ent&&vf===tacEF(B,q.ent)))g.moveTo(c[0],c[1]);else g.lineTo(c[0],c[1])});
     g.stroke();g.setLineDash([])}}
   // 指定空間
   const tf=q.task==='trans'||q.ty==='ladder'?q.lf:q.task==='vvent'?B.F-1:q.tf,tc=q.task==='trans'||q.ty==='ladder'?q.lc:q.task==='vvent'?q.vc:q.tc;
@@ -467,15 +502,16 @@ function drawTac(){
    g.setLineDash([]);continue}
   const ent=(q.line&&q.lent)||q.inEnt||q.ent;
   g.beginPath();
-  if(!sp&&ent&&tp){const d=tacDoor(G,ent.side);
-   if(vf!==B.bf){g.stroke();pen(charged?tacPfCol(q.pf,.35):'rgba(150,170,190,.15)');g.beginPath()} // 地面段在其他樓層畫淡
+  const ef=ent?tacEF(B,ent):B.bf;
+  if(!sp&&ent&&tp){const d=tacEDoor(G,ent);
+   if(vf!==ef){g.stroke();pen(charged?tacPfCol(q.pf,.35):'rgba(150,170,190,.15)');g.beginPath()} // 地面段在其他樓層畫淡
    const ps=tacHoseOut(B,G,ts,tp,ent.side,d,eo);g.moveTo(ps[0][0],ps[0][1]);for(let k=1;k<ps.length;k++)g.lineTo(ps[k][0],ps[k][1]);
-   if(q.f<0){const pp=tacSqPos(B,G,q,0);if(pp&&vf===B.bf)g.lineTo(pp[0],pp[1])}
-   if(vf!==B.bf){g.stroke();pen(col);g.beginPath()}}
+   if(q.f<0){const pp=tacSqPos(B,G,q,0);if(pp&&vf===ef)g.lineTo(pp[0],pp[1])}
+   if(vf!==ef){g.stroke();pen(col);g.beginPath()}}
   // 本層經過的節點：從入口（或送水口出水的樓梯間）沿入室路線到人員
-  const f0=sp?q.f:B.bf,c0=sp?tacNearStair(B,q.f,q.c):ent?ent.c:0;
+  const f0=sp?q.f:ef,c0=sp?tacNearStair(B,q.f,q.c):ent?ent.c:0;
   if(q.f>=0&&vf<B.F){const pts=[[f0,c0]].concat(tacPath(B,f0,c0,q.f,q.c)).filter(p=>p[0]===vf);
-   let first=!(vf===B.bf&&!sp&&ent&&tp);
+   let first=!(vf===ef&&!sp&&ent&&tp);
    for(const p of pts){const c=G.ctr(p[1]);if(first){g.moveTo(c[0]+off,c[1]+off);first=false}else g.lineTo(c[0]+off,c[1]+off)}
    if(q.f===vf){const pp=tacSqPos(B,G,q,0);if(pp&&pts.length)g.lineTo(pp[0],pp[1])}
    else if(pts.length===1&&vf!==B.bf){const c=G.ctr(pts[0][1]);g.lineTo(c[0]+off,c[1]-t*.5)}}
@@ -637,6 +673,8 @@ function tacSideHTML(inc){
  h+='<div class="hd mt">結構與設施</div><div class="twater">';
  if(!B.hoax){const dm=Math.min(1,B.dmg||0);h+='<div class="row"><span>結構受損（穩定度'+(inc.pm.stab||'—')+'）</span><span>'+Math.round(dm*100)+'% <span class="tbar"><i style="width:'+Math.round(dm*100)+'%;background:'+(dm>=.8?'var(--red)':dm>=.5?'var(--amb)':'var(--grn)')+'"></i></span></span></div>';
   if(B.cz)h+='<div class="row"><span>坍塌樓層</span><b style="color:var(--red)">'+[...B.cz].map(f=>tacFlr(B,f)).join('、')+'</b></div>'}
+ if(B.fd&&B.fd.size){const kv=[...B.fd.values()].filter(d=>B.fdK.has(d.f)),bad=kv.filter(d=>d.t==='gone'||d.t==='wedge');
+  h+='<div class="row"><span>樓梯間防火門</span><span>'+(!kv.length?'未查明':bad.length?'<b style="color:var(--red)">'+[...new Set(bad.map(d=>tacFlr(B,d.f)))].join('、')+' 異常</b>':'已查 '+B.fdK.size+' 層正常')+'</span></div>'}
  if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,B.of-2))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
  if(B.fwd)h+='<div class="row"><span>前進指揮所</span><span>'+tacFlr(B,B.fwd.f)+' · '+(tacFwdOK(B)?'就位':'前往中')+' · 備用瓶 '+(B.st.air?'充填區供應':B.fwd.stock)+'</span></div>';
  h+='</div>';
