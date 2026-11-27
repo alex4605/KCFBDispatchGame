@@ -142,4 +142,5 @@ function draw(){
    const tw=ctx.measureText(lb).width+6;
    ctx.fillStyle='rgba(0,0,0,.8)';rr(cx-tw/2,cy+c*.21,tw,c*.31,3);ctx.fill();
    ctx.fillStyle='#e6e3db';ctx.fillText(lb,cx,cy+c*.37)}}
+  epaDraw(ctx,c);
  ctx.restore()}

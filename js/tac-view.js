@@ -12,13 +12,16 @@ const TAC_GRP=[
  ['排煙',[['vent','破窗排煙','V','打破窗戶建立排煙開口（缺氧火場突然開口可能爆燃）'],['hydro','水霧排煙','W','開窗後以水霧把煙帶出窗外（需水線）'],
   ['ppv','正壓排煙','P','在入口架送風機，沿送風路徑把煙推向開口'],['npv','負壓排煙','N','在窗口架排風機把煙抽出，不會灌空氣助長火勢'],
   ['vvent','垂直排煙','J','在頂樓房間正上方屋頂開孔，排出熱煙、避免閃燃'],['roof','屋頂排煙','O','開啟頂樓樓梯間的排煙口']]],
+ ['化災',[['ident','化物辨識','I','化災組或化災應變隊偵檢，辨識洩漏的化學品並劃設危害區'],['plug','止漏','Z','到洩漏源止漏（化災應變隊最快）；加油站為關閉緊急遮斷閥'],
+  ['ppeF','消防衣','','換回消防衣帽鞋（耐火，不防化學品）'],['ppeC','C級','','濾毒罐與防濺衣：每人都有、不耗氣，但不耐火、不能進濃煙缺氧或高濃度區'],
+  ['ppeB','B級','','空氣呼吸器＋防濺衣：每輛化災車 2 套'],['ppeA','A級','','氣密全身防護：每輛化災車 1 套']]],
  ['雲梯',[['ladder','雲梯救援','L','架雲梯到窗口搜救'],['master','雲梯射水','M','由雲梯從窗外射水']]],
  ['調度',[['move','移動','G','移到指定位置待命'],['rit','RIT','R','於入口待命，MAYDAY 時入室救援'],['exit','撤出','X','撤出建物'],
   ['truck','移車','T','把車移到另一側道路'],['stand','送水口加壓','C','接連結送水管送水口，各樓層出水口可用']]]];
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令
-const TAC_NEEDT={gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
@@ -219,6 +222,7 @@ function drawTac(){
   tacClose(b&&b.done?(b.burnt>b.R*b.F*.5?'建物燒毀':'戰術指揮完成')+'：救出 '+b.resc+' 名'+(b.burnt?'、燒毀 '+b.burnt+' 室':'')+(b.lost?'、罹難 '+b.lost+' 名':'')+(b.lodd?'、殉職 '+b.lodd+' 組':''):'戰術指揮失敗：案件逾時，火勢未能控制');return}
  const B=inc.tac,g=tctx,G=tacGeo(B),T=S.t,L=B.L,t=G.t;
  if(TAC.vf===undefined||TAC.vf>B.F)TAC.vf=Math.min(B.F-1,B.of);
+ if(B.out)TAC.vf=0;
  const vf=TAC.vf;
  TAC.hits=[];
  g.fillStyle='#0d1015';g.fillRect(0,0,tW,tH);
@@ -315,17 +319,18 @@ function drawTac(){
   B.pts.forEach((p,i)=>{g.fillStyle=p.sev==='red'?'#e2564f':p.sev==='yellow'?'#e9a13b':'#5dcaa5';g.beginPath();g.arc(bx-28+(i%8)*10,by-6+Math.floor(i/8)*10,4,0,TAU);g.fill()});
   g.fillStyle='#eceae3';g.font='10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText('傷患集結 '+B.pts.length,bx-34,by+6)}
  // 建物外牆底
- g.fillStyle='#4a463f';g.fillRect(G.bx-5,G.by-5,G.bw+10,G.bh+10);
+ if(B.out)tacYardBase(g,G,B);else{g.fillStyle='#4a463f';g.fillRect(G.bx-5,G.by-5,G.bw+10,G.bh+10)}
  const burnt=x=>x.ty!=='stair'&&x.fu<.05;
  for(const n of L.N){
   const x=tacCel(B,vf,n.c),r=G.r(n.c);
   TAC.hits.push({t:'cell',f:vf,c:n.c,x:r[0],y:r[1],w:r[2],h:r[3]});
-  g.fillStyle=burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c';g.fillRect(r[0],r[1],r[2],r[3]);
   const kd=vf<B.F?tacK(B,vf,n.c):n.kind;
+  if(B.out)tacYardCell(g,G,B,n,x,r,T);else{
+  g.fillStyle=burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c';g.fillRect(r[0],r[1],r[2],r[3]);
   if(!burnt(x))tacFloorPat(g,r,n,kd);
   if(n.ty==='room')tacFurn(g,r,kd,n.c*7+vf*3+1,burnt(x)||x.fu<.3);
   if(n.atr)tacAtr(g,r,vf===B.F-1);
-  if(n.ty==='hall'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;for(let k=1;k<4;k++){g.beginPath();g.moveTo(r[0]+r[2]*k/4,r[1]);g.lineTo(r[0]+r[2]*k/4,r[1]+r[3]);g.stroke()}}
+  if(n.ty==='hall'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;for(let k=1;k<4;k++){g.beginPath();g.moveTo(r[0]+r[2]*k/4,r[1]);g.lineTo(r[0]+r[2]*k/4,r[1]+r[3]);g.stroke()}}}
   if(n.ty==='stair'){
    g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;
    for(let k=1;k<10;k++){const yy=r[1]+r[3]*k/10;g.beginPath();g.moveTo(r[0]+r[2]*.12,yy);g.lineTo(r[0]+r[2]*.88,yy);g.stroke()}
@@ -356,15 +361,16 @@ function drawTac(){
     g.fillStyle='rgba(236,234,227,.2)';g.font='600 '+Math.max(12,t*.22|0)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';
     g.fillText('?',r[0]+r[2]/2,r[1]+r[3]/2)}
    g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='right';g.textBaseline='top';
+   if(B.out){g.textAlign='left';g.fillStyle='rgba(236,234,227,.6)';g.fillText(tacYardNm(B,n.c),r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}else{
    g.fillText(tacRm(B,vf,vf<B.bf?n.bi:n.no),r[0]+r[2]-5,r[1]+4);
-   g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[kd].n,r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}
+   g.textAlign='left';g.fillStyle='rgba(236,234,227,.4)';g.fillText(TAC_RK[kd].n,r[0]+(x.srch>=1&&!x.vic?36:5),r[1]+4)}}
   if(x.s>.03){g.fillStyle='rgba(66,68,74,'+(.12+.68*x.s).toFixed(3)+')';g.fillRect(r[0],r[1],r[2],r[3]);
    for(let k=0;k<3;k++){const ph=(T*.15+k/3+n.c*.13)%1;g.fillStyle='rgba(120,122,128,'+(x.s*.18).toFixed(3)+')';
     g.beginPath();g.arc(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.37+n.c*.21)%1)),t*.18,0,TAU);g.fill()}}}
  // 牆與門
  g.strokeStyle='#8a857a';g.lineWidth=3;
  const opn=vf<B.bf; // 地下停車場：開放空間，只畫柱列與停車區標線
- for(const n of L.N){const r=G.r(n.c);
+ for(const n of L.N){const r=G.r(n.c);if(B.out)continue;
   if(opn&&n.nbO){g.save();g.strokeStyle='rgba(233,200,90,.18)';g.lineWidth=1;g.setLineDash([6,5]);g.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);g.restore();
    g.fillStyle='#8a857a';for(const p of[[r[0],r[1]],[r[0]+r[2],r[1]],[r[0],r[1]+r[3]],[r[0]+r[2],r[1]+r[3]]])g.fillRect(p[0]-4,p[1]-4,8,8)}
   else g.strokeRect(r[0],r[1],r[2],r[3])}
@@ -377,10 +383,10 @@ function drawTac(){
  if(L.nu&&vf>=B.bf){g.strokeStyle='#a69f90';g.lineWidth=5;
   for(let u=0;u<L.nu;u++){const rs=L.N.filter(n=>n.u===u).map(n=>G.r(n.c));if(!rs.length)continue;
    const x0=Math.min(...rs.map(r=>r[0])),y0=Math.min(...rs.map(r=>r[1])),x1=Math.max(...rs.map(r=>r[0]+r[2])),y1=Math.max(...rs.map(r=>r[1]+r[3]));g.strokeRect(x0,y0,x1-x0,y1-y0)}}
- g.strokeStyle='#bdb6a8';g.lineWidth=7;g.strokeRect(G.bx-1,G.by-1,G.bw+2,G.bh+2);
- g.strokeStyle='#5c574f';g.lineWidth=1.5;g.strokeRect(G.bx+2.5,G.by+2.5,G.bw-5,G.bh-5);
+ if(!B.out){g.strokeStyle='#bdb6a8';g.lineWidth=7;g.strokeRect(G.bx-1,G.by-1,G.bw+2,G.bh+2);
+ g.strokeStyle='#5c574f';g.lineWidth=1.5;g.strokeRect(G.bx+2.5,G.by+2.5,G.bw-5,G.bh-5)}
  const flr=c=>{const x=tacCel(B,vf,c),n=L.N[c];return burnt(x)?'#141210':n.ty==='room'?'#2b2722':n.ty==='hall'?'#38352f':'#23262c'};
- for(const a of L.N)for(const bc of a.nb){if(bc<a.c||(opn&&a.nbO&&L.N[bc].nbO))continue;const ra=G.r(a.c),rb=G.r(bc);let s;
+ for(const a of L.N)for(const bc of a.nb){if(bc<a.c||(opn&&a.nbO&&L.N[bc].nbO)||(B.out&&!a.walled&&!L.N[bc].walled))continue;const ra=G.r(a.c),rb=G.r(bc);let s;
   if(Math.abs(ra[1]+ra[3]-rb[1])<1||Math.abs(rb[1]+rb[3]-ra[1])<1){const y=Math.abs(ra[1]+ra[3]-rb[1])<1?rb[1]:ra[1];
    const x0=Math.max(ra[0],rb[0]),x1=Math.min(ra[0]+ra[2],rb[0]+rb[2]);s=[(x0+x1)/2-t*.14,y-3,t*.28,6]}
   else{const x=Math.abs(ra[0]+ra[2]-rb[0])<1?rb[0]:ra[0];const y0=Math.max(ra[1],rb[1]),y1=Math.min(ra[1]+ra[3],rb[1]+rb[3]);s=[x-3,(y0+y1)/2-t*.14,6,t*.28]}
@@ -391,6 +397,8 @@ function drawTac(){
    else{const hx=s[0]+3,hy=s[1],dir=rr[0]>hx-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx+dir*dw,hy);g.arc(hx,hy,dw,dir>0?0:Math.PI,Math.PI/2,dir<0)}
    g.stroke()}
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}}
+ // 化學品危害區、場區遮雨棚與風向
+ tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);
  // 氣體偵測標記：量過的空間角落顯示「偵」，超標為紅色
  if(vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.gm)continue;const r=G.r(n.c),bad=tacGasBad(x.gm).length;
   g.fillStyle=bad?'#a8362f':'#2f5f8a';g.fillRect(r[0]+4,r[1]+r[3]-20,20,16);g.fillStyle='#eceae3';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('偵',r[0]+14,r[1]+r[3]-12)}
@@ -442,7 +450,7 @@ function drawTac(){
     const fx=w[0]-dv[0]*10,fy=w[1]-dv[1]*10;g.fillStyle='#3a3d44';g.beginPath();g.arc(fx,fy,8,0,TAU);g.fill();
     g.strokeStyle='#c9d0d8';g.lineWidth=1.6;g.beginPath();for(let k=0;k<3;k++){const a2=-T*14+k*TAU/3;g.moveTo(fx,fy);g.lineTo(fx+Math.cos(a2)*7,fy+Math.sin(a2)*7)}g.stroke()}}}
  // 對外窗（各方向）
- for(const n of L.N){if(!n.wins||vf<B.bf)continue;const x=tacCel(B,vf,n.c);
+ for(const n of L.N){if(!n.wins||vf<B.bf||B.out)continue;const x=tacCel(B,vf,n.c);
   for(const w of n.wins){const p=tacWinPt(G,n.c,w),hz=w==='n'||w==='s',ww=(hz?G.r(n.c)[2]:G.r(n.c)[3])*.4;
    const rx=hz?p[0]-ww/2:p[0]-3,ry=hz?p[1]-3:p[1]-ww/2,rw=hz?ww:6,rh=hz?6:ww;
    TAC.hits.push({t:'cell',f:vf,c:n.c,x:rx-4,y:ry-4,w:rw+8,h:rh+8});
@@ -595,12 +603,13 @@ function drawTac(){
  g.fillStyle='#161615';g.fillRect(0,0,G.sx+G.sw+10,tH);
  g.fillStyle='#9d9a92';g.font='11px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText('樓層概況',G.sx,8);
  const ry=G.fy(B.F),rh=G.sh-3;
+ if(!B.out){
  g.fillStyle=B.roof?'#2a2d33':'#24211d';g.fillRect(G.sx,ry,G.sw,rh);
  if(vf>=B.F){g.strokeStyle='#e9a13b';g.lineWidth=2;g.strokeRect(G.sx-1,ry-1,G.sw+2,rh+2)}
  g.fillStyle='#eceae3';g.font='600 11px '+FONT;g.textBaseline='middle';g.fillText('屋頂',G.sx+4,ry+rh/2);
  g.font='10px '+FONT;g.fillStyle=B.roofV&&(T*2)%1<.6?'#ff8a6a':'#9d9a92';
  g.fillText((B.rf&&B.rf.h>0?'光電板火 ':'')+(B.roof?'排煙口開 ':'')+(B.roofV?(B.roofS?'避難 '+B.roofV+' 人':'通報有人'):''),G.sx+34,ry+rh/2);
- TAC.hits.push({t:'flr',f:B.F,x:G.sx,y:ry,w:G.sw,h:rh});
+ TAC.hits.push({t:'flr',f:B.F,x:G.sx,y:ry,w:G.sw,h:rh})}
  const smk=v=>v>.7?'濃煙':v>.4?'中煙':v>.15?'薄煙':'';
  for(let f=0;f<B.F;f++){
   const y=G.fy(f),h=G.sh-3;let mh=0,ms=0,vic=0,un=0,emb=0,tmax=25;
@@ -630,7 +639,7 @@ function drawTac(){
  // 提示列
  g.font='12px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillStyle='rgba(236,234,227,.85)';
  const sq=B.sq.find(q=>q.u===TAC.sq);
- g.fillText((vf>=B.F?'屋頂':tacFlr(B,vf)+' 平面'+(vf<B.bf?'（地下室：無對外窗）':''))+'　'+(sq?(TAC.ord?'【'+sq.cs+'】'+TAC_TASK[TAC.ord]+'：點選目標'+(TAC.ord==='truck'?'道路':'')+'（Esc 取消）':'【'+sq.cs+'】點空間＝預設指令；點道路＝移車'):'點選小組或車輛（或按 1–9），再點房間、走廊或道路；左側／滾輪／[ ] 切換樓層'),G.sx+G.sw+18,8);
+ g.fillText((B.out?'場區平面（'+(B.wind?B.wind.nm:'')+'）':vf>=B.F?'屋頂':tacFlr(B,vf)+' 平面'+(vf<B.bf?'（地下室：無對外窗）':''))+'　'+(sq?(TAC.ord?'【'+sq.cs+'】'+TAC_TASK[TAC.ord]+'：點選目標'+(TAC.ord==='truck'?'道路':'')+'（Esc 取消）':'【'+sq.cs+'】點空間＝預設指令；點道路＝移車'):'點選小組或車輛（或按 1–9），再點房間、走廊或道路；左側／滾輪／[ ] 切換樓層'),G.sx+G.sw+18,8);
  // 坍塌樓層：整層斜線遮罩
  if(B.cz&&B.cz.has(vf)){g.save();g.beginPath();g.rect(G.bx,G.by,G.bw,G.bh);g.clip();g.fillStyle='rgba(60,20,15,.55)';g.fillRect(G.bx,G.by,G.bw,G.bh);
   g.strokeStyle='rgba(255,90,60,.35)';g.lineWidth=3;for(let k=-G.bh;k<G.bw;k+=22){g.beginPath();g.moveTo(G.bx+k,G.by+G.bh);g.lineTo(G.bx+k+G.bh,G.by);g.stroke()}g.restore();
@@ -695,6 +704,18 @@ function tacSideHTML(inc){
  // 幕僚建議（有開設指揮站才有幕僚）
  const hs=tacHints(inc,B);
  h+='<div class="hd mt">幕僚建議</div>'+(hs?(hs.length?hs.map(x=>'<div class="thint">'+esc(x)+'</div>').join(''):'<div class="sub">目前沒有特別建議。</div>'):'<div class="sub" style="color:var(--fg3)">未開設指揮站，沒有幕僚提供建議。</div>');
+ // 化學災害：化學品、洩漏、防護衣套數、除污站、化災應變隊
+ const cap=tacPPECap(inc);
+ if(B.chem||cap.A||B.sq.some(q=>q.epa)){const rw=(a,b)=>'<div class="row"><span>'+a+'</span><span>'+b+'</span></div>';
+  h+='<div class="hd mt">化學災害</div><div class="twater">';
+  if(B.chem)h+=rw('化學品',B.chemK?'<b>'+esc(B.chem.n)+'</b>（'+(B.chem.fuel?'消防衣＋空氣呼吸器':['','C','B','A'][B.chem.lv]+' 級以上')+'）':'<b style="color:#b9a0ee">未辨識</b>');
+  if(B.leak)h+=rw('洩漏',B.leak.on?'<b style="color:var(--red)">持續外洩（'+esc(tacNm(B,B.leak.f,B.leak.c))+'）</b>':'已止漏');
+  h+=rw('防護衣',cap.A||cap.B?'A 級 '+(cap.A-tacPPEUsed(B,'A'))+'/'+cap.A+'　B 級 '+(cap.B-tacPPEUsed(B,'B'))+'/'+cap.B+'　C 級 不限':'<span class="sub">無化災車（僅 C 級）</span>');
+  if(B.chem&&!B.chem.fuel)h+=rw('除污站',B.st.decon?'已開設':'<span style="color:var(--amb)">未開設</span>'+(B.sq.some(q=>q.cont)?'（'+B.sq.filter(q=>q.cont).length+' 組待除污）':''));
+  if(EPA_K(inc.k))h+=rw('環保署化災應變隊',!inc.epa?'<button data-tepa="1">請求支援</button>':inc.epa===1?'集結中 '+fmt(inc.epaT):inc.epa===2?'前往中 '+Math.ceil(inc.epaT)+' 秒':'<b style="color:var(--grn)">已到場</b>');
+  if(B.wind)h+=rw('風向',B.wind.nm);
+  h+='</div>'}
+ else if(B.wind)h+='<div class="hd mt">風向</div><div class="twater"><div class="row"><span>'+B.wind.nm+'</span><span class="sub">順風延燒快、會飛火</span></div></div>';
  // 結構與設施
  h+='<div class="hd mt">結構與設施</div><div class="twater">';
  if(!B.hoax){const dm=Math.min(1,B.dmg||0);h+='<div class="row"><span>結構受損（穩定度'+(inc.pm.stab||'—')+'）</span><span>'+Math.round(dm*100)+'% <span class="tbar"><i style="width:'+Math.round(dm*100)+'%;background:'+(dm>=.8?'var(--red)':dm>=.5?'var(--amb)':'var(--grn)')+'"></i></span></span></div>';
@@ -774,7 +795,7 @@ function tacTagHTML(inc,B,q,i){
  let air='';
  if(q.ty!=='robot'&&q.ty!=='ladder')air=acc?'<span class="tbar"><i style="width:'+Math.round(q.air*100)+'%;background:'+(q.air<.33?'var(--red)':q.air<.5?'var(--amb)':'var(--grn)')+'"></i></span>':'<span class="sub">氣量 ？</span>';
  return'<div class="mtag ty-'+q.ty+(q.u===TAC.sq||TAC.ms.indexOf(q.u)>=0?' sel':'')+(q.down?' dn':'')+'" data-tsq="'+q.u+'">'+
-  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+TAC_TYN[q.ty]+' '+q.n+'人</span></div>'+
+  '<div class="mh"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b><span>'+(q.ppe&&q.ppe!=='F'?'<i class="ppe">'+TAC_PPE[q.ppe].n+'</i>':'')+(q.cont?'<i class="ppe cont">污染</i>':'')+TAC_TYN[q.ty]+' '+q.n+'人</span></div>'+
   '<div class="mb"><div>'+task+(q.line?' 💧'+(q.burst>0?'燒破':Math.round(q.pf*100)+'%'):'')+'</div>'+
   '<div class="mf"><span class="sub">'+loc+'</span>'+(inT&&acc?'<span class="sub">入室 '+fmt(inT)+'</span>':'')+air+(q.ty!=='robot'&&q.ty!=='ladder'&&q.fat>.4?'<span class="sub" style="color:'+(q.fat>.7?'var(--red)':'var(--amb)')+'">疲勞 '+Math.round(q.fat*100)+'%</span>':'')+'</div></div></div>'}
 function tacBotHTML(inc){
@@ -787,14 +808,16 @@ function tacBotHTML(inc){
  if(!B.sq.length)h+='<div class="sub">尚無可編組的小組到場（幫浦、雲梯、救助、排煙、機器人）。</div>';
  // 指令：需指定目標的（先選指令再點畫面）／立即執行的
  const pr=(B.L.N.find(n=>n.ty==='room'&&n.wins&&n.wins.some(w=>B.sd[w].road))||B.L.N.find(n=>n.ty==='room')).c;
+ const hzOn=!!B.chem||tacPPECap(inc).A>0||B.sq.some(q=>q.epa||q.ty==='hazmat');
  const btn=o=>{const t=TAC_NEEDT[o[0]];let dis=!sq;
-  if(sq){const why=o[0]==='truck'?tacCan(B,sq,'truck'):o[0]==='roofres'?tacCan(B,sq,'roofres',B.F-1,0):o[0]==='roof'?tacCan(B,sq,'roof',B.F-1,0):tacCan(B,sq,o[0],t?B.bf:-1,t?pr:0);
+  if(sq&&/^ppe/.test(o[0]))dis=tacIn(sq)||sq.ty==='ladder'||sq.ty==='robot';
+  else if(sq){const why=o[0]==='truck'?tacCan(B,sq,'truck'):o[0]==='roofres'?tacCan(B,sq,'roofres',B.F-1,0):o[0]==='roof'?tacCan(B,sq,'roof',B.F-1,0):tacCan(B,sq,o[0],t?B.bf:-1,t?pr:0);
    dis=!!why&&!/高度|道路|窗|地下|樓梯|搜索|頂樓|房間/.test(why)}
   return'<button data-tord="'+o[0]+'" title="'+esc(o[3])+'"'+(TAC.ord===o[0]?' class="on"':'')+(dis?' disabled':'')+'>'+o[1]+' <span class="sub">'+o[2]+'</span></button>'};
  h+='<div class="tords"><span class="trow">需指定目標</span>';
- for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length)continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
+ for(const gp of TAC_GRP){const os=gp[1].filter(o=>TAC_NEEDT[o[0]]);if(!os.length||(gp[0]==='化災'&&!hzOn))continue;h+='<span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')}
  h+='</div><div class="tords"><span class="trow">立即執行</span>';
- for(const gp of TAC_GRP)for(const o of gp[1])if(!TAC_NEEDT[o[0]])h+=btn(o);
+ for(const gp of TAC_GRP)for(const o of gp[1])if(!TAC_NEEDT[o[0]]&&(gp[0]!=='化災'||hzOn))h+=btn(o);
  h+='<button data-tord="evac" style="border-color:var(--red);margin-left:auto">全員撤出</button></div>';
  return h}
 function tacUI(){
@@ -878,22 +901,23 @@ function tacClick(inc,B,hit,e,x,y){
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
 document.getElementById('tac').addEventListener('click',e=>{
- const b=e.target.closest('[data-tsq],[data-tord],[data-tpause],[data-texit],[data-tamb],[data-tstn],[data-trole],[data-task]');if(!b)return;
+ const b=e.target.closest('[data-tsq],[data-tord],[data-tpause],[data-texit],[data-tamb],[data-tstn],[data-trole],[data-task],[data-treq],[data-telev],[data-tspd],[data-tap],[data-tepa]');if(!b)return;
  const D=b.dataset;msg='';
  const ic=S.inc.find(i=>i.id===TAC.id);
  if(ic&&ic.tac){const B=ic.tac;
   if(D.tamb)tacAmbReq(ic,B);
   if(D.task)tacAsk(ic,B,D.task);
   if(D.treq)tacReinf(ic,B,D.treq);
-  if(D.telev&&B.elev&&!B.elOn&&!(B.elT>0)){B.elT=10;radio(ic,'受理','消防專用升降機切換消防模式中。')}}
+  if(D.tepa)epaCall(ic);
+ if(D.telev&&B.elev&&!B.elOn&&!(B.elT>0)){B.elT=10;radio(ic,'受理','消防專用升降機切換消防模式中。')}}
  if(D.tspd){TAC.spd=+D.tspd}
  if(D.tap){TAC.autoPause=!TAC.autoPause}
- if(ic&&ic.tac){
+ if(ic&&ic.tac){const B=ic.tac;
   if(D.tstn){if(B.st[D.tstn])tacStnClose(ic,B,D.tstn);else tacStnOpen(ic,B,D.tstn)}
   if(D.trole)tacRoleSet(ic,B,D.trole,!B.role[D.trole])}
  if(D.texit){tacClose();return}
  if(D.tpause){paused=!paused;if(!paused)TAC.pmsg='';$('btnPause').textContent=paused?'繼續':'暫停'}
- if(D.tsq){const inc=S.inc.find(i=>i.id===TAC.id);if(inc){if(e.shiftKey||e.ctrlKey||e.metaKey)tacToggle(inc.tac,+D.tsq);else tacSel(inc.tac,+D.tsq)}}
+ if(D.tsq){const inc=S.inc.find(i=>i.id===TAC.id);if(inc){const id=/^\d+$/.test(D.tsq)?+D.tsq:D.tsq;if(e.shiftKey||e.ctrlKey||e.metaKey)tacToggle(inc.tac,id);else tacSel(inc.tac,id)}}
  if(D.tord)tacCmd(D.tord);
  tTopH=tBotH='';tacUI()});
 document.addEventListener('keydown',e=>{

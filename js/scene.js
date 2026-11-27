@@ -125,6 +125,7 @@ function drawScene(){
  scPolice(inc,g,d,c,X,Y,cx,cy);
  // ===== 台電工程車與人員（斷電確認後到場） =====
  scPowerTruck(inc,g,c,X,Y,cx,cy);
+ scEpaTruck(inc,g,c,X,Y,cx,cy);
  // 照明燈塔
  scLightTower(g,crew,nf,c,X,Y,cx,cy);
  // 視野外車輛的邊緣指標

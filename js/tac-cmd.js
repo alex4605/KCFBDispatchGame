@@ -68,6 +68,7 @@ function tacHints(inc,B){
  if(B.ext&&B.ext.h>0)add(1,tacNm(B,B.ext.f,B.ext.c)+'窗外室外機起火：派雲梯射水或入室由窗口射水，並檢查上一層同位置住戶。');
  if(B.T&&B.T.away&&B.cells.some(x=>x.o2<13&&x.h>.2))add(1,'起火戶門窗緊閉悶燒：破門前先備妥水線，開門後立即射水，防範爆燃。');
  if(B.cells.some(x=>x.li&&(x.emb||x.h>.05)))add(2,'鋰電池火災：撲滅後仍會熱失控復燃，需持續灌水冷卻並做殘火處理。');
+ tacHazHints(inc,B,add);
  // 防火門：已知被拆除或卡住、或被水帶卡住，樓梯間會進煙
  const bad=[...B.fd.values()].filter(d=>B.fdK.has(d.f)&&(d.t==='gone'||d.t==='wedge')&&d.f>=B.of-1);
  if(bad.length){const d=bad[0];add(1,tacFlr(B,d.f)+'樓梯間防火門'+TAC_FDN[d.t]+(d.t==='wedge'?'：建議派員到樓梯間侷限火勢把門關上。':'：樓梯會進煙，受困者避難與搜索改走另一座樓梯。'))}
@@ -76,7 +77,7 @@ function tacHints(inc,B){
   add(3,'水線走'+(st.findIndex(n=>B.atkS.has(n.c))+1)+'號梯（攻擊梯，防火門被水帶卡住會進煙），'+(st.indexOf(ev)+1)+'號梯維持關門作為避難梯。')}
  H.sort((a,b)=>a[0]-b[0]);return H.slice(0,5).map(h=>h[1])}
 // ===== 戰術畫面請求增援 =====
-const TAC_REQ=[['pump','幫浦車',['11','16']],['ladder','雲梯車',['21','31']],['resc','救助車',['71','搜']],['vent','排煙車',['75']],
+const TAC_REQ=[['pump','幫浦車',['11','16']],['ladder','雲梯車',['21','31']],['resc','救助車',['71','搜']],['vent','排煙車',['75']],['hazmat','化災車',['51','01']],['foam','泡沫車',['57']],
  ['amb','救護車',['91']],['cmd','指揮車',['41']],['tank','水庫車',['61']]];
 function tacReinf(inc,B,k){
  const r=TAC_REQ.find(x=>x[0]===k);if(!r)return;
@@ -166,6 +167,7 @@ function tacGasRead(B,x){
  if(B.gasL&&B.gasL.t>0&&x.f===B.bf){const g=B.gasL.c;lel+=x.c===g?55:B.L.N[g].nb.includes(x.c)?28:x.ty==='hall'?10:0}
  if(B.gas!==undefined&&!B.gasX&&x.f===B.gasF&&x.c===B.gas&&x.h>.2)lel+=8; // 瓦斯桶受熱洩漏
  if(B.k==='chemfire'&&k==='machine')h2s+=4+x.h*30+x.s*10;
+ if(B.chem&&x.cz>0){if(B.chem.fl)lel+=x.cz*70;if(B.chem.h2s)h2s+=x.cz*150}
  if(k==='park'||k==='mech')h2s+=x.s*3;
  const co=Math.min(1999,Math.round((x.s*700+x.h*1400)*(1+sm)));
  const hcn=Math.min(99,Math.round((x.s*22+x.h*18)*hf*10)/10);

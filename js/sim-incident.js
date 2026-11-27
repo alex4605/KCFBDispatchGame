@@ -112,6 +112,7 @@ function stepWater(inc,dt,first){
 // 外部單位：警方到場、台電斷電、高危情境淨空的倒數與通報
 function stepAgencies(inc,Kd,dt,first){
   if(inc.pol===1){inc.polT-=dt;if(inc.polT<=0){inc.pol=2;radio(inc,'110','警方已到場，現場由警方協助管制。')}}
+  epaStep(inc,dt);
   if(inc.pow===1){inc.powT-=dt;if(inc.powT<=0){inc.pow=2;radio(inc,'台電','台電回報該區已停電，確認無電壓。')}}
   if(Kd.tac&&inc.clr>0&&first){
    inc.clr-=dt;
@@ -143,7 +144,7 @@ function stepProgress(inc,dt,first,got,tot,cmd,bon,flow,wo,held,atH){
    if(inc.phs[inc.ph]==='到院交接')for(const u of onScene(inc))if(u.st==='give'||u.st==='clean'){atHosp=true;break}
    let ratio=atHosp?1:Math.pow(got/tot,1.35);
    if(!atHosp&&ratio<.3&&inc.pm.cc!==undefined&&onScene(inc).some(u=>u.code==='91'&&(u.st==='work'||u.st==='tx')))ratio=.3;
-   inc.work+=dt*ratio*cmd*bon*flow*(inc.slow||1)*(inc.dai&&inc.dai!=='none'?1.18:1);
+   inc.work+=dt*ratio*cmd*bon*flow*(inc.slow||1)*(inc.epa===3?1.25:1)*(inc.dai&&inc.dai!=='none'?1.18:1);
    let txing=false;for(const u of onScene(inc))if(u.st==='tx'){txing=true;break}
    if(txing&&!atH){
     const capW=inc.dur*(inc.phs.length-1)/inc.phs.length-0.001;

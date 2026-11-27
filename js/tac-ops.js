@@ -9,6 +9,7 @@ const TAC_STN=[
  {k:'triage',n:'救護檢傷站',need:'救護車一輛',codes:['91'],fx:'依傷勢優先後送；裝載較快；紅色傷患惡化減緩'},
  {k:'treat',n:'救護醫療站',need:'有 EMT-P 的救護車',codes:['91'],tp:1,fx:'等待後送的傷患惡化減為三成'},
  {k:'fwd',n:'前進指揮所',need:'指揮站已開設，五層以上建物，且一組屋外待命的幫浦或救助組',codes:['11','16','57','71','搜'],fx:'設在起火層下兩層、備用氣瓶 8 支：低壓的小組就近換瓶休息，不必下到一樓'},
+ {k:'decon',n:'除污站',need:'化災車或環保署化災應變隊',codes:['51','01'],fx:'受化學污染的小組除污 25 秒後才能再派；化災應變隊到場可代為設置'},
  {k:'media',n:'聯訪處',need:'指揮站已開設，且警方到場或另一輛指揮車',codes:['41','警'],fx:'統一對媒體與家屬發布，避免扣評鑑；結案評鑑 +2'}];
 const TAC_ROLE=[
  {k:'safety',n:'安全官',fx:'在入口設置人員管制板（之後才看得到各組氣量）；自動編成 RIT、MAYDAY 時派員救援、閃燃前兆時撤出小組'},
@@ -24,6 +25,7 @@ function tacStnPick(inc,B,k){
  if(k==='media'&&!B.st.icp)return{why:'需先開設指揮站'};
  if(k==='media'&&inc.pol===2)return{u:null};
  if(k==='fwd'&&(!B.st.icp||B.F-B.bf<5))return{why:!B.st.icp?'需先開設指揮站':'五層以上建物才需要'};
+ if(k==='decon'){const e=B.sq.find(q=>q.epa&&!tacIn(q)&&q.task==='idle');if(e)return{u:e.u}}
  for(const code of d.codes)for(const u of onScene(inc)){
   if(u.code!==code||u.st!=='work'||tacStnBusy(B,u.id)||u.load)continue;
   if(d.tp&&!u.tp)continue;
@@ -41,7 +43,7 @@ function tacStnOpen(inc,B,k,quiet){
  if(k==='fwd'&&q){B.fwd={f:B.fwdF,stock:8};q.task='fwdgo';q.tf=B.fwd.f;q.tc=0;q.ent=null;
   radio(inc,q.cs,'攜帶備用氣瓶前往'+tacFlr(B,B.fwd.f)+'設置前進指揮所。');return true}
  const u=S.units.find(x=>x.id===r.u);
- radio(inc,u?u.cs:'110',tacStnDef(k).n+'開設完成'+(u?'，由本車人員負責':'，由到場警方協助')+'。');
+ radio(inc,u?u.cs:q?q.cs:'110',tacStnDef(k).n+'開設完成'+(u||q?'，由本車人員負責':'，由到場警方協助')+'。');
  return true}
 function tacStnClose(inc,B,k,why){
  const s=B.st[k];if(!s)return;
@@ -68,7 +70,7 @@ function tacStnStep(inc,B,dt){
    radio(inc,'安全官','已於'+(e?TAC_SDN[e.side]+'側':'')+'入口設置人員管制板，開始登錄各組入室時間與氣量。');tacEvt(inc,B,'milestone','設置人員管制板')}}
  else B.accT=0;
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
-  if(s.u!==null){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
+  if(s.u!==null&&!B.sq.some(q=>q.epa&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
  // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，每 90 秒扣評鑑（最多 4 次）
  if(B.vtot&&!B.st.media&&!B.done){B.mediaT=(B.mediaT||60)-dt;

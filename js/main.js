@@ -144,6 +144,7 @@ document.body.addEventListener('click',e=>{
   dirty();return}
  if(D.ext){
   if(D.ext==='pol')callPol(inc);
+  if(D.ext==='epa')epaCall(inc);
   if(D.ext==='pow'&&inc.pow===0){inc.pow=1;inc.powT=30+Math.random()*30;
    radio(inc,'受理','已通報台電，預估 '+Math.ceil(inc.powT)+' 秒完成斷電。')}
   dirty();return}

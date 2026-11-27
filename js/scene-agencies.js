@@ -182,3 +182,19 @@ function scPowerTruck(inc,g,c,X,Y,cx,cy){
    const wx=px+Math.cos(side)*c*.42+Math.cos(ang)*(i?c*.2:-c*.2)+Math.sin(S.t*.8+i)*c*.02;
    const wy=py+Math.sin(side)*c*.42+Math.sin(ang)*(i?c*.2:-c*.2)+Math.cos(S.t*.7+i)*c*.02;
    figure(g,wx,wy,rT,TPC,{ph:i*2})}}}
+// ===== 環保署化災應變隊（集結完成到場後）：偵檢車與著化學防護衣的隊員 =====
+function scEpaTruck(inc,g,c,X,Y,cx,cy){
+ if(inc.epa!==3||c<12)return;
+ const px=cx+c*2.4,py=cy-c*1.7,L=c*.78,W=c*.36;
+ g.save();g.translate(px,py);
+ g.fillStyle='#ecebf2';scRR(g,-L/2,-W/2,L,W,c*.05);g.fill();
+ g.fillStyle='#7f77dd';g.fillRect(-L/2,-W*.12,L,W*.24);
+ g.fillStyle='rgba(30,44,70,.6)';g.fillRect(L*.3,-W/2,L*.12,W);
+ const bl=(S.t*4|0)%2;g.fillStyle=bl?'#ff9a3c':'#6a4a8a';g.fillRect(L*.2,-W*.5,c*.06,W);
+ g.restore();
+ if(c>=17){g.fillStyle='rgba(20,20,20,.8)';scRR(g,px-c*.45,py-c*.52,c*.9,c*.18,c*.03);g.fill();
+  g.fillStyle='#d8d4f6';g.font='600 '+(c*.13)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('環保署化災隊',px,py-c*.43)}
+ // 隊員：黃綠色化學防護衣
+ const SUIT={coat:'#c9d14a',leg:'#a8b03a',stripe:null,helmet:'#c9d14a',skin:'#c9d14a',vest:null};
+ const r=Math.max(1.8,c*.12);
+ for(let i=0;i<3;i++){const wx=px-c*.35+i*c*.32+Math.sin(S.t*.8+i)*c*.02,wy=py+c*.42+Math.cos(S.t*.7+i)*c*.02;figure(g,wx,wy,r,SUIT,{ph:i*2})}}
