@@ -72,6 +72,20 @@ function extendNorth(){
  farmRoads(140);
  // 山區稀疏增加產業道路（只保留兩端都接上道路的，形成山路網）
  mtnRoads(60);
+ // 區域加密：林園、大樹以東南的平原，田寮、六龜一帶的山區
+ {const T={};for(const t of RTOWN)T[t.n]=t.c;
+  // 骨幹：幾條鄉道接到最近的既有道路（形成環路，山區的才不會被當成死路移除）
+  const nr=(x,y)=>{let b=null,bd=1e9;for(let a=x-9;a<=x+9;a++)for(let c=y-9;c<=y+9;c++){if(a<1||c<1||a>N-2||c>N-2)continue;const k=K(a,c);if(!RD[k]||RD[k]===4||RD[k]===7||HG[k])continue;const d=Math.hypot(a-x,c-y);if(d<bd){bd=d;b=[a,c]}}return b};
+  const link=(a,p,c,g)=>{const b=nr(p[0],p[1]);if(b)rroad(a,b,c,.2,g)};
+  const [lx,ly]=T['林園'],[dx,dy]=T['大樹'];
+  for(const p of[[lx+30,ly+4],[lx+52,ly-6],[dx+22,dy+14],[dx+40,dy+30],[dx+48,dy+8]])link(nr(lx+(p[0]-lx)*.4,ly+(p[1]-ly)*.4)||T['林園'],p,2,RGK.TWN);
+  // 田寮、六龜：在鎮外山區繞兩個小環（鎮 → 甲點 → 乙點 → 鎮），山路網往外蔓延
+  for(const n of['田寮','六龜']){const [cx,cy]=T[n];
+   for(const [a,b] of[[[cx+10,cy-8],[cx+3,cy-12]],[[cx-10,cy+7],[cx-4,cy+12]]]){
+    const ok=p=>p[0]>1&&p[1]>1&&p[0]<N-2&&p[1]<N-2&&TR[K(p[0],p[1])]!==1;if(!ok(a)||!ok(b))continue;
+    rroad(T[n],a,5,.25,RGK.IND);rroad(a,b,5,.25,RGK.IND);rroad(b,T[n],5,.25,RGK.IND)}}
+  farmRoads(140,[lx-4,dy-4,N-2,N-2]);
+  for(const n of['田寮','六龜']){const [cx,cy]=T[n];mtnRoads(30,[cx-14,cy-14,cx+14,cy+14]);farmRoads(12,[cx-10,cy-10,cx+10,cy+10])}}
  // 沿海小漁村與漁港
  fishPorts();
  // 山區與丘陵的死路：反覆移除只連一端的產業道路與小徑（地圖邊緣除外）
@@ -100,8 +114,10 @@ function suburbNorth(){
   let near=false;for(let j=0;j<4;j++){const r=cls(x+DIR[j][0],y+DIR[j][1]);if(r&&r!==4&&r!==7)near=true}
   const d=OY-y;if(near&&Math.random()<.9-d*.06)TR[k]=0;else if(TR[k]===6&&d<6)TR[k]=5}}
 // 鄉間稀疏農路：從鄉間既有道路出發走 4～12 格，遇到其他道路就接上（小環路），不穿越山區、水域、國道與快速道路
-function farmRoads(n){
- const seeds=[];for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){const k=K(x,y),r=RD[k];if(r>=1&&r<=3&&!inCity(x,y)&&TR[k]!==2&&TR[k]!==4&&TR[k]!==7)seeds.push([x,y])}
+// box：[x0,y0,x1,y1] 只在這個範圍內出發（區域加密用）；省略為全圖
+const inBox=(b,x,y)=>!b||x>=b[0]&&y>=b[1]&&x<=b[2]&&y<=b[3];
+function farmRoads(n,box){
+ const seeds=[];for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){const k=K(x,y),r=RD[k];if(inBox(box,x,y)&&r>=1&&r<=3&&!inCity(x,y)&&TR[k]!==2&&TR[k]!==4&&TR[k]!==7)seeds.push([x,y])}
  for(let i=0;i<n&&seeds.length;i++){let [x,y]=seeds[Math.floor(Math.random()*seeds.length)],d=Math.floor(Math.random()*4);
   const L=4+Math.floor(Math.random()*9),add=[];let ok=true;
   for(let s=0;s<L;s++){if(s>1&&Math.random()<.2)d=(d+(Math.random()<.5?1:3))%4;
@@ -113,8 +129,8 @@ function farmRoads(n){
    add.push(k);x=nx;y=ny}
   if(ok)for(const k of add){RD[k]=1;RGF[k]=RGK.IND;if(TR[k]===6)TR[k]=5}}}
 // 山區產業道路：從山區既有道路出發，沿等高線蜿蜒，接上另一條道路才保留（不留死路）
-function mtnRoads(n){
- const seeds=[];for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){const k=K(x,y);if(RD[k]&&TR[k]===2&&RD[k]!==4&&RD[k]!==7&&!HWL[k])seeds.push([x,y])}
+function mtnRoads(n,box){
+ const seeds=[];for(let x=1;x<N-1;x++)for(let y=1;y<N-1;y++){const k=K(x,y);if(inBox(box,x,y)&&RD[k]&&TR[k]===2&&RD[k]!==4&&RD[k]!==7&&!HWL[k])seeds.push([x,y])}
  for(let i=0;i<n&&seeds.length;i++){let [x,y]=seeds[Math.floor(Math.random()*seeds.length)],d=Math.floor(Math.random()*4);
   const L=5+Math.floor(Math.random()*14),add=[];let ok=false;
   for(let s=0;s<L;s++){if(s>1&&Math.random()<.3)d=(d+(Math.random()<.5?1:3))%4;
