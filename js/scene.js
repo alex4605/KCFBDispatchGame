@@ -18,9 +18,7 @@ function drawScene(){
  if(wrap.style.display==='none'){wrap.style.display='block';sizeScene()}
  applySwap();
  if(inc.wf){wfScene(inc,sctx);return}
- const g=sctx,crew=onScene(inc);
- const dayT=(S.t%200)/200;
- const nf=Math.max(0,Math.min(1,(dayT-.55)/.15)-Math.min(1,Math.max(0,(dayT-.9)/.08)));
+ const g=sctx,crew=onScene(inc),nf=dayNF();
  const ct=Math.max(12,(isSwapped?Math.max(46,Math.min(scW/13,scH/9)):Math.min(scW/11,scH/7))*scZoom);
  const HW=Math.max(2,Math.ceil(scW/ct/2)),HH=Math.max(1,Math.ceil(scH/ct/2));
  const txU=crew.filter(u=>u.st==='tx'||u.st==='give'||u.st==='clean')[0];
@@ -41,7 +39,7 @@ function drawScene(){
   for(let x=Math.max(0,x0);x<=Math.min(N-1,x1);x++)
    for(let y=Math.max(0,y0);y<=Math.min(N-1,y1);y++){
     const k=K(x,y),t=TR[k],r=RD[k],sh=SH[k],px=X(x),py=Y(y);
-    tg.fillStyle=t===1?'#0e2436':t===2?'#18291d':t===3?'#202836':t===4?'#212327':
+    tg.fillStyle=t===1?'#0e2436':t===2?'#18291d':t===3?'#202836':t===4?'#212327':t===5?'#1e2618':t===6?'#142c33':
      (sh<.33?'#1a1a18':sh<.66?'#1f1f1c':'#232320');
     tg.fillRect(px,py,c+.6,c+.6);
     if(!r&&!t&&c>9){tg.fillStyle='rgba(0,0,0,.35)';tg.fillRect(px+c*.78,py,c*.22,c+.6)}

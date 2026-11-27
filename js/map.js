@@ -6,17 +6,18 @@ function clamp(){
  const c=cell(),mx=c*N-cw,my=c*N-ch;
  cam.x=mx<0?mx/2:Math.max(0,Math.min(mx,cam.x));
  cam.y=my<0?my/2:Math.max(0,Math.min(my,cam.y))}
-function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
+function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.18,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
 let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
 function gridLines(c,x0,x1,y0,y1){
  if(c>8){ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
-  for(const x of RC){ctx.beginPath();ctx.moveTo(x*c+c/2,y0*c);ctx.lineTo(x*c+c/2,(y1+1)*c);ctx.stroke()}
-  for(const y of RR){ctx.beginPath();ctx.moveTo(x0*c,y*c+c/2);ctx.lineTo((x1+1)*c,y*c+c/2);ctx.stroke()}}
+  const ye=Math.min(y1+1,CITY),xe=Math.min(x1+1,CITY);
+  for(const x of RC){ctx.beginPath();ctx.moveTo(x*c+c/2,y0*c);ctx.lineTo(x*c+c/2,ye*c);ctx.stroke()}
+  for(const y of RR){ctx.beginPath();ctx.moveTo(x0*c,y*c+c/2);ctx.lineTo(xe*c,y*c+c/2);ctx.stroke()}}
  ctx.strokeStyle='#7f6f3c';ctx.lineWidth=Math.max(1,c*.06);ctx.setLineDash([c*.35,c*.3]);
- ctx.beginPath();ctx.moveTo(FX*c+c/2,y0*c);ctx.lineTo(FX*c+c/2,(y1+1)*c);ctx.stroke();
- ctx.beginPath();ctx.moveTo(x0*c,FY*c+c/2);ctx.lineTo((x1+1)*c,FY*c+c/2);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(FX*c+c/2,y0*c);ctx.lineTo(FX*c+c/2,Math.min(y1+1,CITY)*c);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x0*c,FY*c+c/2);ctx.lineTo(Math.min(x1+1,FYE+1)*c,FY*c+c/2);ctx.stroke();
  ctx.setLineDash([])}
 function drawTerrain(c,x0,x1,y0,y1){
  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
@@ -25,6 +26,9 @@ function drawTerrain(c,x0,x1,y0,y1){
   else if(t===2)ctx.fillStyle=s<.5?'#15251a':'#18291d';
   else if(t===3)ctx.fillStyle=s<.5?'#1c2430':'#202836';
   else if(t===4)ctx.fillStyle=s<.5?'#1d1f22':'#212327';
+  else if(t===5){const b=((x/3|0)*7+(y/3|0)*13)%5;ctx.fillStyle=b===0?'#2a2c1a':b===1?'#232a1a':s<.5?'#252c1b':'#262d1c'}
+  else if(t===6)ctx.fillStyle=s<.5?'#12282f':'#142c33';
+  else if(!inCity(x,y))ctx.fillStyle=s<.5?'#1d1c19':'#211f1b';
   else ctx.fillStyle=s<.33?'#171716':s<.66?'#1b1b19':'#1f1f1c';
   ctx.fillRect(px,py,c+.6,c+.6);
   if(RUN[k]&&!RD[k]){ctx.fillStyle='#3b3b39';ctx.fillRect(px,py,c+.6,c+.6);
@@ -36,7 +40,7 @@ function drawTerrain(c,x0,x1,y0,y1){
    ctx.fillRect(px+c*.18,py+c*.42,c*.34,Math.max(1,c*.07));
    ctx.fillRect(px+c*.58,py+c*.66,c*.24,Math.max(1,c*.07))}
   const r=RD[k];
-  if(r){ctx.fillStyle=RCOL[r];ctx.fillRect(px,py,c+.6,c+.6)}
+  if(r){ctx.fillStyle=r===1&&!inCity(x,y)?'#4a4433':RCOL[r];ctx.fillRect(px,py,c+.6,c+.6)}
   if(c>=34)terrainDetail(x,y,k,t,r,s,px,py,c)}}
 // 放大後的街廓細節：建物量體、道路標線、港區貨櫃、綠地樹冠（以格子雜湊決定，畫面穩定不閃動）
 function hsh(k,i){let h=(k*2654435761+i*40503)>>>0;h^=h>>>15;h=Math.imul(h,2246822519)>>>0;h^=h>>>13;return(h>>>0)/4294967296}
@@ -52,12 +56,34 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
   else if(h&&v){ctx.fillStyle='rgba(230,228,220,.16)';
    for(let i=0;i<5;i++){ctx.fillRect(px+c*.12+i*c*.16,py+c*.04,c*.08,c*.1);ctx.fillRect(px+c*.12+i*c*.16,py+c*.86,c*.08,c*.1)}}
   return}
- if(t===0){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
+ if(t===0&&inCity(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const a=hsh(k,i*3+j);if(a<.18)continue;
    const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
    const lv=16+(a*22|0);ctx.fillStyle='rgb('+(lv+12)+','+(lv+11)+','+(lv+8)+')';ctx.fillRect(bx,by,bw,bh);
    ctx.fillStyle='rgba(255,255,255,.06)';ctx.fillRect(bx,by,bw,Math.max(1,bh*.12));
    if(a>.8&&c>=60){ctx.fillStyle='rgba(255,214,140,.12)';ctx.fillRect(bx+bw*.25,by+bh*.35,bw*.15,bh*.12);ctx.fillRect(bx+bw*.6,by+bh*.6,bw*.15,bh*.12)}}}
+ else if(t===5){// 農田：田埂分格，部分有作物行
+  const v=hsh(k,7);ctx.strokeStyle='rgba(150,150,90,.16)';ctx.lineWidth=Math.max(1,c*.03);
+  ctx.strokeRect(px+c*.04,py+c*.04,c*.92,c*.92);
+  if(v<.5){ctx.beginPath();ctx.moveTo(px+c*.5,py+c*.04);ctx.lineTo(px+c*.5,py+c*.96);ctx.stroke()}
+  if(v>.35){ctx.strokeStyle=v>.7?'rgba(120,160,70,.22)':'rgba(170,160,80,.18)';
+   for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(px+c*.1,py+c*i/6);ctx.lineTo(px+c*.9,py+c*i/6);ctx.stroke()}}
+  if(hsh(k,8)>.93){ctx.fillStyle='#3a3226';ctx.fillRect(px+c*.62,py+c*.6,c*.22,c*.2);ctx.fillStyle='#57493a';ctx.fillRect(px+c*.62,py+c*.6,c*.22,c*.05)}}
+ else if(t===6){// 魚塭：堤岸、水面、打氣水車
+  ctx.fillStyle='#2b2c22';ctx.fillRect(px,py,c+.6,c+.6);
+  ctx.fillStyle='#163a46';ctx.fillRect(px+c*.1,py+c*.1,c*.8,c*.8);
+  if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
+   ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
+   ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
+ else if(t===0&&!inCity(x,y)){// 鄉鎮：低矮透天與三合院，偶有廟宇
+  const a=hsh(k,1);
+  if(a<.05){ctx.fillStyle='#5a2a22';ctx.fillRect(px+c*.12,py+c*.18,c*.76,c*.6);
+   ctx.fillStyle='#b8862e';ctx.fillRect(px+c*.12,py+c*.44,c*.76,c*.06);ctx.fillStyle='#d8b050';ctx.fillRect(px+c*.08,py+c*.16,c*.08,c*.08);ctx.fillRect(px+c*.84,py+c*.16,c*.08,c*.08);return}
+  const roof=['#4a3a30','#3a3a38','#56402f','#40362c'];
+  if(a<.22){ctx.fillStyle=roof[hsh(k,2)*4|0];ctx.fillRect(px+c*.12,py+c*.12,c*.76,c*.22);ctx.fillRect(px+c*.12,py+c*.12,c*.22,c*.7);ctx.fillRect(px+c*.66,py+c*.12,c*.22,c*.7);return}
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++){if(hsh(k,i*2+j+20)<.3)continue;
+   ctx.fillStyle=roof[hsh(k,i+j*2+30)*4|0];ctx.fillRect(px+c*(.1+i*.46),py+c*(.1+j*.46),c*.36,c*.34);
+   ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(px+c*(.1+i*.46),py+c*(.1+j*.46),c*.36,c*.06)}}
  else if(t===2){ctx.fillStyle='rgba(40,74,46,.7)';
   for(let i=0;i<5;i++){const a=hsh(k,i),b=hsh(k,i+11);ctx.beginPath();ctx.arc(px+c*(.15+a*.7),py+c*(.15+b*.7),c*(.07+.06*hsh(k,i+23)),0,TAU);ctx.fill()}}
  else if(t===3){const cols=['#6b3b2a','#2f4f6b','#5a5a3a','#3d5a48'];
@@ -114,14 +140,15 @@ function draw(){
  const live=new Set(),liveU=new Set();
  // 門檻前 SC_FADE 像素開始淡入，到門檻時完全取代一般標記
  const fa=Math.max(0,Math.min(1,(c-SC_MAP+SC_FADE)/SC_FADE));
- if(fa>0){const X=v=>v*c;
+ if(fa>0){const X=v=>v*c,nf=dayNF()*fa;
+  if(nf>.01)mapNight(c,x0,x1,y0,y1,nf);
   const g=fontCap(ctx,15);
   for(const inc of S.inc){
    if(inc.wf||inc.x<x0-3||inc.x>x1+3||inc.y<y0-3||inc.y>y1+3)continue;
    live.add(inc.id);
    for(const u of onScene(inc))if(u.st!=='idle'&&u.st!=='oos'&&u.st!=='back')liveU.add(u.id);
    ctx.save();ctx.globalAlpha=fa;
-   try{sceneLayers(inc,g,c,X,X,x0,x1,y0,y1,0,true)}catch(e){console.error(e)}
+   try{sceneLayers(inc,g,c,X,X,x0,x1,y0,y1,nf,true)}catch(e){console.error(e)}
    ctx.restore();ctx.textAlign='center';ctx.textBaseline='middle'}}
  for(const inc of S.inc){
   const d=KIND[inc.k];
@@ -257,7 +284,7 @@ function miniMap(c){
  if(MINI.key!==key){MINI.key=key;const mc=MINI.cv||(MINI.cv=document.createElement('canvas'));
   mc.width=Math.round(s*dpr);mc.height=Math.round(s*dpr);const g=mc.getContext('2d'),q=s*dpr/N;
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){const k=K(i,j),tt=TR[k];
-   g.fillStyle=RD[k]?'#3a3a35':tt===1?'#14324a':tt===2?'#1c3322':tt===3?'#263040':tt===4?'#26282c':'#1c1c1a';
+   g.fillStyle=RD[k]?(RD[k]===4?'#6a6050':'#3a3a35'):tt===1?'#14324a':tt===2?'#1c3322':tt===3?'#263040':tt===4?'#26282c':tt===5?'#242d1c':tt===6?'#173540':'#1c1c1a';
    g.fillRect(i*q,j*q,q+.5,q+.5)}}
  ctx.fillStyle='rgba(10,10,9,.85)';rr(x-4,y-4,s+8,s+8,6);ctx.fill();
  ctx.drawImage(MINI.cv,x,y,s,s);
@@ -282,3 +309,20 @@ function mapUnitHit(x,y){
  for(const u of S.units){if(u.st==='idle'||u.st==='oos'||u.st==='away')continue;
   const d=Math.hypot(u.x+.5+(u.ox||0)-x,u.y+.5+(u.oy||0)-y);if(d<bd){bd=d;best=u.id}}
  return best}
+// 地圖現場模式的夜間：整體壓暗、住家窗光、路燈；窗光位置與街廓細節的建物量體一致
+function mapNight(c,x0,x1,y0,y1,nf){
+ ctx.fillStyle='rgba(8,12,28,'+(.55*nf).toFixed(3)+')';ctx.fillRect(x0*c,y0*c,(x1-x0+1)*c,(y1-y0+1)*c);
+ if(c<34)return;
+ const fl=.75+.25*Math.sin(S.t*.7);
+ for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const k=K(x,y),t=TR[k],r=RD[k],px=x*c,py=y*c,s=SH[k];
+  if(r){if(r<=3&&hsh(k,50)>(inCity(x,y)?.55:.85)){const gx=px+c*.08,gy=py+c*.08;
+    const gr=ctx.createRadialGradient(gx,gy,0,gx,gy,c*.6);gr.addColorStop(0,'rgba(255,210,140,'+(.32*nf).toFixed(3)+')');gr.addColorStop(1,'rgba(255,210,140,0)');
+    ctx.fillStyle=gr;ctx.fillRect(gx-c*.6,gy-c*.6,c*1.2,c*1.2);ctx.fillStyle='rgba(255,230,180,'+(.9*nf).toFixed(2)+')';ctx.fillRect(gx-1.5,gy-1.5,3,3)}
+   continue}
+  if(t!==0)continue;
+  ctx.fillStyle='rgba(255,206,130,'+(.75*nf*fl).toFixed(3)+')';
+  if(inCity(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
+   for(let i=0;i<n;i++)for(let j=0;j<n;j++){if(hsh(k,i*3+j)<.18||hsh(k,i*3+j+60)<.45)continue;
+    const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
+    for(let w=0;w<3;w++)if(hsh(k,i*9+j*3+w+70)>.4)ctx.fillRect(bx+bw*(.15+w*.27),by+bh*(.3+.3*hsh(k,w+80)),Math.max(1.5,bw*.12),Math.max(1.5,bh*.1))}}
+  else if(hsh(k,40)>.35){ctx.fillRect(px+c*(.2+.5*hsh(k,41)),py+c*(.25+.4*hsh(k,42)),Math.max(2,c*.07),Math.max(2,c*.06))}}}

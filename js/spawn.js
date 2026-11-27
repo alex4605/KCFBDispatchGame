@@ -11,7 +11,12 @@ function spawn(){
   if(S.inc.some(i=>Math.abs(i.x-x)<3&&Math.abs(i.y-y)<3))continue;
   cand.push([x,y])}
  if(!cand.length)return;
- const c=pick(cand),z=zoneOf(c[0],c[1]),a=nbRoad(c[0],c[1]);
+ // 鄉間人口稀少：候選點落在市區外時多半重抽（附近有自家分隊時機率較高）
+ let c=pick(cand);
+ for(let t=0;t<6&&!inCity(c[0],c[1]);t++){
+  const near=SPOT.some((s,i)=>i<S.nst&&Math.abs(s.p[0]-c[0])+Math.abs(s.p[1]-c[1])<26);
+  if(Math.random()<(near?.4:.14))break;c=pick(cand)}
+ const z=zoneOf(c[0],c[1]),a=nbRoad(c[0],c[1]);
  if(!a)return;
  const probe={ax:a[0],ay:a[1]};
  const fs=getF(probe,0);
@@ -32,7 +37,7 @@ function spawn(){
   {need:d.base.map(g=>({c:g.c.slice(),n:g.n,l:g.l,als:g.als,k:g.k})),pm:{},dur:d.dur,pay:d.pay,pen:d.pen};
  const need=o.need;
  const inc={id:uid++,k,x:c[0],y:c[1],ax:a[0],ay:a[1],z,bigOK,F:probe.F,
-  left:Math.round((o.t||d.t)*TX*(1+(o.need.reduce((a,g)=>a+g.n,0))/26)),
+  left:Math.round((o.t||d.t)*TX*(1+(o.need.reduce((a,g)=>a+g.n,0))/26)*(inCity(c[0],c[1])?1:1.45)),
   max:0,work:0,dur:Math.round(o.dur*DURX*(1+(o.need.reduce((a,g)=>a+g.n,0))/12)),pay:o.pay,pen:o.pen,pm:o.pm,need,
   hy:null,hd:999,hp:null,relay:0,tender:0,addr:'',rev:0,note:'',t0:S.t,fl:{},
   phs:phasesFor(k,d),ph:-1,req:null,reqT:0,pol:d.police?2:0,polT:0,pow:0,powT:0,dai:'',defl:0,
@@ -41,6 +46,7 @@ function spawn(){
 if(d.road){inc.x=a[0];inc.y=a[1]}
  inc.addr=z==='hiway'?'國道'+(1+Math.floor(Math.random()*9))+'號 '+(10+Math.floor(Math.random()*300))+'K':
   z==='forest'?'山區產業道路 '+(1+Math.floor(Math.random()*30))+'K':
+  !inCity(c[0],c[1])?ruralAddr(c[0],c[1]):
   pick(RDN)+(Math.random()<.5?'路':'街')+(1+Math.floor(Math.random()*500))+'號';
  if(d.w){
   const hy=nearHyd(inc);inc.hy=hy.h;inc.hd=hy.d;inc.hp=hy.p;

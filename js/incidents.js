@@ -163,4 +163,4 @@ function zoneOf(x,y){
  if(ter(x,y)===2)return 'forest';
  for(let i=0;i<4;i++)if(ter(x+DIR[i][0],y+DIR[i][1])===2)return 'forest';
  for(let i=0;i<4;i++)if(ter(x+DIR[i][0],y+DIR[i][1])===1)return 'water';
- return 'city'}
+ return inCity(x,y)?'city':'rural'}

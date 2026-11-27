@@ -3,7 +3,7 @@
 const RD=new Uint8Array(N*N),TR=new Uint8Array(N*N),SH=new Float32Array(N*N),RUN=new Uint8Array(N*N);
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
-let FX=0,FY=0,SPOT=[],HOSP=[];
+let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[];
 let S,cw=900,ch=700,base=14,zoom=2,cam={x:0,y:0},uid=1,sel=null,selU=null,paused=false,
  last=0,uiT=0,msg='',mt=0,shopSt=0,shopOn=false,dpr=1;
 const cell=()=>base*zoom;
@@ -46,10 +46,11 @@ function nbRoad(x,y){
 function grid(){
  RC.length=0;RR.length=0;
  const sc=[3,4,3,5,4,3,5,4],sr=[4,3,4,3,4,5,3,4,5,3];
- for(let x=0,i=0;x<N;x+=sc[i++%sc.length])RC.push(x);
- if(RC[RC.length-1]!==N-1)RC.push(N-1);
- for(let y=0,i=0;y<N;y+=sr[i++%sr.length])RR.push(y);
- if(RR[RR.length-1]!==N-1)RR.push(N-1)}
+ for(let x=0,i=0;x<CITY;x+=sc[i++%sc.length])RC.push(x);
+ if(RC[RC.length-1]!==CITY-1)RC.push(CITY-1);
+ for(let y=0,i=0;y<CITY;y+=sr[i++%sr.length])RR.push(y);
+ if(RR[RR.length-1]!==CITY-1)RR.push(CITY-1)}
+const inCity=(x,y)=>x<CITY&&y<CITY;
 function inFacility(x,y){
  for(let i=0;i<SPOT.length;i++)if(SPOT[i].p[0]===x&&SPOT[i].p[1]===y)return true;
  for(const h of HOSP)for(const q of (h.cells||[h.p]))if(q[0]===x&&q[1]===y)return true;
@@ -57,8 +58,8 @@ function inFacility(x,y){
 function build(){
  grid();RD.fill(0);TR.fill(0);RUN.fill(0);
  // 水域：蜿蜒河道 + 西南港灣
- for(let y=0;y<N;y++){const c=(9+4.5*Math.sin(y/7.5/MF)+1.5*Math.sin(y/3.1/MF))*MF;
-  for(let x=0;x<N;x++)if(Math.abs(x-c)<1.8)TR[K(x,y)]=1}
+ for(let y=0;y<CITY;y++){const c=(9+4.5*Math.sin(y/7.5/MF)+1.5*Math.sin(y/3.1/MF))*MF;
+  for(let x=0;x<CITY;x++)if(Math.abs(x-c)<1.8)TR[K(x,y)]=1}
  for(let x=0;x<Math.round(17*MF);x++)for(let y=Math.round(55*MF);y<N;y++)TR[K(x,y)]=1;
  // 市中心運河（愛河型）：由河道向東南蜿蜒
  for(let x=Math.round(14*MF);x<Math.round(40*MF);x++){
@@ -67,10 +68,11 @@ function build(){
  // 西側海岸線
  for(let y=0;y<Math.round(40*MF);y++)for(let x=0;x<2+Math.round(1.5*Math.sin(y/6)+1.5);x++)TR[K(x,y)]=1;
  // 山林：東北大片
- for(let x=Math.round(44*MF);x<N;x++)for(let y=0;y<N;y++)if((x-44*MF)+y<26*MF)TR[K(x,y)]=2;
- for(let x=Math.round(53*MF);x<N;x++)for(let y=0;y<Math.round(28*MF);y++)TR[K(x,y)]=2;
+ for(let x=Math.round(44*MF);x<CITY;x++)for(let y=0;y<CITY;y++)if((x-44*MF)+y<26*MF)TR[K(x,y)]=2;
+ for(let x=Math.round(53*MF);x<CITY;x++)for(let y=0;y<Math.round(28*MF);y++)TR[K(x,y)]=2;
+ ruralTerrain();
  // 南側丘陵
- for(let x=Math.round(20*MF);x<Math.round(32*MF);x++)for(let y=Math.round(58*MF);y<N-1;y++)if(Math.random()<.9)TR[K(x,y)]=2;
+ for(let x=Math.round(20*MF);x<Math.round(32*MF);x++)for(let y=Math.round(58*MF);y<CITY-1;y++)if(Math.random()<.9)TR[K(x,y)]=2;
  // 港區：南側舊港與河岸貨櫃場
  for(let x=Math.round(3*MF);x<Math.round(18*MF);x++)for(let y=Math.round(50*MF);y<Math.round(55*MF);y++)if(TR[K(x,y)]!==1)TR[K(x,y)]=3;
  for(let x=Math.round(13*MF);x<Math.round(19*MF);x++)for(let y=Math.round(28*MF);y<Math.round(33*MF);y++)if(TR[K(x,y)]!==1)TR[K(x,y)]=3;
@@ -80,32 +82,36 @@ function build(){
  const set=(x,y,c)=>{if(x<0||y<0||x>=N||y>=N)return;const k=K(x,y);
   if(TR[k]===1)return;                      // 水域不鋪路
   RD[k]=TR[k]===2?5:c};                     // 山林一律降為產業道路
- for(let i=0;i<RC.length;i++)for(let y=0;y<N;y++)set(RC[i],y,i%2?3:2);
- for(let i=0;i<RR.length;i++)for(let x=0;x<N;x++)set(x,RR[i],i%2?3:2);
+ // 山林裡只保留少數棋盤道路（每 4 條留 1 條），其餘不鋪
+ for(let i=0;i<RC.length;i++)for(let y=0;y<CITY;y++)if(TR[K(RC[i],y)]!==2||i%4===0)set(RC[i],y,i%2?3:2);
+ for(let i=0;i<RR.length;i++)for(let x=0;x<CITY;x++)if(TR[K(x,RR[i])]!==2||i%4===0)set(x,RR[i],i%2?3:2);
  // 橋樑：部分幹道跨河
  for(let i2=1;i2<RR.length;i2+=2){const y=RR[i2];
-  for(let x=0;x<N;x++)if(TR[K(x,y)]===1&&x>2)RD[K(x,y)]=6}
+  for(let x=0;x<CITY;x++)if(TR[K(x,y)]===1&&x>2)RD[K(x,y)]=6}
  for(let i2=2;i2<RC.length;i2+=3){const x=RC[i2];
-  for(let y=0;y<N;y++)if(TR[K(x,y)]===1&&x>2&&y<Math.round(55*MF))RD[K(x,y)]=6}
+  for(let y=0;y<CITY;y++)if(TR[K(x,y)]===1&&x>2&&y<Math.round(55*MF))RD[K(x,y)]=6}
  // 國道：南北 + 東西，交會處互通
  FX=Math.round(41*MF);FY=RR[Math.round(9*MF)]+2;
- for(let y=0;y<N;y++)RD[K(FX,y)]=TR[K(FX,y)]===1?6:4;
- for(let x=0;x<N;x++)if(TR[K(x,FY)]!==1)RD[K(x,FY)]=4;
+ // 國道一號止於市區南緣；國道十號向東延伸到旗山
+ for(let y=0;y<CITY;y++)RD[K(FX,y)]=TR[K(FX,y)]===1?6:4;
+ FYE=RTOWN[0].c[0]-3;
+ for(let x=0;x<=FYE;x++)if(TR[K(x,FY)]!==1)RD[K(x,FY)]=4;
+ RD[K(FYE,FY)]=7;
  const rampY=[1,4,7,12,15,18].map(i=>RR[Math.min(RR.length-2,Math.round(i*MF))]),rampX=[2,5,9,13,16].map(i=>RC[Math.min(RC.length-2,Math.round(i*MF))]);
  for(const y of rampY){RD[K(FX,y)]=7;if(!RD[K(FX-1,y)])RD[K(FX-1,y)]=2;if(!RD[K(FX+1,y)])RD[K(FX+1,y)]=2}
  for(const x of rampX){if(TR[K(x,FY)]===1)continue;RD[K(x,FY)]=7;
   if(!RD[K(x,FY-1)])RD[K(x,FY-1)]=2;if(!RD[K(x,FY+1)])RD[K(x,FY+1)]=2}
  // 山區加幾條蜿蜒產業道路
- for(let b=0;b<6;b++){
-  let x=Math.round(46*MF)+b*3,y=RR[Math.round(6*MF)];
+ for(let b=0;b<3;b++){
+  let x=Math.round(46*MF)+b*6,y=RR[Math.round(6*MF)];
   for(let s=0;s<30&&y>0&&x>0&&x<N-1;s++){
    if(TR[K(x,y)]!==1&&RD[K(x,y)]!==4)RD[K(x,y)]=RD[K(x,y)]||5;
    y--;if(Math.random()<.45)x+=Math.random()<.5?1:-1}}
  // 巷弄
  for(let i=0;i<150;i++){
   const hz=Math.random()<.5,a=(hz?RC:RR)[Math.floor(Math.random()*(hz?RC:RR).length)],
-   b=1+Math.floor(Math.random()*(N-2)),d=Math.random()<.5?1:-1,len=2+Math.floor(Math.random()*4);
-  for(let k=1;k<=len;k++){const v=a+d*k;if(v<1||v>N-2)break;
+   b=1+Math.floor(Math.random()*(CITY-2)),d=Math.random()<.5?1:-1,len=2+Math.floor(Math.random()*4);
+  for(let k=1;k<=len;k++){const v=a+d*k;if(v<1||v>CITY-2)break;
    const x=hz?v:b,y=hz?b:v,kk=K(x,y);
    if(TR[kk]===1||RD[kk]===4||RD[kk]===7)break;
    if(!RD[kk])RD[kk]=TR[kk]===2?5:1}}
@@ -119,9 +125,10 @@ function build(){
  // 工業區：拆掉部分巷道形成大街廓
  for(let x=Math.round(30*MF);x<Math.round(42*MF);x++)for(let y=Math.round(50*MF);y<Math.round(58*MF);y++){
   const kk=K(x,y);if(RD[kk]===1||(RD[kk]===2&&Math.random()<.35))RD[kk]=0}
+ ruralRoads();
  pruneIslands();
  // 分隊與醫院
- SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
+ SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
   const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
@@ -138,7 +145,7 @@ function build(){
    if(cls(x,y))prot[K(x,y)]=1}}
  // 隨機拆除路段製造繞路，保持全網連通
  for(let i=0;i<Math.round(260*MF*MF);i++){
-  const x=1+Math.floor(Math.random()*(N-2)),y=1+Math.floor(Math.random()*(N-2)),k=K(x,y),c=RD[k];
+  const x=1+Math.floor(Math.random()*(CITY-2)),y=1+Math.floor(Math.random()*(CITY-2)),k=K(x,y),c=RD[k];
   if(!c||c>=4||prot[k])continue;
   RD[k]=0;if(!oneComponent())RD[k]=c}
  for(let k=0;k<N*N;k++)SH[k]=Math.random();
@@ -220,7 +227,7 @@ function reset(){
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
   spawn:10,dspawn:90,nst:10,over:false,hyd:[],tp:SPOT.map(s=>s.tp)};
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
-  if(RD[k]&&RD[k]<4&&!TR[k]&&(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085)S.hyd.push([x,y])}
+  if(RD[k]&&RD[k]<4&&!TR[k]&&(inCity(x,y)?(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085:Math.random()<.05))S.hyd.push([x,y])}
  const roster=[
   [0,'11','16','71','71','99'],
   [1,'11','16','71','99'],

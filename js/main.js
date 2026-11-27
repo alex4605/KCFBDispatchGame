@@ -185,7 +185,7 @@ $('btnFs').onclick=()=>{
 function setZoom(z){
  fly=null;
  const mx=cam.x+cw/2,my=cam.y+ch/2,old=cell();
- zoom=Math.max(.45,Math.min(6,z));zoomT=performance.now();
+ zoom=Math.max(.18,Math.min(6,z));zoomT=performance.now();
  cam.x=mx/old*cell()-cw/2;cam.y=my/old*cell()-ch/2;clamp()}
 $('zIn').onclick=()=>setZoom(zoom*1.35);
 $('zOut').onclick=()=>setZoom(zoom/1.35);

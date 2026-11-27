@@ -330,3 +330,5 @@ function sceneFx2(g,inc,d,crew,c,X,Y,cx,cy){
   for(let i=0;i<7;i++){const p=(T*.5+i/7)%1;
    g.beginPath();g.arc(cx+Math.sin(i*7.7+T)*c*.6,cy-p*c*1.4,c*(.06+.1*p),0,TAU);g.fill()}}}
 // 地圖與現場畫面交換位置：選取案件且未開採購面板時才生效
+// 晝夜：0 白天、1 深夜（遊戲時間每 200 秒一輪），現場面板與地圖現場模式共用
+function dayNF(){const dayT=(S.t%200)/200;return Math.max(0,Math.min(1,(dayT-.55)/.15)-Math.min(1,Math.max(0,(dayT-.9)/.08)))}
