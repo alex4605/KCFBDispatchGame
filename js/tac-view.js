@@ -572,7 +572,7 @@ function drawTac(){
    if(q.task==='master'&&q.line&&q.pf>0){const c=G.ctr(q.lc);g.fillStyle='rgba(170,210,245,.5)';for(let k=0;k<6;k++){const ph=(T*2+k/6)%1;
     g.beginPath();g.arc(ex+(c[0]-ex)*ph,ey+(c[1]-ey)*ph,3+ph*7,0,TAU);g.fill()}}}}
  // 小組
- const fr=Math.max(3,Math.min(8,t*.055)),slot={};TAC.sqp={};
+ const fr=Math.max(3,Math.min(8,t*.055)),slot={};TAC.sqp={};const LBL=[];   // LBL：這一幀已畫的名牌框（避免屋外小組名牌疊在一起）
  // 顯示位置平滑追隨目標位置（換位、換樓層時不瞬移），朝向依實際移動方向平滑轉動
  const now=performance.now(),fdt=Math.min(.1,(now-(TAC.vt||now))/1000);TAC.vt=now;TAC.vis=TAC.vis||{};
  for(const q of B.sq){
@@ -613,11 +613,15 @@ function drawTac(){
   if(q.carry){g.fillStyle='rgba(236,234,227,.95)';g.save();g.translate(p[0],p[1]);g.rotate(a);g.fillRect(-fr*3,-fr*.6,fr*2.4,fr*1.2);
    g.fillStyle='#7a4a9a';g.fillRect(-fr*2.8,-fr*.4,fr*1.6,fr*.8);g.restore()}
   g.font='10px '+FONT;g.textAlign='left';g.textBaseline='bottom';
-  const lx=p[0]-fr*2,ly=p[1]-fr*3;
+  const lt=(q.down?'MAYDAY ':'')+(q.task==='rit'||q.task==='ritgo'?'RIT ':'')+q.cs+(q.line&&q.f>=0?' '+Math.round(q.pf*100)+'%':''),lw=g.measureText(lt).width;
+  let lx=p[0]-fr*2,ly=p[1]-fr*3,shown=true;
+  const hitL=y=>LBL.some(r=>lx<r[0]+r[2]&&lx+lw>r[0]&&y-11<r[1]+r[3]&&y>r[1]);
+  if(hitL(ly)&&!sel&&!q.down){if(!hitL(ly-11))ly-=11;else if(!hitL(ly+fr*6+11))ly+=fr*6+11;else shown=q.f>=0}   // 屋外擠在一起時往上下讓位，仍重疊就不寫名字（選取或倒地一定顯示）
+  if(shown){LBL.push([lx,ly-11,lw,11]);
   g.fillStyle=q.down?'#ff5a4a':sel?'#e9a13b':'rgba(236,234,227,.9)';
-  g.fillText((q.down?'MAYDAY ':'')+(q.task==='rit'||q.task==='ritgo'?'RIT ':'')+q.cs+(q.line&&q.f>=0?' '+Math.round(q.pf*100)+'%':''),lx,ly);
+  g.fillText(lt,lx,ly);
   if(q.ty!=='robot'&&tacAcc(B)){g.fillStyle='rgba(0,0,0,.6)';g.fillRect(lx,ly+1,26,3);
-   g.fillStyle=q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,26*q.air,3)}
+   g.fillStyle=q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,26*q.air,3)}}
   TAC.hits.unshift({t:'sq',id:q.u,x:p[0]-fr*3.5,y:p[1]-fr*4,w:fr*7,h:fr*7})}
  // 對話泡泡：入室小組喊話（約 3 秒）
  {const now=performance.now();for(const q of B.sq){if(!q.say||now-q.say.t>3000)continue;const p=TAC.sqp[q.u];if(!p||!tacIn(q)||q.f!==vf)continue;
@@ -694,13 +698,15 @@ function drawTac(){
     ['能見度　'+P.vis+' m',P.vis<1?'#ff6a5a':P.vis<5?'#e9a13b':'#9d9a92'],
     ['燃燒面積　'+P.burn+' / '+P.area+' ㎡',P.burn?'#ff8a5a':'#9d9a92'],
     ['含氧量　'+P.o2+' %',P.o2<14?'#ff6a5a':P.o2<18?'#e9a13b':'#9d9a92']];
+   {const ws=tacWinSt(B,x,n);rows.push(['對外窗戶　'+ws[0],ws[1]])}
    if(x.gm){const a=Math.round((S.t-x.gm.t)/60);rows.push(['氣體偵測（'+(a?a+' 分鐘前':'剛剛')+'）','#7db3e8']);
     for(const gk of TAC_GAS)rows.push(['　'+gk[1]+'　'+x.gm[gk[0]]+' '+gk[2],tacGasCol(gk[0],x.gm[gk[0]])])}
    if(x.emb)rows.push(['餘燼未處理（可能復燃）','#ff8a5a']);
    if(n.ty==='room')rows.push([x.sl>=2?'已次級搜索':x.sl===1?'已初期搜索':'未搜索','#7db3e8']);
    if(x.o2<13&&x.h>.35&&!x.v)rows.push(['⚠ 缺氧悶燒：開口可能爆燃','#ff6a5a']);
    if(x.h>.7&&x.s>.6&&!x.fl&&!x.vv)rows.push(['⚠ 閃燃前兆','#ff6a5a']);
-   const bw=180,bh=rows.length*16+10;let bx=hv.x+16,by=hv.y+12;if(bx+bw>tW-4)bx=hv.x-bw-12;if(by+bh>tH-4)by=tH-bh-4;
+   g.font='12px '+FONT;const bw=Math.max(170,...rows.map(r=>g.measureText(r[0]).width))+16,bh=rows.length*16+10;
+   let bx=hv.x+16,by=hv.y+12;if(bx+bw>tW-4)bx=hv.x-bw-12;if(by+bh>tH-4)by=tH-bh-4;
    g.fillStyle='rgba(12,12,11,.92)';g.fillRect(bx,by,bw,bh);g.strokeStyle='rgba(255,255,255,.18)';g.lineWidth=1;g.strokeRect(bx,by,bw,bh);
    g.font='12px '+FONT;g.textAlign='left';g.textBaseline='top';
    rows.forEach((r,k)=>{g.fillStyle=r[1];g.fillText(r[0],bx+8,by+6+k*16)})}}
@@ -894,8 +900,10 @@ function tacTagHTML(inc,B,q,i){
   '<div class="mf"><span class="sub">'+loc+'</span>'+(inT&&acc?'<span class="sub">入室 '+fmt(inT)+'</span>':'')+air+(q.ty!=='robot'&&q.ty!=='ladder'&&q.fat>.4?'<span class="sub" style="color:'+(q.fat>.7?'var(--red)':'var(--amb)')+'">疲勞 '+Math.round(q.fat*100)+'%</span>':'')+'</div></div></div>'}
 function tacBotHTML(inc){
  const B=inc.tac,sq=B.sq.find(q=>q.u===TAC.sq);
- let h='<div class="tboard">';
- for(const c of TAC_COLS){const qs=B.sq.map((q,i)=>[q,i]).filter(x=>tacCat(x[0])===c[0]);
+ // 沒有小組的欄位縮窄，讓有小組的欄位寬一點
+ const cols=TAC_COLS.map(c=>[c,B.sq.map((q,i)=>[q,i]).filter(x=>tacCat(x[0])===c[0])]);
+ let h='<div class="tboard" style="--cols:'+cols.map(x=>x[1].length?'minmax(0,1fr)':'minmax(0,.45fr)').join(' ')+'">';
+ for(const [c,qs] of cols){
   if(c[0]==='in')qs.sort((a,b)=>(b[0].down-a[0].down)||(b[0].f-a[0].f));
   h+='<div class="tcol c-'+c[0]+'"><div class="tch2">'+c[1]+' <span>'+qs.length+'</span></div>'+qs.map(x=>tacTagHTML(inc,B,x[0],x[1])).join('')+'</div>'}
  h+='</div>';

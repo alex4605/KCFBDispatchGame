@@ -177,7 +177,7 @@ main.sw.mapc #mapbar button{padding:2px 8px}
 .tline .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #tacSide .tlog .lm{color:var(--amb)}
 /* 管制牌看板 */
-.tboard{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.tboard{display:grid;grid-template-columns:var(--cols,repeat(6,minmax(0,1fr)));gap:6px}
 .tcol{background:var(--pnl2);border-radius:7px;padding:4px;min-height:48px;max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
 .tch2{font-size:11px;color:var(--fg2);padding:0 2px;display:flex;justify-content:space-between}
 .c-in .tch2{color:#ff8a6a}.c-rit .tch2{color:var(--red)}.c-rest .tch2{color:var(--amb)}.c-stn .tch2{color:var(--pur)}

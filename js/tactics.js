@@ -306,6 +306,12 @@ function tacEarlyVent(inc,B,x){
  radio(inc,'安全官','注意：'+tacNm(B,x.f,x.c)+'還沒有水線壓制就開口排煙，火勢會因進氣變大！')}
 // 入口或房門的開門方式：指定任務優先，其餘依 ROE（預設破壞進入）
 const tacEntryMode=(B,q)=>q.task==='dctrl'?'dctrl':q.task==='force'?'force':(B.roe||'force');
+// 對外窗戶狀態：無（沒有對外窗或地下室）／已破裂（破窗或受熱爆裂，已成開口）／部分破損（受高溫龜裂）／完整
+function tacWinSt(B,x,n){
+ if(!n.win||x.f<B.bf)return['無','#9d9a92'];
+ if(x.v)return['已破裂（開口）','#ff8a5a'];
+ if(x.wcr)return['部分破損（受熱龜裂）','#e9a13b'];
+ return['完整','#7db3e8']}
 // 空間參數（換算成實際單位顯示）：溫度 °C、能見度 m、燃燒面積 ㎡、含氧量 %
 function tacParam(B,x){
  const n=B.L.N[x.c],area=Math.round(n.gw*n.gh*25);
@@ -968,6 +974,9 @@ function tacFire(inc,B,dt){
    // 撒水是「控制」：把火壓在約三成並阻止延燒，仍需小組進入撲滅；煙照樣會累積
    x.wet=1;if(x.h>.32)x.h=Math.max(.32,x.h-dt*(x.h>.85?.004:.01)*(B.sp&&B.sp.on?1.5:1))}
   if(x.h>.2){x.bd=1;x.ovh=0}
+  // 窗戶受熱：高溫先龜裂；猛烈燃燒時玻璃偶爾爆裂成開口（自然排煙、也讓火吃到空氣）
+  if(x.h>.55&&!x.wcr&&B.L.N[x.c].win&&x.f>=B.bf)x.wcr=1;
+  if(x.h>.92&&!x.v&&x.wcr&&B.L.N[x.c].win&&x.f>=B.bf&&Math.random()<dt*.01){x.v=1;radio(inc,'安全官',tacNm(B,x.f,x.c)+'窗戶受熱爆裂，濃煙火舌竄出窗外！')}
   if(x.fu>0&&x.h>.02){
    let ox=.45+.55*x.v+(x.v&&B.ppvS&&B.ppvS.has(x.f*W+x.c)?.6:0)+(x.vv?.2:0)-(x.s>.85&&!x.v?.2:0);
    if(flow&&x.f<=B.bf+1)ox+=.2;
