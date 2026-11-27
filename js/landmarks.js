@@ -146,7 +146,7 @@ function drawTHSR(c,x0,x1,y0,y1){
   if(c>=14){ctx.strokeStyle='rgba(60,60,58,.8)';ctx.lineWidth=Math.max(1,c*.02);for(const o of[-.06,.06]){ctx.beginPath();ctx.moveTo(px+o*c,py);ctx.lineTo(qx+o*c,qy);ctx.stroke()}}}
  ctx.restore()}
 // 地標專屬案件：抽到的案類若適合某類地標，約三成機率改發生在該地標（地址寫地標名稱）
-const LMK_KIND={beach:['drown','heat','faint','sport','mob'],t85:['skyscraper','hifire','lift','ems','faint'],t50:['skyscraper','hifire','lift','ems'],farm:['farmfire','machine','fall','stuck'],tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
+const LMK_KIND={beach:['drown','heat','faint','sport','mob'],t85:['skyscraper','lift','ems','faint'],t50:['skyscraper','lift','ems'],farm:['farmfire','machine','fall','stuck'],tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
  dept:['deptfire','lift','crowd','faint','smoke'],mart:['deptfire','lift','faint','choke','carfire'],edu:['sport','faint','hypervent','brawl','kidfever','poolgas']};
 function lmkFor(k){const ms=LMK.filter(m=>LMK_KIND[m.k]&&LMK_KIND[m.k].includes(k)&&!S.inc.some(i=>i.lm===m.n+m.x0));return ms.length?pick(ms):null}
 function lmkSpawn(k){
