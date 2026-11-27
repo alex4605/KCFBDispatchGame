@@ -9,11 +9,14 @@ function step(dt){
  for(const u of S.units)stepUnit(u,dt);
  if(S.units.some(u=>u.gone)){S.units=S.units.filter(u=>!u.gone);if(selU&&!S.units.some(u=>u.id===selU))selU=null;reindex()}
  stepDuties(dt);
+ mrStep(dt);
  // 玩家在戰術畫面時，由戰略 AI 代理指揮中心
  if(TAC.open)stratAI(dt);
  for(let i=S.inc.length-1;i>=0;i--)stepIncident(i,dt)}
 // 單一車輛：報停計時、整裝、補水、公務、沿路徑移動與抵達後的狀態轉換
 function stepUnit(u,dt){
+  // 支援外縣市：派出期間不在轄區，時間到返回分隊待命
+  if(u.st==='away'){u.awayT-=dt;if(u.awayT<=0){u.st='idle';u.awayTo=null;crewDown(u)}return}
   if(u.st==='oos'){u.oosT-=dt;if(u.oosT<=0){u.st='idle';u.oosT=0}return}
   if(u.st==='tx'){
    u.txT=(u.txT||0)+dt;

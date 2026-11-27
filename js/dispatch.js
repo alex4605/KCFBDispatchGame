@@ -10,7 +10,9 @@ function spawnDuty(){
  S.duties.push({id:uid++,n:t.n,code:t.c,dur:t.d,pay:t.p,x:c[0],y:c[1],ax:a[0],ay:a[1],
   left:75,unit:null,run:0,addr:pick(RDN)+'路'})}
 function match(g,u){
- if(!g.items||!g.items.length)return g.c.indexOf(u.code)>=0&&(!g.als||u.tp);
+ // 特搜醫療組只支援 USAR 編組，不擔任一般救護
+ if(u.code==='99'&&g.k!=='usar')return false;
+ if(!g.items||!g.items.length)return(g.c.indexOf(u.code)>=0||(u.usar&&g.c.indexOf('搜')>=0))&&(!g.als||u.tp);
  const set=eqSet(u);
  for(const i of g.items)if(!set.has(i))return false;
  return true}
@@ -180,7 +182,7 @@ function send(inc,u,mode){
 function nearest(inc,codes,als){
  let best=null,bd=INF;
  for(const u of S.units){
-  if(u.st!=='idle'||codes.indexOf(u.code)<0)continue;
+  if(u.st!=='idle'||(codes.indexOf(u.code)<0&&!(u.usar&&codes.indexOf('搜')>=0)))continue;
   if(als&&u.code==='91'&&tpFree(u.si)<=0)continue;
   const e=etaTo(u,inc);if(e===null||e>=bd)continue;bd=e;best=u}
  return best}

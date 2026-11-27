@@ -80,10 +80,12 @@ document.addEventListener('keydown',e=>{
  e.preventDefault();const i=ids.indexOf(sel);
  selInc(ids[i<0?0:(i+(e.key==='ArrowDown'?1:ids.length-1))%ids.length])});
 document.body.addEventListener('click',e=>{
- const b=e.target.closest('[data-ma],[data-wfpri],[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
+ const b=e.target.closest('[data-mrsend],[data-mrno],[data-ma],[data-wfpri],[data-wfu],[data-wfauto],[data-wfheli],[data-wfcrew],[data-wfhs],[data-wfcs],[data-sel],[data-u],[data-uc],[data-oos],[data-ret],[data-duty],[data-pkg],[data-note],[data-auto],[data-rc],[data-send],[data-req],[data-ext],[data-dai],[data-defl],[data-stand],[data-tac],[data-buy],[data-hire],[data-newst],[data-shopclose],#rs');
  if(!b)return;
  msg='';
  const D=b.dataset;
+ if(D.mrsend){const r=(S.mr||[]).find(x=>x.id===+D.mrsend);if(r)mrSend(r);dirty();return}
+ if(D.mrno){S.mr=(S.mr||[]).filter(x=>x.id!==+D.mrno);sel=null;msg='已婉拒支援請求';dirty();return}
  {const wi=S.inc.find(x=>x.id===sel);if(wi&&wfClick(wi,D)){dirty();return}}
  if(b.id==='rs'){reset();bgScale=0;dirty();return}
  if(D.shopclose){shopOn=false;$('shop').classList.remove('open');sh='';return}

@@ -9,6 +9,7 @@ function detailHTML(){
  // 提示列固定輸出（無訊息時隱藏），避免它出現或消失時把後面的節點整排往後擠、打斷輸入中的欄位
  const mm='<div class="note"'+(msg?'':' hidden')+'>'+esc(msg)+'</div>';
  if(selU){const u=S.units.find(x=>x.id===selU);if(u)return mm+unitHTML(u)}
+ const mr=(S.mr||[]).find(x=>x.id===sel);if(mr)return mrHTML(mr,mm);
  const dy=S.duties.find(x=>x.id===sel);
  if(dy)return dutyDetailHTML(dy,mm);
  const inc=S.inc.find(x=>x.id===sel);

@@ -116,7 +116,7 @@ function draw(){
   if(sel===inc.id){ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
    ctx.beginPath();ctx.arc(cx,cy,rad*1.6,0,TAU);ctx.stroke();ctx.setLineDash([])}}
  for(const u of S.units){
-  if(u.st==='idle'||u.st==='oos')continue;
+  if(u.st==='idle'||u.st==='oos'||u.st==='away')continue;
   const cx=(u.x+.5+(u.ox||0))*c,cy=(u.y+.5+(u.oy||0))*c;
   const wk=K(Math.round(u.x),Math.round(u.y)),afloat=!RD[wk]&&TR[wk]===1;
   ctx.save();ctx.translate(cx,cy);ctx.rotate(u.hd||0);

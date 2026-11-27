@@ -194,13 +194,14 @@ const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 function addU(si,code){
  const st=SPOT[si],b=parseInt(code,10),same=S.units.filter(u=>u.si===si&&u.code===code).length;
  const num=isNaN(b)?code+(same?String(same+1):''):String(b+same);
- S.units.push({id:uid++,si,code,cs:st.n+num,x:st.x[0],y:st.x[1],path:[],st:'idle',
+ S.units.push({id:uid++,si,code,cs:st.n+num,usar:/^特/.test(st.n)?1:0,x:st.x[0],y:st.x[1],path:[],st:'idle',
   inc:null,duty:null,off:0,wait:0,turn:0,oosT:0,mode:null,tp:false,crew:0,res:false,
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
 // 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權
 function repGain(base){if(base<=0)return 0;const g=base*150/(150+Math.max(0,S.rep));S.rep+=g;S.repLast={g,t:S.t};return g}
 // 車輛所屬分隊名稱（跨縣市支援車隊用原單位分隊）
-const stName=u=>u.stn||SPOT[u.si].n;
+const ST_FULL={'特一':'第一特搜','特二':'第二特搜'};
+const stName=u=>u.stn||ST_FULL[SPOT[u.si].n]||SPOT[u.si].n;
 function tpFree(si){let n=0;for(const u of S.units)if(u.si===si&&u.res)n++;return S.tp[si]-n}
 function reindex(){
  S.tick=(S.tick||0)+1;
@@ -213,7 +214,7 @@ function reindex(){
  S.ix={m,bySt,idle}}
 const onScene=inc=>(S.ix&&S.ix.m.get(inc.id))||[];
 const onDuty=u=>u.st==='work'||u.st==='tx'||u.st==='give'||u.st==='clean';
-const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','31','艇','履','搜','警'];
+const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','31','艇','履','警'];
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
@@ -221,11 +222,11 @@ function reset(){
  for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);
   if(RD[k]&&RD[k]<4&&!TR[k]&&(RC.indexOf(x)>=0||RR.indexOf(y)>=0)&&Math.random()<.085)S.hyd.push([x,y])}
  const roster=[
-  [0,'11','11','11','21','41','61','91','91','71','搜'],
-  [1,'11','11','11','16','75','41','91','91','警'],
-  [2,'11','11','16','31','91','91','71','搜'],
+  [0,'11','16','71','71','99'],
+  [1,'11','16','71','99'],
+  [2,'11','11','16','31','21','41','61','91','91','71','75'],
   [3,'11','11','11','57','61','91','91','71'],
-  [4,'11','11','16','61','91','91','搜','警'],
+  [4,'11','11','16','61','91','91','71','警'],
   [5,'11','11','16','51','91','91','41'],
   [6,'11','11','16','21','91','91','61'],
   [7,'11','11','16','01','01','艇','71','91','91'],
