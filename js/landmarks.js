@@ -35,23 +35,26 @@ const LMK_DEF=[
  {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['林園',-6,-4],any:1,col:'#5a5a4a',ic:'🏭'},
  {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['阿蓮',3,3],any:1,col:'#5a5a4a',ic:'🏭'},
  {k:'mil',n:'左營海軍基地',sub:'管制區',w:2,h:2,near:['左營',-8,0],any:1,ban:1,col:'#3a4a3a',ic:'⚓'},
- {k:'mil',n:'岡山空軍基地',sub:'管制區',w:2,h:2,near:['岡山',-3,-5],any:1,ban:1,col:'#3a4a3a',ic:'✈'},
- {k:'mil',n:'陸軍營區',sub:'管制區',w:2,h:1,near:['鳳山',4,4],any:1,ban:1,col:'#3a4a3a',ic:'🪖'},
+ {k:'afb',n:'岡山空軍基地',sub:'管制區',w:5,h:2,near:['岡山',-4,-7],any:1,ban:1,col:'#3a4a3a',ic:'✈'},
+ {k:'mil',n:'陸軍官校',sub:'管制區',w:2,h:2,near:['鳳山',4,4],any:1,ban:1,col:'#3a4a3a',ic:'🪖'},
+ {k:'beach',n:'旗津海水浴場',sub:'沙灘',w:1,h:3,near:['旗津',-3,0],any:1,sea:1,side:'w',col:'#b8a070',ic:'🏖'},
  {k:'arms',n:'兵工廠',sub:'管制區',w:2,h:2,near:['大寮',6,4],any:1,ban:1,col:'#4a3a2a',ic:'💥'}];
 const lmkAt=(x,y)=>LMKC.get(K(x,y));
 function placeLandmarks(){
  LMK=[];LMKC.clear();THSR=[];
  // any：鄉間農地或魚塭也可（農地工廠、軍事基地）；用地改為建地
- let any=0;const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&!HG[k]&&(TR[k]===0||any&&(TR[k]===5||TR[k]===6))&&!inFacility(x,y)&&!LMKC.has(k)};
- const road=(x,y)=>{const r=cls(x,y);return r===1||r===2||r===3};
- for(const d of LMK_DEF){const s=SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;any=d.any?1:0;
+ // sea：沙灘，要臨海（不需臨路），港區、魚塭也可
+ let any=0,sea=0;const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&!HG[k]&&(TR[k]===0||any&&(TR[k]===5||TR[k]===6)||sea&&TR[k]===3)&&!inFacility(x,y)&&!LMKC.has(k)};
+ const road=(x,y)=>{if(sea)return x>=0&&y>=0&&x<N&&y<N&&TR[K(x,y)]===1;const r=cls(x,y);return r===1||r===2||r===3};
+ for(const d of LMK_DEF){const s=SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;any=d.any?1:0;sea=d.sea?1:0;
   const cx=s.p[0]+d.near[1],cy=s.p[1]+d.near[2];let best=null,bd=1e9;
   for(const [W,H] of(d.w===d.h?[[d.w,d.h]]:[[d.w,d.h],[d.h,d.w]]))
    for(let x0=cx-12;x0<=cx+12;x0++)for(let y0=cy-12;y0<=cy+12;y0++){
     const dd=Math.hypot(x0+W/2-cx,y0+H/2-cy);if(dd>=bd)continue;
     let ok=true;for(let i=0;i<W&&ok;i++)for(let j=0;j<H;j++)if(!land(x0+i,y0+j)){ok=false;break}
     if(!ok)continue;
-    let rd=0;for(let i=0;i<W;i++){if(road(x0+i,y0-1))rd++;if(road(x0+i,y0+H))rd++}for(let j=0;j<H;j++){if(road(x0-1,y0+j))rd++;if(road(x0+W,y0+j))rd++}
+    let rd=0;if(d.side==='w'){for(let j=0;j<H;j++)if(road(x0-1,y0+j))rd++}   // 沙灘面向西邊的海
+    else{for(let i=0;i<W;i++){if(road(x0+i,y0-1))rd++;if(road(x0+i,y0+H))rd++}for(let j=0;j<H;j++){if(road(x0-1,y0+j))rd++;if(road(x0+W,y0+j))rd++}}
     if(!rd)continue;bd=dd;best={x0,y0,w:W,h:H}}
   if(!best)continue;
   const m=Object.assign({},d,best,{cells:[]});m.p=[best.x0+(best.w-1)/2,best.y0+(best.h-1)/2];
@@ -74,12 +77,26 @@ function lmkDetail(L,px,py,c){
   ctx.fillStyle='#4d5a55';ctx.fillRect(px+c*.06,py+c*.1,c*.7,c*.56);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;
   for(let q=1;q<7;q++){ctx.beginPath();ctx.moveTo(px+c*.06+q*c*.1,py+c*.1);ctx.lineTo(px+c*.06+q*c*.1,py+c*.66);ctx.stroke()}
   ctx.fillStyle='#6a5a3a';ctx.fillRect(px+c*.1,py+c*.72,c*.3,c*.18);ctx.fillStyle='#d8d6cc';ctx.fillRect(px+c*.6,py+c*.74,c*.3,c*.12)}
- else if(m.k==='mil'||m.k==='arms'){ // 管制區：圍牆與斜線、營舍（或彈藥庫土堆）、車輛
+ else if(m.k==='afb'&&(m.w>=m.h?j===0:i===0)){ // 空軍基地跑道：一排格子畫成跑道，兩端跑道頭標線
+  const hz2=m.w>=m.h,end0=hz2?i===0:j===0,end1=hz2?i===m.w-1:j===m.h-1;ctx.fillStyle='#2f3236';ctx.fillRect(px,py,c+.6,c+.6);
+  ctx.fillStyle='#3e4246';if(hz2)ctx.fillRect(px,py+c*.22,c+.6,c*.56);else ctx.fillRect(px+c*.22,py,c*.56,c+.6);
+  ctx.fillStyle='rgba(240,240,232,.7)';
+  if(hz2){ctx.fillRect(px+c*.2,py+c*.48,c*.35,Math.max(1,c*.04));if(end0||end1)for(let q=0;q<4;q++)ctx.fillRect(px+(end0?c*.06:c*.82),py+c*(.27+q*.12),c*.12,c*.05)}
+  else{ctx.fillRect(px+c*.48,py+c*.2,Math.max(1,c*.04),c*.35);if(end0||end1)for(let q=0;q<4;q++)ctx.fillRect(px+c*(.27+q*.12),py+(end0?c*.06:c*.82),c*.05,c*.12)}}
+ else if(m.k==='beach'){ // 海水浴場：沙灘、陽傘、救生台，臨海側有浪花
+  ctx.fillStyle='#c8b280';ctx.fillRect(px,py,c+.6,c+.6);
+  const cols=['#e05a3a','#3a8ae0','#e8c040'];for(let q=0;q<3;q++){const ux=px+c*(.25+.25*q),uy=py+c*(.3+.2*((q+j)%2));ctx.fillStyle=cols[(q+j)%3];ctx.beginPath();ctx.arc(ux,uy,c*.08,0,TAU);ctx.fill()}
+  if(j===1||m.w*m.h===1){ctx.fillStyle='#d8d6cc';ctx.fillRect(px+c*.7,py+c*.62,c*.1,c*.14);ctx.fillStyle='#c8332c';ctx.fillRect(px+c*.68,py+c*.58,c*.14,c*.05)}
+  for(let d=0;d<4;d++){const nx=m.x0+i+DIR[d][0],ny=m.y0+j+DIR[d][1];if(nx<0||ny<0||nx>=N||ny>=N||TR[K(nx,ny)]!==1)continue;
+   ctx.strokeStyle='rgba(240,245,250,.7)';ctx.lineWidth=Math.max(1,c*.04);ctx.beginPath();
+   if(DIR[d][0]){const ex=px+(DIR[d][0]>0?c:0);ctx.moveTo(ex,py);ctx.lineTo(ex,py+c)}else{const ey=py+(DIR[d][1]>0?c:0);ctx.moveTo(px,ey);ctx.lineTo(px+c,ey)}ctx.stroke()}}
+ else if(m.k==='mil'||m.k==='arms'||m.k==='afb'){ // 管制區：圍牆與斜線、營舍（或彈藥庫土堆）、車輛
   ctx.fillStyle=m.k==='mil'?'#34402f':'#3e362a';ctx.fillRect(px,py,c+.6,c+.6);
   ctx.save();ctx.beginPath();ctx.rect(px,py,c+.6,c+.6);ctx.clip();
   ctx.strokeStyle='rgba(220,80,60,.25)';ctx.lineWidth=Math.max(1,c*.03);for(let q=-4;q<4;q++){ctx.beginPath();ctx.moveTo(px+q*c*.3,py+c);ctx.lineTo(px+q*c*.3+c,py);ctx.stroke()}
   ctx.restore();
-  if(m.k==='mil'){ctx.fillStyle='#5a6450';for(let q=0;q<3;q++)ctx.fillRect(px+c*.12,py+c*(.14+q*.26),c*.46,c*.16);ctx.fillStyle='#4a5a3a';ctx.fillRect(px+c*.68,py+c*.2,c*.18,c*.1);ctx.fillRect(px+c*.68,py+c*.4,c*.18,c*.1)}
+  if(m.n==='陸軍官校'&&(i+j)%2===1){ctx.fillStyle='#4a5a3a';ctx.fillRect(px+c*.08,py+c*.08,c*.84,c*.84);ctx.strokeStyle='#a85a42';ctx.lineWidth=Math.max(2,c*.05);ctx.beginPath();ctx.ellipse(px+c*.5,py+c*.5,c*.34,c*.26,0,0,TAU);ctx.stroke()}
+  else if(m.k==='mil'||m.k==='afb'){ctx.fillStyle='#5a6450';for(let q=0;q<3;q++)ctx.fillRect(px+c*.12,py+c*(.14+q*.26),c*.46,c*.16);ctx.fillStyle='#4a5a3a';ctx.fillRect(px+c*.68,py+c*.2,c*.18,c*.1);ctx.fillRect(px+c*.68,py+c*.4,c*.18,c*.1)}
   else{ctx.fillStyle='#5a4e3a';for(let q=0;q<2;q++)for(let r=0;r<2;r++){ctx.beginPath();ctx.ellipse(px+c*(.3+q*.4),py+c*(.3+r*.4),c*.14,c*.1,0,0,TAU);ctx.fill()}}
   ctx.strokeStyle='#c8c4b8';ctx.setLineDash([c*.05,c*.04]);ctx.lineWidth=Math.max(1,c*.025);
   if(i===0){ctx.beginPath();ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+c);ctx.stroke()}if(i===m.w-1){ctx.beginPath();ctx.moveTo(px+c-1,py);ctx.lineTo(px+c-1,py+c);ctx.stroke()}
@@ -129,7 +146,7 @@ function drawTHSR(c,x0,x1,y0,y1){
   if(c>=14){ctx.strokeStyle='rgba(60,60,58,.8)';ctx.lineWidth=Math.max(1,c*.02);for(const o of[-.06,.06]){ctx.beginPath();ctx.moveTo(px+o*c,py);ctx.lineTo(qx+o*c,qy);ctx.stroke()}}}
  ctx.restore()}
 // 地標專屬案件：抽到的案類若適合某類地標，約三成機率改發生在該地標（地址寫地標名稱）
-const LMK_KIND={t85:['skyscraper','hifire','lift','ems','faint'],t50:['skyscraper','hifire','lift','ems'],farm:['farmfire','machine','fall','stuck'],tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
+const LMK_KIND={beach:['drown','heat','faint','sport','mob'],t85:['skyscraper','hifire','lift','ems','faint'],t50:['skyscraper','hifire','lift','ems'],farm:['farmfire','machine','fall','stuck'],tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
  dept:['deptfire','lift','crowd','faint','smoke'],mart:['deptfire','lift','faint','choke','carfire'],edu:['sport','faint','hypervent','brawl','kidfever','poolgas']};
 function lmkFor(k){const ms=LMK.filter(m=>LMK_KIND[m.k]&&LMK_KIND[m.k].includes(k)&&!S.inc.some(i=>i.lm===m.n+m.x0));return ms.length?pick(ms):null}
 function lmkSpawn(k){
