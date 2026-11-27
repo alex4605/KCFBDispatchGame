@@ -10,15 +10,9 @@ function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.18,Math.min(cw,ch
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
 let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
+// 地形之上的線狀物：道路（依等級）與高壓電塔線；底圖烘焙與即時繪製共用
 function gridLines(c,x0,x1,y0,y1){
- if(c>8){ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
-  const ye=Math.min(y1+1,CITY),xe=Math.min(x1+1,CITY);
-  for(const x of RC){ctx.beginPath();ctx.moveTo(x*c+c/2,y0*c);ctx.lineTo(x*c+c/2,ye*c);ctx.stroke()}
-  for(const y of RR){ctx.beginPath();ctx.moveTo(x0*c,y*c+c/2);ctx.lineTo(xe*c,y*c+c/2);ctx.stroke()}}
- ctx.strokeStyle='#7f6f3c';ctx.lineWidth=Math.max(1,c*.06);ctx.setLineDash([c*.35,c*.3]);
- ctx.beginPath();ctx.moveTo(FX*c+c/2,y0*c);ctx.lineTo(FX*c+c/2,Math.min(y1+1,CITY)*c);ctx.stroke();
- ctx.beginPath();ctx.moveTo(x0*c,FY*c+c/2);ctx.lineTo(Math.min(x1+1,FYE+1)*c,FY*c+c/2);ctx.stroke();
- ctx.setLineDash([]);
+ roadPass(c,Math.max(0,x0-1),Math.min(N-1,x1+1),Math.max(0,y0-1),Math.min(N-1,y1+1));
  if(c>=10&&PYLON.length)drawPylons(c,x0,x1,y0,y1)}
 function drawTerrain(c,x0,x1,y0,y1){
  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
@@ -26,14 +20,13 @@ function drawTerrain(c,x0,x1,y0,y1){
   if(t===1)ctx.fillStyle=s<.5?'#0d2130':'#0e2436';
   else if(t===2)ctx.fillStyle=s<.5?'#15251a':'#18291d';
   else if(t===3)ctx.fillStyle=s<.5?'#1c2430':'#202836';
-  else if(t===4)ctx.fillStyle=s<.5?'#1d1f22':'#212327';
+  else if(t===4)ctx.fillStyle=RUN[k]?'#34343a':CROP[k]===10?'#4a4e56':CROP[k]===11?'#3a3b3e':(s<.5?'#1f2a21':'#212d23');
   else if(t===5){const cp=CROP[k];ctx.fillStyle=cp===2?(s<.5?'#1e3019':'#21341b'):cp===3?(s<.5?'#1b2b1d':'#1d2e1f'):cp===4?'#34362f':cp===5?(s<.5?'#22301b':'#25331d'):cp===6?(s<.5?'#2e2b1d':'#322e1f'):(s<.5?'#262f1b':'#29321d')}
   else if(t===6)ctx.fillStyle=CROP[k]===7?'#1d2633':s<.5?'#12282f':'#142c33';
-  else if(!inCity(x,y))ctx.fillStyle=s<.5?'#1d1c19':'#211f1b';
+  else if(!inCity(x,y)||isSub(x,y))ctx.fillStyle=CROP[k]===9?'#262a2e':s<.5?'#1d1c19':'#211f1b';
   else ctx.fillStyle=s<.33?'#171716':s<.66?'#1b1b19':'#1f1f1c';
   ctx.fillRect(px,py,c+.6,c+.6);
-  if(RUN[k]&&!RD[k]){ctx.fillStyle='#3b3b39';ctx.fillRect(px,py,c+.6,c+.6);
-   ctx.fillStyle='#8a8a84';ctx.fillRect(px+c*.3,py+c*.45,c*.4,Math.max(1,c*.08))}
+  if(RUN[k]&&!RD[k]&&c>=6){ctx.fillStyle='rgba(235,235,225,.7)';ctx.fillRect(px+c*.2,py+c*.47,c*.45,Math.max(1,c*.06))}
   if(t===3&&c>11&&s>.7){ctx.fillStyle='#2c3a4a';ctx.fillRect(px+c*.2,py+c*.2,c*.6,c*.6)}
   if(t===2&&c>11&&s>.74){ctx.fillStyle='#1f3a25';ctx.beginPath();
    ctx.arc(px+c*.5,py+c*.5,c*.16,0,TAU);ctx.fill()}
@@ -41,24 +34,17 @@ function drawTerrain(c,x0,x1,y0,y1){
    ctx.fillRect(px+c*.18,py+c*.42,c*.34,Math.max(1,c*.07));
    ctx.fillRect(px+c*.58,py+c*.66,c*.24,Math.max(1,c*.07))}
   const r=RD[k];
-  if(r){ctx.fillStyle=r===1&&!inCity(x,y)?'#4a4433':RCOL[r];ctx.fillRect(px,py,c+.6,c+.6)}
+  if(r&&c<4){ctx.fillStyle=r===1&&!inCity(x,y)?'#4a4433':RCOL[r];ctx.fillRect(px,py,c+.6,c+.6)}
   if(CANAL[k]&&c>=8)drawCanal(x,y,px,py,c,r);
   if(c>=34)terrainDetail(x,y,k,t,r,s,px,py,c)}}
 // 放大後的街廓細節：建物量體、道路標線、港區貨櫃、綠地樹冠（以格子雜湊決定，畫面穩定不閃動）
 function hsh(k,i){let h=(k*2654435761+i*40503)>>>0;h^=h>>>15;h=Math.imul(h,2246822519)>>>0;h^=h>>>13;return(h>>>0)/4294967296}
 function terrainDetail(x,y,k,t,r,s,px,py,c){
  const rd=(a,b)=>a>=0&&b>=0&&a<N&&b<N&&RD[K(a,b)];
- if(r){const h=rd(x-1,y)||rd(x+1,y),v=rd(x,y-1)||rd(x,y+1),w=Math.max(1,c*.025);
-  ctx.fillStyle=inCity(x,y)?'rgba(0,0,0,.18)':'rgba(60,84,40,.55)';
-  if(!v){ctx.fillRect(px,py,c+.6,c*.08);ctx.fillRect(px,py+c*.92,c+.6,c*.08)}
-  if(!h){ctx.fillRect(px,py,c*.08,c+.6);ctx.fillRect(px+c*.92,py,c*.08,c+.6)}
-  ctx.fillStyle=r>=3?'rgba(214,190,110,.45)':'rgba(230,228,220,.28)';
-  if(h&&!v)for(let i=0;i<3;i++)ctx.fillRect(px+i*c/3+c*.05,py+c/2-w/2,c*.18,w);
-  else if(v&&!h)for(let i=0;i<3;i++)ctx.fillRect(px+c/2-w/2,py+i*c/3+c*.05,w,c*.18);
-  else if(h&&v){ctx.fillStyle='rgba(230,228,220,.16)';
-   for(let i=0;i<5;i++){ctx.fillRect(px+c*.12+i*c*.16,py+c*.04,c*.08,c*.1);ctx.fillRect(px+c*.12+i*c*.16,py+c*.86,c*.08,c*.1)}}
+ if(r){// 道路本身由 roadPass 依等級繪製；市區道路格底下鋪人行道色
+  if(inCity(x,y)&&!isSub(x,y)&&t===0){ctx.fillStyle='rgba(120,118,110,.13)';ctx.fillRect(px,py,c+.6,c+.6)}
   return}
- if(t===0&&inCity(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
+ if(t===0&&inCity(x,y)&&!isSub(x,y)){const g=c*.07,n=s<.4?3:2,q=(c-g*2)/n;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){const a=hsh(k,i*3+j);if(a<.18)continue;
    const bx=px+g+i*q+q*.08,by=py+g+j*q+q*.08,bw=q*(.62+.3*hsh(k,i+j*5+9)),bh=q*(.62+.3*hsh(k,i*7+j+4));
    const lv=16+(a*22|0);ctx.fillStyle='rgb('+(lv+12)+','+(lv+11)+','+(lv+8)+')';ctx.fillRect(bx,by,bw,bh);
@@ -80,8 +66,14 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
   if(hsh(k,3)>.45){const ax=px+c*(.3+.4*hsh(k,4)),ay=py+c*(.3+.4*hsh(k,5)),sp=S?S.t*4:0;
    ctx.strokeStyle='rgba(220,235,240,.55)';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(ax,ay,c*.09,0,TAU);ctx.stroke();
    ctx.fillStyle='rgba(220,235,240,.25)';ctx.beginPath();ctx.arc(ax,ay,c*.16,0,TAU);ctx.fill()}}
- else if(t===0&&!inCity(x,y)){// 鄉鎮：低矮透天與三合院，偶有廟宇、學校
+ else if(t===0){// 郊區與鄉鎮：低矮透天與三合院，偶有廟宇、學校、鐵皮工廠
   const a=hsh(k,1);
+  if(CROP[k]===9){const cols=['#3e4a56','#4a4f55','#56504a','#3f4d4a'],cl=cols[hsh(k,6)*4|0];
+   ctx.fillStyle=cl;ctx.fillRect(px+c*.06,py+c*.1,c*.88,c*.74);
+   ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=Math.max(1,c*.015);
+   for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(px+c*.06+i*c*.11,py+c*.1);ctx.lineTo(px+c*.06+i*c*.11,py+c*.84);ctx.stroke()}
+   ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(px+c*.06,py+c*.44,c*.88,c*.04);
+   ctx.fillStyle='#2c2b27';ctx.fillRect(px+c*.1,py+c*.86,c*.5,c*.1);return}
   if(CROP[k]===8){ctx.fillStyle='#3d4a2e';ctx.fillRect(px+c*.04,py+c*.04,c*.92,c*.92);
    ctx.strokeStyle='#8a4a3a';ctx.lineWidth=Math.max(2,c*.07);ctx.beginPath();ctx.ellipse(px+c*.5,py+c*.55,c*.36,c*.24,0,0,TAU);ctx.stroke();
    ctx.fillStyle='#4a4540';ctx.fillRect(px+c*.08,py+c*.06,c*.84,c*.16);
@@ -98,7 +90,26 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
  else if(t===3){const cols=['#6b3b2a','#2f4f6b','#5a5a3a','#3d5a48'];
   for(let j=0;j<4;j++)for(let i=0;i<2;i++){if(hsh(k,i*4+j)<.3)continue;
    ctx.fillStyle=cols[hsh(k,i*4+j+50)*4|0];ctx.fillRect(px+c*(.1+i*.42),py+c*(.1+j*.21),c*.36,c*.16)}}
- else if(t===4&&s>.5){ctx.fillStyle='rgba(230,228,220,.2)';ctx.fillRect(px+c*.45,py+c*.1,c*.1,c*.3)}}
+ else if(t===4)airportDetail(x,y,k,px,py,c)}
+// 機場：跑道標線與跑道頭、滑行道黃線、停機坪與飛機、航廈、圍籬
+function airportDetail(x,y,k,px,py,c){
+ const A=AP;if(!A)return;
+ if(RUN[k]){const end=x===A.x0+1||!RUN[K(x+1,y)]||!RUN[K(x-1,y)];
+  if(end){ctx.fillStyle='rgba(240,240,232,.75)';for(let i=0;i<6;i++)ctx.fillRect(px+c*.3,py+c*(.12+i*.13),c*.4,c*.07)}
+  ctx.fillStyle='rgba(255,220,120,.6)';for(const yy of[.08,.88])for(let i=0;i<3;i++)ctx.fillRect(px+c*(.15+i*.33),py+c*yy,c*.05,c*.05);return}
+ const cp=CROP[k];
+ if(cp===10){ctx.fillStyle='#5a5f68';ctx.fillRect(px+c*.08,py,c*.84,c+.6);ctx.fillStyle='rgba(160,200,240,.35)';ctx.fillRect(px+c*.78,py,c*.08,c+.6);
+  ctx.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<3;i++)ctx.fillRect(px+c*(.2+i*.2),py+c*.1,c*.08,c*.8);return}
+ if(cp===11){ctx.strokeStyle='rgba(240,200,80,.55)';ctx.lineWidth=Math.max(1,c*.025);ctx.beginPath();ctx.moveTo(px,py+c/2);ctx.lineTo(px+c,py+c/2);ctx.stroke();
+  if(hsh(k,3)>.4){ctx.save();ctx.translate(px+c*.5,py+c*.5);ctx.fillStyle='#d8dadc';
+   ctx.fillRect(-c*.36,-c*.05,c*.72,c*.1);ctx.fillRect(-c*.05,-c*.34,c*.12,c*.68);ctx.fillRect(c*.24,-c*.14,c*.08,c*.28);ctx.restore()}
+  return}
+ // 跑道之間的草地；滑行道（跑道中間一列）與圍籬
+ const mid=Math.round((A.y0+A.y1)/2);
+ if(y===mid&&x>A.x0+4){ctx.fillStyle='#2e2f33';ctx.fillRect(px,py+c*.25,c+.6,c*.5);ctx.fillStyle='rgba(240,200,80,.55)';ctx.fillRect(px,py+c*.49,c+.6,Math.max(1,c*.025))}
+ if(x===A.x0||x===A.x1||y===A.y0||y===A.y1){ctx.strokeStyle='rgba(200,200,190,.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();
+  if(x===A.x0){ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+c)}if(x===A.x1){ctx.moveTo(px+c-1,py);ctx.lineTo(px+c-1,py+c)}
+  if(y===A.y0){ctx.moveTo(px,py+1);ctx.lineTo(px+c,py+1)}if(y===A.y1){ctx.moveTo(px,py+c-1);ctx.lineTo(px+c,py+c-1)}ctx.stroke();ctx.setLineDash([])}}
 function bakeBG(){
  const c=cell(),px=Math.ceil(N*c);
  if(px*dpr>3600){bgScale=0;return false}
@@ -115,6 +126,7 @@ function draw(){
  if(bgScale!==c&&(!bgScale||performance.now()-zoomT>140)&&!bakeBG())bgScale=0;
  if(bgScale)ctx.drawImage(bgc,0,0,N*c,N*c);
  else{drawTerrain(c,x0,x1,y0,y1);gridLines(c,x0,x1,y0,y1)}
+ routeShields(c,x0,x1,y0,y1);
  if(c<40)mapLabels(c);
  ctx.fillStyle=C.hyd;
  for(const h of S.hyd){
@@ -394,4 +406,108 @@ function mapLabels(c){
  lb('高 屏 溪',riverX(84)+.5,84,13,'rgba(125,179,232,A)',Math.PI/2);
  lb('台 灣 海 峽',9,122,13,'rgba(125,179,232,A)');
  lb('山　區',128,14,13,'rgba(140,190,140,A)');
+ ctx.restore()}
+// ===== 道路分級繪製 =====
+// 地面道路樣式（依 RG）：w 路寬（格寬比例）、col 路面、cl 中線（yy 雙黃、y 單黃、w 白虛線）、ed 路緣
+const RSTY={};
+RSTY[RGK.PROV]={w:.8,col:'#5d594e',cl:'yy',ed:'rgba(235,230,215,.35)'};
+RSTY[RGK.CNTY]={w:.66,col:'#545045',cl:'y',ed:'rgba(235,230,215,.25)'};
+RSTY[RGK.CITY]={w:.6,col:'#43423c',cl:'',ed:''};
+RSTY[RGK.TWN]={w:.48,col:'#4b473d',cl:'',ed:''};
+RSTY[RGK.IND]={w:.32,col:'#5e5442',cl:'',ed:''};
+RSTY[RGK.PATH]={w:.24,col:'#3f3d37',cl:'',ed:''};
+RSTY[RGK.UND]={w:.56,col:'#2b2a25',cl:'',ed:''};
+RSTY[RGK.RAMP]={w:.46,col:'#676050',cl:'',ed:''};
+const CITY_MAIN={w:.78,col:'#4a4943',cl:'w',ed:''};
+const isHW=k=>RD[k]===4||HWL[k]||RD[k]===7&&HG[k];
+const surf=k=>RD[k]&&RD[k]!==4;
+function sty(k){const g=RG[k];if(g===RGK.CITY&&RD[k]===3)return CITY_MAIN;return RSTY[g]||RSTY[RGK.CITY]}
+// 一格的連線：兩向垂直（樓梯狀斜路或轉角）畫成斜切直線，其餘從中心連到各邊中點
+// fill：是否補中心方塊（路面用；標線不補）
+function roadSeg(px,py,c,ds,fill){
+ const cx=px+c/2,cy=py+c/2,em=d=>[cx+DIR[d][0]*c/2,cy+DIR[d][1]*c/2];
+ ctx.beginPath();
+ if(ds.length===2&&!ds.nc&&DIR[ds[0]][0]!==-DIR[ds[1]][0]&&DIR[ds[0]][1]!==-DIR[ds[1]][1]){
+  // 斜切：從一邊中點直接連到另一邊中點，略為延伸到格外，與相鄰格的直段接合不留縫
+  const a=em(ds[0]),b=em(ds[1]),ex=(b[0]-a[0])*.08,ey=(b[1]-a[1])*.08;
+  ctx.moveTo(a[0]-ex,a[1]-ey);ctx.lineTo(b[0]+ex,b[1]+ey);ctx.stroke();return}
+ for(const d of ds){const e=em(d);ctx.moveTo(cx,cy);ctx.lineTo(e[0],e[1])}
+ ctx.stroke();
+ if(fill){const w=ctx.lineWidth;ctx.fillStyle=ctx.strokeStyle;ctx.fillRect(cx-w/2,cy-w/2,w,w)}}
+function roadPass(c,x0,x1,y0,y1){
+ const sd=[],hd=[];       // 每格的地面連線方向、高速公路連線方向
+ const buck={};
+ for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const k=K(x,y);
+  if(surf(k)){const ds=[];
+   for(let i=0;i<4;i++){const a=x+DIR[i][0],b=y+DIR[i][1];if(a<0||b<0||a>=N||b>=N)continue;const nk=K(a,b);
+    if(surf(nk)&&linkOK(RD[k],RD[nk]))ds.push(i)}
+   // 轉角的對角格也是道路時（兩條平行路相鄰）不斜切
+   if(ds.length===2){const a=x+DIR[ds[0]][0]+DIR[ds[1]][0],b=y+DIR[ds[0]][1]+DIR[ds[1]][1];if(a>=0&&b>=0&&a<N&&b<N&&surf(K(a,b)))ds.nc=1}
+   const g=RD[k]===7?RGK.RAMP:RG[k]||RGK.CITY;(buck[g]=buck[g]||[]).push([x,y,k,ds])}
+  if(isHW(k)){const ds=[];
+   for(let i=0;i<4;i++){const a=x+DIR[i][0],b=y+DIR[i][1];if(a<0||b<0||a>=N||b>=N)continue;const nk=K(a,b);
+    const fam=g=>g===RGK.EXP?2:g?1:0;                   // 國道（高架、平面）同一族，快速道路另一族
+    if(isHW(nk)&&(fam(HG[nk])===fam(HG[k])||RD[k]===7||RD[nk]===7))ds.push(i)}
+   hd.push([x,y,k,ds])}}
+ ctx.lineCap='butt';ctx.lineJoin='round';
+ const order=[RGK.PATH,RGK.IND,RGK.TWN,RGK.CITY,RGK.UND,RGK.CNTY,RGK.PROV,RGK.RAMP];
+ // 路面
+ for(const g of order){const L=buck[g];if(!L)continue;
+  for(const [x,y,k,ds] of L){const s=sty(k);ctx.strokeStyle=s.col;ctx.lineWidth=Math.max(c<6?1:1.2,c*s.w);roadSeg(x*c,y*c,c,ds,1)}}
+ // 橋：欄杆
+ if(c>=14)for(const g of order){const L=buck[g];if(!L)continue;
+  for(const [x,y,k,ds] of L){if(RD[k]!==6||HWL[k])continue;const s=sty(k),w=c*s.w/2+c*.04;ctx.fillStyle='rgba(200,196,184,.55)';
+   const hz=ds.some(d=>DIR[d][0]);if(hz){ctx.fillRect(x*c,y*c+c/2-w-1,c+.6,1.5);ctx.fillRect(x*c,y*c+c/2+w,c+.6,1.5)}else{ctx.fillRect(x*c+c/2-w-1,y*c,1.5,c+.6);ctx.fillRect(x*c+c/2+w,y*c,1.5,c+.6)}}}
+ // 標線
+ if(c>=20){ctx.lineCap='butt';
+  for(const g of[RGK.CITY,RGK.CNTY,RGK.PROV]){const L=buck[g];if(!L)continue;
+   for(const [x,y,k,ds] of L){const s=sty(k);if(!s.cl||ds.length>2)continue;
+    if(s.cl==='w'){ctx.strokeStyle='rgba(230,228,220,.45)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.18,c*.16]);roadSeg(x*c,y*c,c,ds)}
+    else if(s.cl==='y'){ctx.strokeStyle='rgba(225,190,90,.6)';ctx.lineWidth=Math.max(1,c*.025);ctx.setLineDash([c*.22,c*.12]);roadSeg(x*c,y*c,c,ds)}
+    else{ctx.setLineDash([]);ctx.strokeStyle='rgba(225,190,90,.7)';ctx.lineWidth=Math.max(1,c*.05);roadSeg(x*c,y*c,c,ds);
+     ctx.strokeStyle=s.col;ctx.lineWidth=Math.max(.6,c*.018);roadSeg(x*c,y*c,c,ds)}}}
+  ctx.setLineDash([])}
+ // 斑馬線：只在市區與鄉鎮真正的路口（三向以上），畫在各個路口臂上
+ if(c>=34){ctx.fillStyle='rgba(230,228,220,.32)';
+  for(const g of[RGK.CITY,RGK.TWN,RGK.CNTY,RGK.PROV]){const L=buck[g];if(!L)continue;
+   for(const [x,y,k,ds] of L){if(ds.length<3)continue;if(!(inCity(x,y)||RTOWN.some(t=>Math.hypot(x-t.c[0],y-t.c[1])<=t.r+1)))continue;
+    const s=sty(k),hw=c*s.w/2,cx=x*c+c/2,cy=y*c+c/2;
+    for(const d of ds){const along=c*.36;
+     for(let i=-2;i<=2;i++){const o=i*hw/2.6;
+      if(DIR[d][0])ctx.fillRect(cx+DIR[d][0]*along-c*.05,cy+o-hw*.12,c*.1,hw*.24);
+      else ctx.fillRect(cx+o-hw*.12,cy+DIR[d][1]*along-c*.05,hw*.24,c*.1)}}}}}
+ // 高速公路：先畫平面段，再畫高架（含陰影）
+ ctx.lineCap='butt';
+ const hsty=g=>g===RGK.EXP?{w:.74,col:'#5d5a66'}:g===RGK.HWG?{w:.86,col:'#615a4b'}:{w:.88,col:'#6b6454'};
+ for(const pass of[0,1]){
+  for(const [x,y,k,ds] of hd){const g=HG[k]||RGK.HWE,el=g!==RGK.HWG;if((pass===1)!==el)continue;
+   const s=hsty(g);
+   if(el&&c>=6){ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=c*s.w;ctx.save();ctx.translate(c*.14,c*.16);roadSeg(x*c,y*c,c,ds,1);ctx.restore()}
+   ctx.strokeStyle=s.col;ctx.lineWidth=Math.max(1.6,c*s.w);roadSeg(x*c,y*c,c,ds,1)}
+  if(c>=16)for(const [x,y,k,ds] of hd){const g=HG[k]||RGK.HWE,el=g!==RGK.HWG;if((pass===1)!==el||ds.length>2)continue;
+   const s=hsty(g);
+   ctx.strokeStyle='rgba(235,232,220,.45)';ctx.lineWidth=Math.max(1,c*.02);ctx.setLineDash([c*.2,c*.14]);
+   for(const o of[-.17,.17]){ctx.save();const hz=ds.some(d=>DIR[d][0]);ctx.translate(hz?0:o*c*s.w,hz?o*c*s.w:0);roadSeg(x*c,y*c,c,ds);ctx.restore()}
+   ctx.setLineDash([]);ctx.strokeStyle=el?'rgba(210,206,190,.5)':'rgba(140,170,110,.55)';ctx.lineWidth=Math.max(1,c*.03);
+   for(const o of[-.46,.46]){ctx.save();const hz=ds.some(d=>DIR[d][0]);ctx.translate(hz?0:o*c*s.w,hz?o*c*s.w:0);roadSeg(x*c,y*c,c,ds);ctx.restore()}}}
+ // 地下道：畫在平面國道之上，道路進入國道路面處的出入口（暗色洞口與擋土牆）
+ if(c>=12){const L=buck[RGK.UND]||[];
+  for(const [x,y,k,ds] of L)for(const d of ds){const s=sty(k),hw=c*s.w/2,cx=x*c+c/2,cy=y*c+c/2,e=c*.43;
+   ctx.fillStyle='rgba(0,0,0,.7)';
+   if(DIR[d][0])ctx.fillRect(cx+DIR[d][0]*e-c*.03,cy-hw,c*.06,hw*2);else ctx.fillRect(cx-hw,cy+DIR[d][1]*e-c*.03,hw*2,c*.06);
+   ctx.fillStyle='rgba(190,186,170,.55)';
+   if(DIR[d][0]){ctx.fillRect(cx+DIR[d][0]*e-c*.03,cy-hw-2,c*.06,2);ctx.fillRect(cx+DIR[d][0]*e-c*.03,cy+hw,c*.06,2)}
+   else{ctx.fillRect(cx-hw-2,cy+DIR[d][1]*e-c*.03,2,c*.06);ctx.fillRect(cx+hw,cy+DIR[d][1]*e-c*.03,2,c*.06)}}}
+ ctx.lineCap='butt';ctx.setLineDash([])}
+// 路線標誌：國道（綠底）、快速道路與省道（白底）、縣道（黃底）、鄉道（灰底），中低倍率顯示
+function routeShields(c,x0,x1,y0,y1){
+ if(c<7||c>70)return;
+ ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 10px '+FONT;
+ const gap=Math.max(14,Math.round(220/c));
+ for(const r of ROUTES){const n=r.cells.length;if(n<6)continue;
+  for(let i=Math.floor(gap/2);i<n;i+=gap){const [x,y]=r.cells[i];if(x<x0||x>x1||y<y0||y>y1)continue;
+   const sx=(x+.5)*c,sy=(y+.5)*c,tw=ctx.measureText(r.n).width+8;
+   const hw=r.g===RGK.HWE||r.g===RGK.HWG,bg=hw?'#2f6a3c':r.g===RGK.EXP||r.g===RGK.PROV?'#e6e2d6':r.g===RGK.CNTY?'#d9bf63':'#9aa0a6',fg=hw?'#fff':'#1a1a18';
+   ctx.fillStyle='rgba(0,0,0,.5)';rr(sx-tw/2+1,sy-7,tw,15,3);ctx.fill();
+   ctx.fillStyle=bg;rr(sx-tw/2,sy-8,tw,15,3);ctx.fill();ctx.fillStyle=fg;ctx.fillText(r.n,sx,sy)}}
  ctx.restore()}

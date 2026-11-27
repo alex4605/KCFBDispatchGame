@@ -4,7 +4,7 @@ function nearHyd(inc){
  const f=getF(inc,0);let b=null,bd=INF;
  for(const h of S.hyd){const d=f.D[K(h[0],h[1])];if(d<bd){bd=d;b=h}}
  if(!b)return{h:null,d:999,p:null,cl:0};
- let k=K(b[0],b[1]);const p=[];while(f.P[k]>=0){k=f.P[k];p.push([(k/N)|0,k%N])}
+ let k=K(b[0],b[1]);const p=[];while(f.P[k]>=0){k=f.P[k];const c=k%NN;p.push([(c/N)|0,c%N])}
  return{h:b,d:Math.round(bd),p,cl:RD[K(b[0],b[1])]||2}}
 
 function arrNeed(level,wild,trap){

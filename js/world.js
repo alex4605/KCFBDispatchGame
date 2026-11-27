@@ -3,9 +3,19 @@
 const RD=new Uint8Array(N*N),TR=new Uint8Array(N*N),SH=new Float32Array(N*N),RUN=new Uint8Array(N*N);
 // 鄉間地貌細節（只影響繪製）：CROP 作物／設施種類、CANAL 灌溉水圳
 const CROP=new Uint8Array(N*N),CANAL=new Uint8Array(N*N);
+// 道路分層與分級
+// HWL：此格有「高速公路層」從地面道路／水面上方（高架）或下方（地下道）交錯通過，兩層不互通
+// HG：此格高速公路的等級（RGK.HWE 高架國道、RGK.HWG 平面國道、RGK.EXP 快速道路），RG：地面道路等級，RGF：生成時指定的等級
+const HWL=new Uint8Array(N*N),HG=new Uint8Array(N*N),RG=new Uint8Array(N*N),RGF=new Uint8Array(N*N);
+const RGK={HWE:1,HWG:2,RAMP:3,EXP:4,UND:5,PROV:6,CNTY:7,CITY:8,TWN:9,IND:10,PATH:11};
+const RGN=['','高速公路（高架）','高速公路（平面）','高速公路匝道','快速道路','地下道','省道','縣道','市道','鄉道','產業道路','小徑'];
+let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
+// 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
+const SUBX=74,SUBY=86;
+const isSub=(x,y)=>inCity(x,y)?(x>=SUBX||y>=SUBY):(Math.max(x-CITY+1,y-CITY+1)<=9);
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
-let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[];
+let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[],AP=null;   // AP：機場範圍
 let S,cw=900,ch=700,base=14,zoom=2,cam={x:0,y:0},uid=1,sel=null,selU=null,paused=false,
  last=0,uiT=0,msg='',mt=0,shopSt=0,shopOn=false,dpr=1;
 const cell=()=>base*zoom;
@@ -24,13 +34,14 @@ const DIR=[[1,0],[-1,0],[0,1],[0,-1]];
 function comps(){
  const lab=new Int32Array(N*N).fill(-1);let n=0,sizes=[];
  for(let k=0;k<N*N;k++){
-  if(!RD[k]||lab[k]>=0)continue;
+  if((!RD[k]&&!HWL[k])||lab[k]>=0)continue;
   const q=[k];lab[k]=n;let sz=0;
   while(q.length){const c=q.pop();sz++;const x=(c/N)|0,y=c%N;
    for(let i=0;i<4;i++){const nx=x+DIR[i][0],ny=y+DIR[i][1];
     if(nx<0||ny<0||nx>=N||ny>=N)continue;
     const nk=K(nx,ny);
-    if(!RD[nk]||lab[nk]>=0||!linkOK(RD[c],RD[nk]))continue;
+    if((!RD[nk]&&!HWL[nk])||lab[nk]>=0)continue;
+    if(!HWL[c]&&!HWL[nk]&&!linkOK(RD[c],RD[nk]))continue;      // 有分層的格子在連通檢查時視為兩層都可通
     lab[nk]=n;q.push(nk)}}
   sizes.push(sz);n++}
  return{lab,sizes}}
@@ -39,7 +50,7 @@ function pruneIslands(){
  const {lab,sizes}=comps();
  if(!sizes.length)return;
  let best=0;for(let i=1;i<sizes.length;i++)if(sizes[i]>sizes[best])best=i;
- for(let k=0;k<N*N;k++)if(RD[k]&&lab[k]!==best)RD[k]=0}
+ for(let k=0;k<N*N;k++)if((RD[k]||HWL[k])&&lab[k]!==best){RD[k]=0;HWL[k]=0;HG[k]=0}}
 function nbRoad(x,y){
  for(let i=0;i<4;i++){const c=cls(x+DIR[i][0],y+DIR[i][1]);if(c&&c!==4)return[x+DIR[i][0],y+DIR[i][1]]}
  const d2=[[1,1],[-1,-1],[1,-1],[-1,1]];
@@ -58,7 +69,7 @@ function inFacility(x,y){
  for(const h of HOSP)for(const q of (h.cells||[h.p]))if(q[0]===x&&q[1]===y)return true;
  return false}
 function build(){
- grid();RD.fill(0);TR.fill(0);RUN.fill(0);
+ grid();RD.fill(0);TR.fill(0);RUN.fill(0);HWL.fill(0);HG.fill(0);RG.fill(0);RGF.fill(0);ROUTES=[];
  // 水域：蜿蜒河道 + 西南港灣
  for(let y=0;y<CITY;y++){const c=(9+4.5*Math.sin(y/7.5/MF)+1.5*Math.sin(y/3.1/MF))*MF;
   for(let x=0;x<CITY;x++)if(Math.abs(x-c)<1.8)TR[K(x,y)]=1}
@@ -81,12 +92,24 @@ function build(){
  // 機場：東南跑道與停機坪
  for(let x=Math.round(45*MF);x<Math.round(60*MF);x++)for(let y=Math.round(43*MF);y<Math.round(58*MF);y++)TR[K(x,y)]=4;
  for(let y of[Math.round(46*MF),Math.round(52*MF)])for(let x=Math.round(46*MF);x<Math.round(59*MF);x++)RUN[K(x,y)]=1;
+ // 郊區：市區外圍零星農地（以 4×4 區塊決定，成片）
+ for(let x=0;x<CITY;x++)for(let y=0;y<CITY;y++){const k=K(x,y);if(!isSub(x,y)||TR[k])continue;
+  const b=Math.sin((x>>2)*12.9898+(y>>2)*78.233)*43758.5453%1;if(Math.abs(b)<.3)TR[k]=5}
  const set=(x,y,c)=>{if(x<0||y<0||x>=N||y>=N)return;const k=K(x,y);
   if(TR[k]===1)return;                      // 水域不鋪路
   RD[k]=TR[k]===2?5:c};                     // 山林一律降為產業道路
  // 山林裡只保留少數棋盤道路（每 4 條留 1 條），其餘不鋪
- for(let i=0;i<RC.length;i++)for(let y=0;y<CITY;y++)if(TR[K(RC[i],y)]!==2||i%4===0)set(RC[i],y,i%2?3:2);
- for(let i=0;i<RR.length;i++)for(let x=0;x<CITY;x++)if(TR[K(x,RR[i])]!==2||i%4===0)set(x,RR[i],i%2?3:2);
+ // 郊區街廓較大：次要道路只留每 4 條 1 條
+ const keep=(i,x,y)=>(TR[K(x,y)]!==2||i%4===0)&&(!isSub(x,y)||i%2===1||i%4===0);
+ for(let i=0;i<RC.length;i++)for(let y=0;y<CITY;y++)if(keep(i,RC[i],y))set(RC[i],y,i%2?3:2);
+ for(let i=0;i<RR.length;i++)for(let x=0;x<CITY;x++)if(keep(i,x,RR[i]))set(x,RR[i],i%2?3:2);
+ // 機場：場內不鋪路，外圍一圈環場道路，西側航廈有連外道路
+ {const ax0=Math.round(45*MF),ax1=Math.round(60*MF)-1,ay0=Math.round(43*MF),ay1=Math.round(58*MF)-1;
+  AP={x0:ax0,x1:ax1,y0:ay0,y1:ay1};
+  for(let x=ax0;x<=ax1;x++)for(let y=ay0;y<=ay1;y++)RD[K(x,y)]=0;
+  for(let x=ax0-1;x<=ax1+1;x++)for(const y of[ay0-1,ay1+1])if(TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
+  for(let y=ay0-1;y<=ay1+1;y++)for(const x of[ax0-1,ax1+1])if(x<CITY&&TR[K(x,y)]!==1)RD[K(x,y)]=RD[K(x,y)]||2;
+  const my=Math.round((ay0+ay1)/2);RD[K(ax0,my)]=2;RD[K(ax0+1,my)]=2}
  // 橋樑：部分幹道跨河
  for(let i2=1;i2<RR.length;i2+=2){const y=RR[i2];
   for(let x=0;x<CITY;x++)if(TR[K(x,y)]===1&&x>2)RD[K(x,y)]=6}
@@ -94,20 +117,24 @@ function build(){
   for(let y=0;y<CITY;y++)if(TR[K(x,y)]===1&&x>2&&y<Math.round(55*MF))RD[K(x,y)]=6}
  // 國道：南北 + 東西，交會處互通
  FX=Math.round(41*MF);FY=RR[Math.round(9*MF)]+2;
- // 國道一號止於市區南緣；國道十號向東延伸到旗山
- for(let y=0;y<CITY;y++)RD[K(FX,y)]=TR[K(FX,y)]===1?6:4;
+ // 國道一號止於市區南緣；國道十號向東延伸到旗山。市區內高架（地面道路從橋下通過），郊區與鄉間為平面（交叉道路走地下道）
+ const c1=[],c10=[];
+ for(let y=0;y<CITY;y++){layHW(FX,y,RGK.HWE);c1.push([FX,y])}
  FYE=RTOWN[0].c[0]-3;
- for(let x=0;x<=FYE;x++)if(TR[K(x,FY)]!==1)RD[K(x,FY)]=4;
- RD[K(FYE,FY)]=7;
+ for(let x=0;x<=FYE;x++){if(x===FX)continue;layHW(x,FY,inCity(x,FY)&&!isSub(x,FY)?RGK.HWE:RGK.HWG);c10.push([x,FY])}
+ RD[K(FYE,FY)]=7;HWL[K(FYE,FY)]=0;
+ ROUTES.push({n:'國1',g:RGK.HWE,cells:c1},{n:'國10',g:RGK.HWE,cells:c10});
  const rampY=[1,4,7,12,15,18].map(i=>RR[Math.min(RR.length-2,Math.round(i*MF))]),rampX=[2,5,9,13,16].map(i=>RC[Math.min(RC.length-2,Math.round(i*MF))]);
- for(const y of rampY){RD[K(FX,y)]=7;if(!RD[K(FX-1,y)])RD[K(FX-1,y)]=2;if(!RD[K(FX+1,y)])RD[K(FX+1,y)]=2}
- for(const x of rampX){if(TR[K(x,FY)]===1)continue;RD[K(x,FY)]=7;
+ const ramp=(x,y)=>{const k=K(x,y);RD[k]=7;HWL[k]=0};
+ for(const y of rampY){ramp(FX,y);if(!RD[K(FX-1,y)])RD[K(FX-1,y)]=2;if(!RD[K(FX+1,y)])RD[K(FX+1,y)]=2}
+ for(const x of rampX){if(TR[K(x,FY)]===1)continue;ramp(x,FY);
   if(!RD[K(x,FY-1)])RD[K(x,FY-1)]=2;if(!RD[K(x,FY+1)])RD[K(x,FY+1)]=2}
+ ramp(FX,FY);                                   // 國一與國十系統交流道
  // 山區加幾條蜿蜒產業道路
  for(let b=0;b<3;b++){
   let x=Math.round(46*MF)+b*6,y=RR[Math.round(6*MF)];
   for(let s=0;s<30&&y>0&&x>0&&x<N-1;s++){
-   if(TR[K(x,y)]!==1&&RD[K(x,y)]!==4)RD[K(x,y)]=RD[K(x,y)]||5;
+   if(TR[K(x,y)]!==1&&RD[K(x,y)]!==4&&!HG[K(x,y)])RD[K(x,y)]=RD[K(x,y)]||5;
    y--;if(Math.random()<.45)x+=Math.random()<.5?1:-1}}
  // 巷弄
  for(let i=0;i<150;i++){
@@ -115,7 +142,7 @@ function build(){
    b=1+Math.floor(Math.random()*(CITY-2)),d=Math.random()<.5?1:-1,len=2+Math.floor(Math.random()*4);
   for(let k=1;k<=len;k++){const v=a+d*k;if(v<1||v>CITY-2)break;
    const x=hz?v:b,y=hz?b:v,kk=K(x,y);
-   if(TR[kk]===1||RD[kk]===4||RD[kk]===7)break;
+   if(TR[kk]===1||RD[kk]===4||RD[kk]===7||HG[kk]||isSub(x,y)&&Math.random()<.75)break;
    if(!RD[kk])RD[kk]=TR[kk]===2?5:1}}
  for(let i=0;i<90;i++){
   const x=Math.round((18+Math.random()*16)*MF),y=Math.round((34+Math.random()*14)*MF);
@@ -123,7 +150,7 @@ function build(){
   const hz=Math.random()<.5,len=1+Math.floor(Math.random()*3);
   for(let k2=0;k2<len;k2++){const xx=hz?x+k2:x,yy=hz?y:y+k2;
    if(xx>N-2||yy>N-2)break;const kk=K(xx,yy);
-   if(TR[kk]===1||RD[kk]===4||RD[kk]===7)break;if(!RD[kk])RD[kk]=1}}
+   if(TR[kk]===1||RD[kk]===4||RD[kk]===7||HG[kk])break;if(!RD[kk])RD[kk]=1}}
  // 工業區：拆掉部分巷道形成大街廓
  for(let x=Math.round(30*MF);x<Math.round(42*MF);x++)for(let y=Math.round(50*MF);y<Math.round(58*MF);y++){
   const kk=K(x,y);if(RD[kk]===1||(RD[kk]===2&&Math.random()<.35))RD[kk]=0}
@@ -148,7 +175,7 @@ function build(){
  // 隨機拆除路段製造繞路，保持全網連通
  for(let i=0;i<Math.round(260*MF*MF);i++){
   const x=1+Math.floor(Math.random()*(CITY-2)),y=1+Math.floor(Math.random()*(CITY-2)),k=K(x,y),c=RD[k];
-  if(!c||c>=4||prot[k])continue;
+  if(!c||c>=4||prot[k]||HG[k])continue;
   RD[k]=0;if(!oneComponent())RD[k]=c}
  for(let k=0;k<N*N;k++)SH[k]=Math.random();
  for(const s of places){
@@ -159,7 +186,14 @@ function build(){
     if(x>=N)break;if(TR[K(x,y)]!==1&&!RD[K(x,y)])RD[K(x,y)]=2;e=nbRoad(s.p[0],s.p[1])}}
   s.x=e||s.p}
  pruneIslands();
+ roadGrades();
  ruralDetail()}
+// 鋪高速公路：遇地面道路或水面成分層交會（HWL），否則為高速公路格
+function layHW(x,y,g){
+ const k=K(x,y);HG[k]=g;
+ if(RD[k]===7)return;
+ if((RD[k]&&RD[k]!==4)||TR[k]===1){HWL[k]=1;return}
+ RD[k]=4}
 
 let _hpD=0,_hpK=0; // hpop 結果暫存，避免每次彈出都配置新陣列
 function hpush(h,k,d){h.push(d,k);let i=(h.length>>1)-1;
@@ -173,20 +207,24 @@ function hpop(h){const d0=h[0],k0=h[1],n=(h.length>>1)-1;
   if(s===i)break;
   const x=h[s*2],y=h[s*2+1];h[s*2]=h[i*2];h[s*2+1]=h[i*2+1];h[i*2]=x;h[i*2+1]=y;i=s}
  _hpD=d0;_hpK=k0}
+// 路徑場（由目標往外的最短路）：節點 0..NN-1 為地面層，NN..2NN-1 為分層交會格的高速公路層
+// 從高速公路（4）或匝道（7）進入分層格時走高速公路層，其餘走地面層；兩層不互通，所以高架下、地下道不能轉上國道
+const NN=N*N;
 function field(tx,ty,mode){
- const D=new Float64Array(N*N).fill(INF),P=new Int32Array(N*N).fill(-1),k0=K(tx,ty);
+ const D=new Float32Array(2*NN).fill(INF),P=new Int32Array(2*NN).fill(-1),k0=K(tx,ty);
  if(!canEnter(kcls(k0,mode),mode))return{D,P};
  D[k0]=0;const h=[];hpush(h,k0,0);
  while(h.length){
-  hpop(h);const d=_hpD,k=_hpK;
-  if(d>D[k])continue;
-  const x=(k/N)|0,y=k%N,cc=kcls(k,mode),step=d+1/MULT[cc];
+  hpop(h);const d=_hpD,n=_hpK;
+  if(d>D[n])continue;
+  const L=n>=NN,k=L?n-NN:n,x=(k/N)|0,y=k%N,cc=L?4:kcls(k,mode),step=Math.fround(d+1/MULT[cc]);   // 與 Float32 陣列一致，避免被誤判為過時節點
   for(let i=0;i<4;i++){
    const nx=x+DIR[i][0],ny=y+DIR[i][1];
    if(nx<0||ny<0||nx>=N||ny>=N)continue;
-   const nk=K(nx,ny),nc=kcls(nk,mode);
+   const nk=K(nx,ny);let nn=nk,nc;
+   if(HWL[nk]&&(cc===4||cc===7)){nn=nk+NN;nc=4}else nc=kcls(nk,mode);
    if(!canEnter(nc,mode)||!linkOK(nc,cc))continue;
-   if(step<D[nk]){D[nk]=step;P[nk]=k;hpush(h,nk,step)}}}
+   if(step<D[nn]){D[nn]=step;P[nn]=n;hpush(h,nn,step)}}}
  return{D,P}}
 function getF(o,m){o.F=o.F||{};
  if(!o.F[m])o.F[m]=field(o.ax!==undefined?o.ax:o.x[0],o.ay!==undefined?o.ay:o.x[1],m);
@@ -197,8 +235,9 @@ function baseF(place,m){place.F=place.F||{};
 function etaTo(u,o){const f=getF(o,modeOf(u.code)),d=f.D[K(Math.round(u.x),Math.round(u.y))];
  return d===INF?null:Math.round(d/CODE[u.code].s)}
 function chase(f,u){let k=K(Math.round(u.x),Math.round(u.y));
- if(!f||f.D[k]===INF)return null;
- const p=[];while(f.P[k]>=0){k=f.P[k];p.push([(k/N)|0,k%N])}return p}
+ if(!f)return null;
+ if(f.D[k]===INF){if(HWL[k]&&f.D[k+NN]!==INF)k+=NN;else return null}   // 車在高架上
+ const p=[];while(f.P[k]>=0){k=f.P[k];const c=k%NN;p.push([(c/N)|0,c%N])}return p}
 const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 
 function addU(si,code){

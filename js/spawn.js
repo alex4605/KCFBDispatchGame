@@ -44,7 +44,7 @@ function spawn(){
   clr:d.tac?(d.clrT?d.clrT[0]+Math.random()*(d.clrT[1]-d.clrT[0]):40+Math.random()*35):0,
   lines:0,dry:0,hook:0,hooked:0,burst:0,burstT:45};
 if(d.road){inc.x=a[0];inc.y=a[1]}
- inc.addr=z==='hiway'?'國道'+(1+Math.floor(Math.random()*9))+'號 '+(10+Math.floor(Math.random()*300))+'K':
+ inc.addr=z==='hiway'?hwName(c[0],c[1])+' '+(10+Math.floor(Math.random()*300))+'K':
   z==='forest'?'山區產業道路 '+(1+Math.floor(Math.random()*30))+'K':
   !inCity(c[0],c[1])?ruralAddr(c[0],c[1]):
   pick(RDN)+(Math.random()<.5?'路':'街')+(1+Math.floor(Math.random()*500))+'號';
