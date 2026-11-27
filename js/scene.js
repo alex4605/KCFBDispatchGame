@@ -13,7 +13,8 @@ const SCACHE={key:'',cv:null};
 function drawScene(){
  const wrap=document.getElementById('scenewrap');
  const inc=S.inc.find(i=>i.id===sel);
- if(!inc){if(wrap.style.display!=='none')wrap.style.display='none';applySwap();return}
+ // 地圖現場模式：現場直接畫在大地圖上，不另開面板（山火作戰圖仍用面板）
+ if(!inc||(scMode==='map'&&!inc.wf)){if(wrap.style.display!=='none'){wrap.style.display='none';size()}applySwap();return}
  if(wrap.style.display==='none'){wrap.style.display='block';sizeScene()}
  applySwap();
  if(inc.wf){wfScene(inc,sctx);return}

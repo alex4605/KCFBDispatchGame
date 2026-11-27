@@ -6,7 +6,7 @@ function clamp(){
  const c=cell(),mx=c*N-cw,my=c*N-ch;
  cam.x=mx<0?mx/2:Math.max(0,Math.min(mx,cam.x));
  cam.y=my<0?my/2:Math.max(0,Math.min(my,cam.y))}
-function fit(){zoomT=performance.now();zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
+function fit(){fly=null;zoomT=performance.now();zoom=Math.max(.5,Math.min(cw,ch)/(N*base));cam.x=(cell()*N-cw)/2;cam.y=(cell()*N-ch)/2;clamp()}
 const bgc=document.createElement('canvas'),bgx=bgc.getContext('2d');
 let bgScale=0,zoomT=0; // zoomT：最後一次縮放時間，縮放中先拉伸舊底圖，停止後才重烤
 function ctxSwap(n){ctx=n}
@@ -207,3 +207,17 @@ function fontCap(g,max){
  return g._cap=new Proxy(g,{
   get:(o,k)=>{const v=o[k];return typeof v==='function'?v.bind(o):v},
   set:(o,k,v)=>{if(k==='font')v=String(v).replace(/([\d.]+)px/,(a,n)=>Math.min(+n,max)+'px');o[k]=v;return true}})}
+// 選取案件時鏡頭飛到現場：縮放以對數內插、中心點以緩動內插，約 0.7 秒
+let fly=null;
+const FLY_C=84; // 飛到現場時的每格像素（高於 SC_MAP，進入地圖現場模式）
+function flyTo(o){
+ const c0=cell(),z1=Math.max(zoom,Math.min(6,FLY_C/base));
+ fly={t0:-1,dur:.7,z0:zoom,z1,x0:(cam.x+cw/2)/c0,y0:(cam.y+ch/2)/c0,x1:o.x+.5,y1:o.y+.5}}
+function flyStep(ts){
+ if(!fly)return;
+ if(fly.t0<0)fly.t0=ts;
+ const k=Math.min(1,(ts-fly.t0)/1000/fly.dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+ zoom=fly.z0*Math.pow(fly.z1/fly.z0,e);zoomT=performance.now();
+ const c=cell(),wx=fly.x0+(fly.x1-fly.x0)*e,wy=fly.y0+(fly.y1-fly.y0)*e;
+ cam.x=wx*c-cw/2;cam.y=wy*c-ch/2;clamp();
+ if(k>=1)fly=null}

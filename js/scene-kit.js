@@ -2,6 +2,10 @@
 'use strict';
 const scv=document.getElementById('sc'),sctx=scv.getContext('2d');
 let scW=400,scH=260,wantSwap=true,isSwapped=false,scZoom=1;
+// 現場顯示方式：map＝直接在大地圖放大顯示（預設）、big＝現場面板放大到中央、small＝現場小窗在右欄
+let scMode='map';
+try{const v=localStorage.getItem('kcfb.scMode');if(v==='map'||v==='big'||v==='small')scMode=v}catch(e){}
+wantSwap=scMode==='big';
 function sizeScene(){
  const w=document.getElementById('scenewrap');
  scW=Math.max(180,w.clientWidth-10);scH=isSwapped?Math.max(220,w.clientHeight-12):260;
