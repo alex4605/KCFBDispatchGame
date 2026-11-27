@@ -568,6 +568,13 @@ AI 指揮官依同一套戰術模型處置：
 | `js/tac-view.js` | 戰術畫面：樓層平面繪製、車輛停放 `tacParkPlan()`、人員動畫、ICS 架構圖 `tacIcsHTML()`、指令列與輸入 |
 | `js/main.js` | 面板更新、事件處理、主迴圈 |
 
+### 部署（GitHub Pages）
+
+`.github/workflows/pages.yml` 會在每次推送到 `main`（或在 Actions 頁手動執行）時，把 `index.html`、`css/`、`js/` 原樣上傳到 GitHub Pages，不需要建置。
+
+- **一次性設定：** Settings → Pages → Build and deployment → Source 選「GitHub Actions」。
+- **查看部署：** 每次部署的紀錄在 Actions 的「Deploy to GitHub Pages」。新的推送會取消還在排隊的舊部署。
+
 ### 回歸測試
 
 需要可 `require('playwright')` 的環境（無頭 Chromium），直接開啟 `index.html`，不需要伺服器：

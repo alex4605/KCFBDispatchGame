@@ -1,0 +1,44 @@
+# 部署到 GitHub Pages：每次推送到 main（或手動執行）就把整個網站原樣上傳，不需要建置
+# 使用前：Settings → Pages → Build and deployment → Source 選「GitHub Actions」
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一時間只保留一個部署；新的推送會取消還在排隊或執行中的舊部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Prepare site
+        # 只上傳網站需要的檔案（不含測試與 .github）
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r css js _site/
+          touch _site/.nojekyll
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
