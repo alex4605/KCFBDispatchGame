@@ -61,7 +61,7 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
   ok('交給轄區分隊善後',r.skip||(r.left<=1&&r.closed&&!r.open)&&!errs.length,r);await p.close()}
  if(which==='all'||which==='dispatch'){const {p,errs}=await page(b);
   // 限定派遣：一般火警不派特一特二與機場消防隊；呼叫特一只派特一；呼叫機場消防派機消
-  const r=await p.evaluate(()=>{S.spawn=999;const mk=k=>{S.inc=[];for(const zz in POOL)for(const lv in POOL[zz])POOL[zz][lv]=[k];for(const zz in POOLB)for(const lv in POOLB[zz])POOLB[zz][lv]=[k];for(let i=0;i<40&&!S.inc.length;i++)spawn();return S.inc[0]};
+  const r=await p.evaluate(()=>{S.spawn=999;const mk=k=>{S.inc=[];for(const zz in POOL)for(const lv in POOL[zz])POOL[zz][lv]=[k];for(const zz in POOLB)for(const lv in POOLB[zz])POOLB[zz][lv]=[k];for(let i=0;i<80;i++){S.inc=[];spawn();const c=S.inc[0],ap=SPOT[SNAME.indexOf('機場')];if(c&&c.z==='city'&&getF({ax:c.ax,ay:c.ay},1).D[K(ap.x[0],ap.x[1])]!==INF)break}return S.inc[0]};   // 大型車（機場消防車）可達的市區案件
    const back=()=>{for(const u of S.units)if(u.inc!=null){u.inc=null;u.st='idle';u.x=SPOT[u.si].x[0];u.y=SPOT[u.si].x[1];u.path=[]}reindex()};
    const cs=inc=>onScene(inc).map(u=>u.cs);
    let inc=mk('mfire');sendLv(inc,3);reindex();const lv3=cs(inc).filter(c=>/^特|^機/.test(c));back();

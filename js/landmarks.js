@@ -1,8 +1,8 @@
-// 地標設施（只影響地圖繪製與標示）：高雄車站（地下化）、高鐵左營站與高架高鐵、巨蛋、百貨公司、量販店、學校
-// 各佔 1～2 格，放在相關分隊附近、臨一般道路或幹道的空地
+// 地標設施：高雄車站（地下化）、高鐵左營站與高架高鐵、巨蛋、百貨公司、量販店、學校、85 大樓、50 層大樓、農地工廠、
+// 軍事基地與兵工廠（管制區，平時不能進入、不會發生一般案件）。各佔 1～4 格，放在相關分隊附近、臨路的空地
 'use strict';
 let LMK=[];const LMKC=new Map();   // LMKC：格 → {m:地標, i}
-let THSR=[],LMK_NEXT=null;          // LMK_NEXT：正在建立的地標案件（makeInc 用來寫地址）                       // 高架高鐵經過的格（由高鐵站往北到地圖邊緣）
+let THSR=[],LMK_NEXT=null;          // THSR：高架高鐵經過的格（由高鐵站往北到地圖邊緣）；LMK_NEXT：正在建立的地標案件（makeInc 用來寫地址）
 const LMK_DEF=[
  {k:'tra',n:'高雄車站',sub:'地下化車站',w:2,h:1,near:['苓雅',0,-9],col:'#3f5a74',ic:'🚉'},
  {k:'hsr',n:'高鐵左營站',sub:'高架車站',w:2,h:1,near:['左營',2,-4],col:'#c8732c',ic:'🚄'},
@@ -14,13 +14,37 @@ const LMK_DEF=[
  {k:'edu',n:'國中',sub:'',w:2,h:1,near:['楠梓',-4,4],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'高中',sub:'',w:2,h:1,near:['前鎮',4,-3],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'國小',sub:'',w:1,h:1,near:['鳳山',3,-3],col:'#5a6a3a',ic:'🏫'},
- {k:'edu',n:'國小',sub:'',w:1,h:1,near:['小港',-3,-2],col:'#5a6a3a',ic:'🏫'}];
+ {k:'edu',n:'國小',sub:'',w:1,h:1,near:['小港',-3,-2],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'國小',sub:'',w:1,h:1,near:['左營',4,2],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'國中',sub:'',w:2,h:1,near:['鼓山',-2,-4],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'高中',sub:'',w:2,h:1,near:['苓雅',-4,4],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'國小',sub:'',w:1,h:1,near:['岡山',2,3],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'大學',sub:'',w:2,h:2,near:['楠梓',5,-4],col:'#5a6a3a',ic:'🎓'},
+ {k:'edu',n:'國中',sub:'',w:1,h:1,near:['大寮',2,2],col:'#5a6a3a',ic:'🏫'},
+ {k:'edu',n:'國小',sub:'',w:1,h:1,near:['旗山',2,2],any:1,col:'#5a6a3a',ic:'🏫'},
+ {k:'dept',n:'百貨公司',sub:'大遠百',w:1,h:1,near:['苓雅',-2,-2],col:'#7a4a6a',ic:'🛍'},
+ {k:'dept',n:'百貨公司',sub:'新光三越',w:1,h:1,near:['苓雅',5,-3],col:'#7a4a6a',ic:'🛍'},
+ {k:'dept',n:'百貨公司',sub:'漢神巨蛋',w:1,h:1,near:['左營',2,7],col:'#7a4a6a',ic:'🛍'},
+ {k:'t85',n:'85 大樓',sub:'超高層',w:1,h:1,near:['苓雅',-3,6],col:'#8a6a3a',ic:'🏙'},
+ {k:'t50',n:'50 層大樓',sub:'',w:1,h:1,near:['前鎮',3,-6],col:'#6a5a4a',ic:'🏢'},
+ {k:'t50',n:'50 層大樓',sub:'',w:1,h:1,near:['鼓山',4,-2],col:'#6a5a4a',ic:'🏢'},
+ {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['路竹',4,4],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'farm',n:'農地工廠',sub:'',w:2,h:1,near:['湖內',-3,3],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['大樹',4,-3],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'farm',n:'農地工廠',sub:'',w:2,h:1,near:['仁武',5,-2],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['林園',-6,-4],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'farm',n:'農地工廠',sub:'',w:1,h:1,near:['阿蓮',3,3],any:1,col:'#5a5a4a',ic:'🏭'},
+ {k:'mil',n:'左營海軍基地',sub:'管制區',w:2,h:2,near:['左營',-8,0],any:1,ban:1,col:'#3a4a3a',ic:'⚓'},
+ {k:'mil',n:'岡山空軍基地',sub:'管制區',w:2,h:2,near:['岡山',-3,-5],any:1,ban:1,col:'#3a4a3a',ic:'✈'},
+ {k:'mil',n:'陸軍營區',sub:'管制區',w:2,h:1,near:['鳳山',4,4],any:1,ban:1,col:'#3a4a3a',ic:'🪖'},
+ {k:'arms',n:'兵工廠',sub:'管制區',w:2,h:2,near:['大寮',6,4],any:1,ban:1,col:'#4a3a2a',ic:'💥'}];
 const lmkAt=(x,y)=>LMKC.get(K(x,y));
 function placeLandmarks(){
  LMK=[];LMKC.clear();THSR=[];
- const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&!HG[k]&&TR[k]===0&&!inFacility(x,y)&&!LMKC.has(k)};
+ // any：鄉間農地或魚塭也可（農地工廠、軍事基地）；用地改為建地
+ let any=0;const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&!HG[k]&&(TR[k]===0||any&&(TR[k]===5||TR[k]===6))&&!inFacility(x,y)&&!LMKC.has(k)};
  const road=(x,y)=>{const r=cls(x,y);return r===1||r===2||r===3};
- for(const d of LMK_DEF){const s=SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;
+ for(const d of LMK_DEF){const s=SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;any=d.any?1:0;
   const cx=s.p[0]+d.near[1],cy=s.p[1]+d.near[2];let best=null,bd=1e9;
   for(const [W,H] of(d.w===d.h?[[d.w,d.h]]:[[d.w,d.h],[d.h,d.w]]))
    for(let x0=cx-12;x0<=cx+12;x0++)for(let y0=cy-12;y0<=cy+12;y0++){
@@ -31,7 +55,7 @@ function placeLandmarks(){
     if(!rd)continue;bd=dd;best={x0,y0,w:W,h:H}}
   if(!best)continue;
   const m=Object.assign({},d,best,{cells:[]});m.p=[best.x0+(best.w-1)/2,best.y0+(best.h-1)/2];
-  for(let i=0;i<best.w;i++)for(let j=0;j<best.h;j++){const x=best.x0+i,y=best.y0+j;m.cells.push([x,y]);LMKC.set(K(x,y),{m,i,j})}
+  for(let i=0;i<best.w;i++)for(let j=0;j<best.h;j++){const x=best.x0+i,y=best.y0+j;m.cells.push([x,y]);LMKC.set(K(x,y),{m,i,j});TR[K(x,y)]=0}
   LMK.push(m)}
  // 高架高鐵：由高鐵站往北延伸到地圖邊緣（高架，不影響地面道路）
  const h=LMK.find(m=>m.k==='hsr');
@@ -40,7 +64,27 @@ function placeLandmarks(){
 function lmkDetail(L,px,py,c){
  const m=L.m,i=L.i,j=L.j,hz=m.w>=m.h,first=hz?i===0:j===0,last=hz?i===m.w-1:j===m.h-1;
  ctx.fillStyle='#3a3833';ctx.fillRect(px,py,c+.6,c+.6);
- if(m.k==='tra'){ // 地下化車站：站前廣場、玻璃天篷（下方為月台）、出入口
+ if(m.k==='t85'||m.k==='t50'){ // 超高層：塔樓量體（投影陰影）、屋頂停機坪
+  const big=m.k==='t85';ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(px+c*.3,py+c*.3,c*.66,c*.66);
+  ctx.fillStyle=big?'#8a8f98':'#6f747c';ctx.fillRect(px+c*.18,py+c*.12,c*.6,c*.66);
+  if(big){ctx.fillStyle='#a8adb5';ctx.fillRect(px+c*.3,py+c*.04,c*.36,c*.3);ctx.fillStyle='#c8a050';ctx.fillRect(px+c*.44,py,c*.08,c*.12)}
+  ctx.strokeStyle='#e8c040';ctx.lineWidth=Math.max(1,c*.02);ctx.beginPath();ctx.arc(px+c*.48,py+c*.5,c*.12,0,TAU);ctx.stroke();
+  ctx.fillStyle='#e8c040';ctx.font='700 '+Math.max(8,c*.14)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',px+c*.48,py+c*.5)}
+ else if(m.k==='farm'){ // 農地工廠：鐵皮廠房、堆料、貨車
+  ctx.fillStyle='#4d5a55';ctx.fillRect(px+c*.06,py+c*.1,c*.7,c*.56);ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;
+  for(let q=1;q<7;q++){ctx.beginPath();ctx.moveTo(px+c*.06+q*c*.1,py+c*.1);ctx.lineTo(px+c*.06+q*c*.1,py+c*.66);ctx.stroke()}
+  ctx.fillStyle='#6a5a3a';ctx.fillRect(px+c*.1,py+c*.72,c*.3,c*.18);ctx.fillStyle='#d8d6cc';ctx.fillRect(px+c*.6,py+c*.74,c*.3,c*.12)}
+ else if(m.k==='mil'||m.k==='arms'){ // 管制區：圍牆與斜線、營舍（或彈藥庫土堆）、車輛
+  ctx.fillStyle=m.k==='mil'?'#34402f':'#3e362a';ctx.fillRect(px,py,c+.6,c+.6);
+  ctx.save();ctx.beginPath();ctx.rect(px,py,c+.6,c+.6);ctx.clip();
+  ctx.strokeStyle='rgba(220,80,60,.25)';ctx.lineWidth=Math.max(1,c*.03);for(let q=-4;q<4;q++){ctx.beginPath();ctx.moveTo(px+q*c*.3,py+c);ctx.lineTo(px+q*c*.3+c,py);ctx.stroke()}
+  ctx.restore();
+  if(m.k==='mil'){ctx.fillStyle='#5a6450';for(let q=0;q<3;q++)ctx.fillRect(px+c*.12,py+c*(.14+q*.26),c*.46,c*.16);ctx.fillStyle='#4a5a3a';ctx.fillRect(px+c*.68,py+c*.2,c*.18,c*.1);ctx.fillRect(px+c*.68,py+c*.4,c*.18,c*.1)}
+  else{ctx.fillStyle='#5a4e3a';for(let q=0;q<2;q++)for(let r=0;r<2;r++){ctx.beginPath();ctx.ellipse(px+c*(.3+q*.4),py+c*(.3+r*.4),c*.14,c*.1,0,0,TAU);ctx.fill()}}
+  ctx.strokeStyle='#c8c4b8';ctx.setLineDash([c*.05,c*.04]);ctx.lineWidth=Math.max(1,c*.025);
+  if(i===0){ctx.beginPath();ctx.moveTo(px+1,py);ctx.lineTo(px+1,py+c);ctx.stroke()}if(i===m.w-1){ctx.beginPath();ctx.moveTo(px+c-1,py);ctx.lineTo(px+c-1,py+c);ctx.stroke()}
+  if(j===0){ctx.beginPath();ctx.moveTo(px,py+1);ctx.lineTo(px+c,py+1);ctx.stroke()}if(j===m.h-1){ctx.beginPath();ctx.moveTo(px,py+c-1);ctx.lineTo(px+c,py+c-1);ctx.stroke()}ctx.setLineDash([])}
+ else if(m.k==='tra'){ // 地下化車站：站前廣場、玻璃天篷（下方為月台）、出入口
   ctx.fillStyle='#4a4842';ctx.fillRect(px+c*.04,py+c*.04,c*.92,c*.92);
   ctx.fillStyle='rgba(150,200,235,.35)';ctx.beginPath();ctx.ellipse(px+c*(first?.7:.3),py+c*.5,c*.42,c*.3,0,0,TAU);ctx.fill();
   ctx.strokeStyle='rgba(220,235,245,.5)';ctx.lineWidth=Math.max(1,c*.02);ctx.stroke();
@@ -85,7 +129,7 @@ function drawTHSR(c,x0,x1,y0,y1){
   if(c>=14){ctx.strokeStyle='rgba(60,60,58,.8)';ctx.lineWidth=Math.max(1,c*.02);for(const o of[-.06,.06]){ctx.beginPath();ctx.moveTo(px+o*c,py);ctx.lineTo(qx+o*c,qy);ctx.stroke()}}}
  ctx.restore()}
 // 地標專屬案件：抽到的案類若適合某類地標，約三成機率改發生在該地標（地址寫地標名稱）
-const LMK_KIND={tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
+const LMK_KIND={t85:['skyscraper','hifire','lift','ems','faint'],t50:['skyscraper','hifire','lift','ems'],farm:['farmfire','machine','fall','stuck'],tra:['train','crowd','smoke','faint','ems','lonewolf','hazmat'],hsr:['train','crowd','faint','ems','hazmat'],dome:['crowd','mci','heat','faint','sport','ems'],
  dept:['deptfire','lift','crowd','faint','smoke'],mart:['deptfire','lift','faint','choke','carfire'],edu:['sport','faint','hypervent','brawl','kidfever','poolgas']};
 function lmkFor(k){const ms=LMK.filter(m=>LMK_KIND[m.k]&&LMK_KIND[m.k].includes(k)&&!S.inc.some(i=>i.lm===m.n+m.x0));return ms.length?pick(ms):null}
 function lmkSpawn(k){
@@ -95,5 +139,6 @@ function lmkSpawn(k){
  if(!inc)return null;
  inc.lm=m.n+m.x0;
  if(k==='deptfire'&&m.k==='mart')inc.nm='量販店火警';
+ if(m.k==='t85'||m.k==='t50'){inc.tfl=m.k==='t85'?[20,24]:[15,17];inc.nm=(KIND[k].n)+'（'+m.n+'）'}   // 戰術畫面的樓層數（模擬範圍）
  if(m.k==='tra'&&k==='smoke')inc.nm='地下車站濃煙';
  return inc}

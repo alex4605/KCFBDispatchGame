@@ -4,8 +4,7 @@
 const SCHOOL_ID=-7;
 // SCHOOL：{x0,y0,w,h,cells,set, p:園區中心, burn:火災模擬屋格, x:模擬屋臨路格, side:臨路側}（園區 2×2 格）
 let SCHOOL=null;
-// 園區設施（CROP 代碼）：13 訓練塔、14 教室與宿舍、15 操場、16 報廢消防車停車場、17 火災模擬屋
-const SCH_N={13:'訓練塔',14:'教室與宿舍',15:'操場',16:'報廢消防車停車場',17:'火災模擬屋'};
+// 園區設施（CROP 代碼）：13 訓練塔、15 操場、16 報廢消防車停車場、17 火災模擬屋
 const TRAIN={pass:[0,0,0],inc:null,lv:0};
 try{const v=JSON.parse(localStorage.getItem('kcfb.train')||'null');if(v&&Array.isArray(v.pass))TRAIN.pass=v.pass.slice(0,3)}catch(e){}
 const tacUnlocked=()=>TRAIN.pass.every(Boolean);

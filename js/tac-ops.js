@@ -102,14 +102,14 @@ function tacStnStep(inc,B,dt){
  // 集結區：沒有屋外待命的幫浦組又還有火點，請求增派一輛幫浦車
  if(B.st.stage){B.stgT=(B.stgT||20)-dt;
   if(B.stgT<=0){B.stgT=60;
-   const burning=B.cells.some(x=>x.h>.1),spare=B.sq.some(q=>q.ty==='pump'&&!tacIn(q)&&q.task==='idle'&&!q.tmv);
+   const burning=B.cells.filter(x=>x.ty==='room'&&x.h>.3).length>=3&&S.t-B.st.stage.t>60,spare=B.sq.some(q=>q.ty==='pump'&&!tacIn(q)&&q.task==='idle'&&!q.tmv);
    if(burning&&!spare&&!inc.req){inc.req={t:'need',s:'集結區已無待命幫浦組，請求增派幫浦車一輛。',c:'11',als:0,cs:'集結區'};inc.reqT=22;
     radio(inc,'集結區','集結區已無待命幫浦組，請求增派幫浦車一輛。')}}}}
 // 救出的受困者：依受困時的狀況檢傷（紅、黃、綠），在傷患集結處等待救護車後送
 function tacPatient(inc,B,vh,who){
  const sev=vh<.45?'red':vh<.8?'yellow':'green';
  B.pts.push({id:B.pid=(B.pid||0)+1,sev,hp:Math.min(1,vh+.15),t:S.t});B.resc++;
- tacEvt(inc,B,'victim','救出受困者 1 名（'+{red:'紅',yellow:'黃',green:'綠'}[sev]+'）');
+ tacEvt(inc,B,'victim','救出受困者 1 名（'+TAC_SEVN[sev]+'）');
  radio(inc,who||'現場','救出受困者 1 名（'+{red:'紅色・危急',yellow:'黃色・嚴重',green:'綠色・輕傷'}[sev]+'），送至傷患集結處。')}
 const TAC_SEVN={red:'紅',yellow:'黃',green:'綠'},TAC_SEVP={red:0,yellow:1,green:2};
 function tacEMS(inc,B,dt){

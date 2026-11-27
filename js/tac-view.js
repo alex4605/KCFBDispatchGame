@@ -22,7 +22,7 @@ const TAC_GRP=[
 // 指令的 Emoji
 const TAC_EMO={hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
- ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofresc:'🚁',decon:'🚿'};
+ ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
 const TAC_KEYS={};for(const o of TAC_ORD)TAC_KEYS[o[2].toLowerCase()]=o[0];
 // 需要再點選目標的指令
@@ -110,7 +110,7 @@ function tacFurn(g,r,kind,seed,dark){
  else if(kind==='kitchen'){box(x+p,y+p,w-2*p,u*.16);box(x+p,y+p,u*.16,h*.6);g.fillStyle=fc;g.beginPath();g.arc(x+w*.6,y+h*.62,u*.14,0,TAU);g.fill();
   for(let k=0;k<3;k++){const a=k*2.1+.4;g.beginPath();g.arc(x+w*.6+Math.cos(a)*u*.22,y+h*.62+Math.sin(a)*u*.22,u*.04,0,TAU);g.fill()}}
  else if(kind==='bath'){box(x+p,y+p,w*.55,h*.3,dark?fc:'#55606a');g.fillStyle=dark?fc:'#6b7680';g.beginPath();g.ellipse(x+w-p-u*.1,y+h-p-u*.13,u*.08,u*.12,0,0,TAU);g.fill()}
- else if(kind==='store'){for(let k=0;k<6;k++){const s2=u*(.12+rnd()*.1);box(x+p+rnd()*(w-2*p-s2),y+p+rnd()*(h-2*p-s2),s2,s2)}}
+ else if(kind==='store'||kind==='ware'||kind==='dock'){for(let k=0;k<(kind==='ware'?14:6);k++){const s2=u*(.12+rnd()*.1);box(x+p+rnd()*(w-2*p-s2),y+p+rnd()*(h-2*p-s2),s2,s2)}}
  else if(kind==='office'){const nx=Math.max(1,Math.floor(w/(u*.45))),ny=Math.max(1,Math.floor(h/(u*.45)));
   for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const dx=x+p+i*(w-2*p)/nx,dy=y+p+j*(h-2*p)/ny;box(dx,dy,(w-2*p)/nx*.6,(h-2*p)/ny*.35);
    g.fillStyle=fc;g.beginPath();g.arc(dx+(w-2*p)/nx*.3,dy+(h-2*p)/ny*.55,u*.04,0,TAU);g.fill()}}
@@ -397,8 +397,9 @@ function drawTac(){
   if(Math.abs(ra[1]+ra[3]-rb[1])<1||Math.abs(rb[1]+rb[3]-ra[1])<1){const y=Math.abs(ra[1]+ra[3]-rb[1])<1?rb[1]:ra[1];
    const x0=Math.max(ra[0],rb[0]),x1=Math.min(ra[0]+ra[2],rb[0]+rb[2]);s=[(x0+x1)/2-t*.14,y-3,t*.28,6]}
   else{const x=Math.abs(ra[0]+ra[2]-rb[0])<1?rb[0]:ra[0];const y0=Math.max(ra[1],rb[1]),y1=Math.min(ra[1]+ra[3],rb[1]+rb[3]);s=[x-3,(y0+y1)/2-t*.14,6,t*.28]}
+  const opg=tacOpn(B,a.c,bc);if(opg){if(s[2]>s[3]){s[0]-=t*.16;s[2]+=t*.32}else{s[1]-=t*.16;s[3]+=t*.32}}   // 沒有門的開口：畫成較寬的缺口
   g.fillStyle=flr(a.ty==='room'?bc:a.c);g.fillRect(s[0],s[1],s[2],s[3]);
-  if(!(vf<B.F&&tacShut(B,vf,a.c,bc))){const rm=a.ty==='room'?a:L.N[bc],rr=G.r(rm.c),dw=t*.17;
+  if(!opg&&!(vf<B.F&&tacShut(B,vf,a.c,bc))){const rm=a.ty==='room'?a:L.N[bc],rr=G.r(rm.c),dw=t*.17;
    g.strokeStyle='rgba(200,190,170,.55)';g.lineWidth=1;g.beginPath();
    if(s[2]>s[3]){const hx=s[0],hy=s[1]+3,dir=rr[1]>hy-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx,hy+dir*dw);g.arc(hx,hy,dw,dir>0?Math.PI/2:-Math.PI/2,0,dir<0)}
    else{const hx=s[0]+3,hy=s[1],dir=rr[0]>hx-3?1:-1;g.moveTo(hx,hy);g.lineTo(hx+dir*dw,hy);g.arc(hx,hy,dw,dir>0?0:Math.PI,Math.PI/2,dir<0)}

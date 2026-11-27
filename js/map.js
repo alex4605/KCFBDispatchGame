@@ -91,6 +91,9 @@ function terrainDetail(x,y,k,t,r,s,px,py,c){
    ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(px+c*(.1+i*.46),py+c*(.1+j*.46),c*.36,c*.06)}}
  else if(t===2){ctx.fillStyle='rgba(40,74,46,.7)';
   for(let i=0;i<5;i++){const a=hsh(k,i),b=hsh(k,i+11);ctx.beginPath();ctx.arc(px+c*(.15+a*.7),py+c*(.15+b*.7),c*(.07+.06*hsh(k,i+23)),0,TAU);ctx.fill()}}
+ else if(t===3&&FPORT.has(k)){// 漁港：碼頭、港池與漁船
+  ctx.fillStyle='#1a3446';ctx.fillRect(px+c*.1,py+c*.1,c*.8,c*.8);ctx.fillStyle='#6a6a62';ctx.fillRect(px,py,c+.6,c*.12);ctx.fillRect(px,py,c*.12,c+.6);
+  const bc=['#c8c4b8','#4a7ab0','#c86a3a'];for(let i=0;i<3;i++){ctx.fillStyle=bc[i];ctx.save();ctx.translate(px+c*(.32+i*.2),py+c*(.4+.15*(i%2)));ctx.beginPath();ctx.moveTo(0,-c*.14);ctx.lineTo(c*.05,c*.1);ctx.lineTo(-c*.05,c*.1);ctx.closePath();ctx.fill();ctx.restore()}}
  else if(t===3){const cols=['#6b3b2a','#2f4f6b','#5a5a3a','#3d5a48'];
   for(let j=0;j<4;j++)for(let i=0;i<2;i++){if(hsh(k,i*4+j)<.3)continue;
    ctx.fillStyle=cols[hsh(k,i*4+j+50)*4|0];ctx.fillRect(px+c*(.1+i*.42),py+c*(.1+j*.21),c*.36,c*.16)}}
@@ -442,8 +445,10 @@ function mapLabels(c){
  lb('台 灣 海 峽',5,OY+62,13,'rgba(125,179,232,A)',Math.PI/2);
  lb('台 灣 海 峽',OX+12,OY+128,13,'rgba(125,179,232,A)');
  lb('山　區',OX+128,OY+14,13,'rgba(140,190,140,A)');
+ lb('屏 東',Math.min(N-3,riverX(OY+110)+6),OY+110,13,'rgba(200,200,180,A)',Math.PI/2);
  lb('二 仁 溪',OX+40,3.5,12,'rgba(125,179,232,A)');
  lb('林園工業區',OX+93,OY+131,12,'rgba(200,205,215,A)');
+ for(const v of FVIL)lb(v.n,v.p[0]+.5,v.p[1]+(v.p[1]<8?2.2:-1.2),11,'rgba(160,200,230,A)');
  if(SCHOOL)lb('消防訓練中心',SCHOOL.p[0]+.5,SCHOOL.y0-.6,12,'rgba(190,170,240,A)');
  ctx.restore()}
 // ===== 道路分級繪製 =====
