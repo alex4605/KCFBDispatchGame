@@ -42,6 +42,9 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
   const hw=await p.evaluate(()=>{const bad=[];for(let x=0;x<N;x++)for(let y=0;y<N;y++){const k=K(x,y);if(!HWL[k]&&RD[k]!==4)continue;
    const t=toHosp({x,y,code:'91'});if(!t.h||!t.p)bad.push([x,y])}return bad});
   ok('國道上的救護車可到醫院',!hw.length,hw.slice(0,5));
+  // 醫院的接線點要在醫院旁、是道路，且從分隊開得到
+  const hb=await p.evaluate(()=>HOSP.filter(h=>!RD[K(h.x[0],h.x[1])]||!h.cells.some(q=>Math.abs(q[0]-h.x[0])+Math.abs(q[1]-h.x[1])<=2)||baseF(h,0).D[K(SPOT[2].x[0],SPOT[2].x[1])]===INF).map(h=>h.n));
+  ok('醫院接線點正確且可達',!hb.length,hb);
   ok('所有分隊可達',!r.un.length,r.un);ok('國道不在交會格轉換層',!r.bad,r);ok('地圖無錯誤',!errs.length,errs.slice(0,3));await p.close()}
  if(which==='all'||which==='normal'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{S.day=4;for(let i=0;i<12000;i++){step(.05);if(i%50===0){reindex();for(const inc of S.inc)if(!onScene(inc).length)auto(inc)}}
