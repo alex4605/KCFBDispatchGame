@@ -61,6 +61,8 @@ function tacYardInit(inc,B,T){
   // 草地：燃料少、燒得快，不需搜索
   if(T.wild){if(n.kind==='grass'||n.kind==='reed'||n.kind==='shrub')x.gr=1;if(n.kind!=='home'){x.srch=1;x.sl=2}}}
  if(T.wild)return;
+ // 資源回收場、加油站的露天堆置區一眼就看得到，不需逐區搜索（有牆的辦公室、便利商店照常搜索）
+ if(T.yard==='waste'||T.yard==='gas')for(const x of B.cells){const n=B.L.N[x.c];if(n.ty==='room'&&!n.walled){x.srch=1;x.sl=2}}
  const t=tacTxt(inc);
  if(T.yard==='waste'){
   // 化學桶區：約一半機率有廢液外洩；鋼瓶區有瓦斯鋼瓶
@@ -186,7 +188,7 @@ function tacYardPost(inc,B,T){
   B.sd={};B.sd[rs]={road:2,big:true,nm:'道路'};B.sd[fs]={road:0,big:false,nm:'林地'};
   for(const s of TAC_SIDES)if(!B.sd[s])B.sd[s]={road:5,big:false,nm:'產業道路'};
   B.arr=rs;B.exp={};B.ents=TAC_SIDES.filter(s=>B.sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s]}));B.fside=fs;
-  if(!inc.hy||inc.tender)B.hyd=null;else B.hyd={side:rs,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)};
+  if(!inc.hy||inc.tender)B.hyd=null;else B.hyd=tacHydMk(inc,rs);
   return}
  if(!T.river)return;
  const rv=B.L.N.filter(n=>n.riv);if(!rv.length)return;

@@ -47,18 +47,21 @@ function dWater(inc,d){
     const t=sup.length?sup[li%sup.length]:null;
     const noz=!a?'—':a.code==='57'?'泡沫':a.code==='01'?'泡沫砲':a.code==='61'?'移動砲塔':
      a.code==='16'?'1.5 吋':(li%2?'1.5 吋':'2.5 吋');
-    rows.push((inc.shuttle?'[栓]⇢往返⇢':'[栓]'+(inc.tender?'⇢':'─')+'['+(t?t.cs:(inc.tender?'水庫車?':'佔水車?'))+']─')+'['+
-     (a?a.cs:'幫浦車?')+']─'+noz+'→')}
+    const src0=inc.draft?'[吸水]':inc.tender?'[槽]':'[栓]',li2=lineInfo(inc,noz);
+    rows.push((inc.shuttle?'[栓]⇢往返⇢':src0+(inc.tender?'⇢':'─')+(inc.relay&&!inc.tender&&!inc.draft?'[中繼×'+inc.relay+']─':'')+'['+(t?t.cs:(inc.tender?'水庫車?':'佔水車?'))+']─')+'['+
+     (a?a.cs:'幫浦車?')+']─'+noz+'→'+
+     '<br><span class="lnw">　'+(a?a.cs:'幫浦車')+' 出水 <b>'+li2[0]+'</b> kg/cm²（'+li2[1].join('、')+'）</span>')}
    const chain=rows.join('<br>');
    h+=fh('water','水情',1);
    h+='<div class="row" style="padding:2px 0;align-items:flex-start"><span class="mono" style="font-size:12px;color:var(--blu);line-height:1.7">'+
     chain+'</span><span class="tag" style="background:'+(wo?'var(--grn)':inc.hook>0?'var(--amb)':'var(--red)')+';white-space:nowrap">'+
     (wo?'已通水':inc.hook>0?('佔水中 '+Math.ceil(inc.hook)+' 秒'):'未通水')+'</span></div>';
-   h+='<div class="sub">'+(inc.shuttle?'無可用消防栓，大型車也進不去：幫浦車輪流往返補水，需 2 輛以上才能不斷水':inc.tender?'無可用消防栓，全靠水庫車載水接力':
+   h+='<div class="sub">'+(inc.shuttle?'無可用消防栓，大型車也進不去：幫浦車輪流往返補水，需 2 輛以上才能不斷水':inc.tender?'附近沒有可用消防栓（中繼也太遠）：水庫車循環送水（卸水至移動式水槽、空車回消防栓補水，多輛輪替），幫浦車由水槽吸水':inc.draft?'消防栓太遠，附近有'+inc.drN+'：幫浦車架設吸水管取水（約 '+DRAFT_IN+' L/s，水源不會用完）':
     '消防栓距 '+inc.hd+' 格 · 需 '+(1+inc.relay)+' 輛幫浦（1 佔水'+(inc.relay?' + '+inc.relay+' 中繼':'')+'）')+'</div>';
+   if(tenderOn(inc))h+='<div class="twater" style="margin:4px 0">'+tenderHTML(inc)+'</div>';
    const pct=tp[1]?Math.round(tp[0]/tp[1]*100):0;
-   const src=(inc.shuttle?'無栓，幫浦車往返運水':inc.tender?'無栓，水庫車載水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
-    +(hydShare(inc)<1?'（共用分流）':'')+(inc.hd>8?'（管線 '+inc.hd+' 格，壓損 '+Math.round((1-Math.max(.55,1-inc.hd*.018))*100)+'%）':''))
+   const src=(inc.shuttle?'無栓，幫浦車往返運水':inc.tender?'無栓，水庫車循環送水':inc.draft?inc.drN+'吸水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
+    +(hydShare(inc)<1?'（共用分流）':'')+(inc.hd>8&&!inc.draft?'（管線 '+inc.hd+' 格，壓損 '+Math.round((1-srcLoss(inc))*100)+'%）':''))
     +(inc.hooked?'':'　※尚未佔水，目前使用車載水');
    h+='<div class="row" style="padding:4px 0"><span class="sub">出水 '+eff+' 線 · 耗水 '+use+
     ' L/s（'+(use*60)+' L/min） · 供水 '+inflow+' L/s · '+src+' · 淨值 '+(net>=0?'+':'')+net+' L/s</span>'+

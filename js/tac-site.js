@@ -33,10 +33,13 @@ function tacSite(inc,B){
  if(inc.hy&&!inc.tender&&!inc.shuttle){
   let s=tacDirOf(inc.hy[0]-inc.x,inc.hy[1]-inc.y);
   if(!sd[s].road)s=roads.includes(arr)?arr:roads[0];
-  B.hyd={side:s,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)}}
+  B.hyd=tacHydMk(inc,s)}
  // 送水口在最寬的道路一側
  // 連結送水管：七層以上，或五、六層的大型場所（百貨、醫院、機構、超高層）
  B.sp=(B.F-B.bf>=7||(B.F-B.bf>=5&&/dept|hosp|sky|nursing/.test(B.k||'')))?{side:roads.slice().sort((a,b)=>sd[b].road-sd[a].road)[0],on:0,u:null}:null}
+// 水源點：消防栓，或河道、湖泊、魚塭的吸水點（吸水量受幫浦吸水能力限制，約 2.9 線）
+function tacHydMk(inc,s){return{side:s,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5),draft:inc.draft?1:0,nm:inc.draft?inc.drN:'消防栓',cap:inc.draft?2.9:TAC_HYDCAP}}
+const tacHydN=B=>B.hyd&&B.hyd.draft?B.hyd.nm+'吸水點':'消防栓';
 // 大型車（雲梯、幫浦等）能否停在某側
 function tacCanSide(B,q,s){
  const d=B.sd[s];
@@ -58,6 +61,13 @@ function tacExitSide(B,q,c,f){
 // 中繼送水（rl）時長度與樓層的壓損減半
 function tacPf(len,f,sp,rl){const k=rl?.5:1;
  return sp?Math.max(.5,Math.min(.95,.95-.03*k*Math.max(0,len-3))):Math.max(.1,Math.min(1,1-.03*k*Math.max(0,len-5)-.065*k*f))}
+// 一條水線的壓損原因：水帶長度、往上樓層（中繼車讓壓損減半）、連結送水管
+function tacPfWhy(B,ln,f){const fl=Math.max(0,f-B.bf),rl=ln.src!=='sp'&&tacRelayOK(B,ln.u),k=rl?.5:1,r=[];
+ if(ln.src==='sp'){const l=.03*k*Math.max(0,ln.len-3);r.push(['連結送水管出水口',0]);if(l>.005)r.push(['水帶 '+ln.len+' 條 −'+Math.round(l*100)+'%',-l]);return r}
+ const hl=.03*k*Math.max(0,ln.len-5),flL=.065*k*fl;
+ if(hl>.005)r.push(['水帶 '+ln.len+' 條（約 '+ln.len*20+' m）−'+Math.round(hl*100)+'%',-hl]);
+ if(flL>.005)r.push(['往上 '+fl+' 層 −'+Math.round(flL*100)+'%',-flL]);
+ return r}
 // 一條攻擊線到 (f,c) 的佈線方案：{src:'pump'|'sp', u:供水車, len, pf, ent}；拉不到回傳 null
 function tacLineTo(B,q,f,c){
  let best=null;
