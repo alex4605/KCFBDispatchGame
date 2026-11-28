@@ -194,7 +194,7 @@ function tacStaff(inc,B,dt){
  if(!src)return;
  const dst=B.cells.filter(x=>x.f===src.f&&x.ty==='room'&&x.c!==src.c&&x.s<.08&&x.h<.02&&tacPath(B,src.f,src.c,x.f,x.c).length).sort((a,b)=>tacGd(B,b.c,B.oc)-tacGd(B,a.c,B.oc))[0];
  if(!dst){S2.n--;radio(inc,'受理','機構人員回報同層已無安全區域，人員撤離。');return}
- src.vic--;dst.vic++;dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
+ src.vic--;dst.vic++;if(src.bedv>0){src.bedv--;dst.bedv=(dst.bedv||0)+1}dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
  radio(inc,'受理','機構護理人員將一名住民由'+tacNm(B,src.f,src.c)+'水平避難至'+tacNm(B,dst.f,dst.c)+'。');
  if(src.s>.5&&Math.random()<.3){S2.n--;radio(inc,'受理','一名機構人員吸入濃煙不適，退出避難作業。')}}
 // ===== 交給轄區分隊善後 =====

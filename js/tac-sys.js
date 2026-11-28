@@ -130,6 +130,7 @@ function tacEvac(inc,B){
 // 繪製：BLEVE 壓力表、安全閥火炬；國道車流方向與阻擋狀態；隧道射流風機
 function tacSysDraw(g,G,B,vf){
  const t=G.t,T=S.t;
+ tacRelayDraw(g);
  // 可燃或有毒氣體雲：濃度越高越明顯，緩慢飄動
  if(B.chem&&(B.chem.vap||B.chem.lelk)&&vf<B.F)for(const n of B.L.N){const x=tacCel(B,vf,n.c);if(!((x.cz||0)>.08))continue;const r=G.r(n.c),c=B.chem.co?'200,120,200':B.chem.h2s?'180,200,90':'150,210,120';
   for(let k=0;k<3;k++){const ph=(T*.12+k/3+n.c*.11)%1;g.fillStyle='rgba('+c+','+(Math.min(.3,x.cz*.3)).toFixed(3)+')';g.beginPath();g.ellipse(r[0]+r[2]*(.2+.6*ph),r[1]+r[3]*(.3+.4*((k*.41+n.c*.17)%1)),r[2]*.22,r[3]*.16,0,0,TAU);g.fill()}

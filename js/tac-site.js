@@ -54,8 +54,9 @@ function tacExitSide(B,q,c,f){
  const es=B.ents.filter(e=>e.c===c&&tacEF(B,e)===(f===undefined?B.bf:f));
  return(es.find(e=>e.side===q.tside)||es.find(e=>e.side===q.side)||es[0]||{side:B.arr}).side}
 // 水壓：水帶越長、樓層越高，出水越弱；連結送水管由地面加壓，只計樓層內的水帶
-function tacPf(len,f,sp){
- return sp?Math.max(.5,Math.min(.95,.95-.03*Math.max(0,len-3))):Math.max(.1,Math.min(1,1-.03*Math.max(0,len-5)-.065*f))}
+// 中繼送水（rl）時長度與樓層的壓損減半
+function tacPf(len,f,sp,rl){const k=rl?.5:1;
+ return sp?Math.max(.5,Math.min(.95,.95-.03*k*Math.max(0,len-3))):Math.max(.1,Math.min(1,1-.03*k*Math.max(0,len-5)-.065*k*f))}
 // 一條攻擊線到 (f,c) 的佈線方案：{src:'pump'|'sp', u:供水車, len, pf, ent}；拉不到回傳 null
 function tacLineTo(B,q,f,c){
  let best=null;
@@ -63,11 +64,11 @@ function tacLineTo(B,q,f,c){
  for(const p of pumps){
   const e=tacBestEnt(B,p.tside,f,c,true);if(!e)continue;
   const len=tacOutLen(p.tside,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1+(p.xh||0);   // 車停在畫面外：多接幾條水帶
-  if(len>TAC_HOSE)continue;
-  const pf=tacPf(len,Math.max(0,f-B.bf),0);
+  const rl=tacRelayOK(B,p.u);if(len>TAC_HOSE+(rl?TAC_RELAY_HOSE:0))continue;
+  const pf=tacPf(len,Math.max(0,f-B.bf),0,rl);
   if(!best||pf>best.pf)best={src:'pump',u:p.u,len,pf,ent:e}}
  if(B.sp&&B.sp.on&&f>B.bf){
-  const len=tacPath(B,f,tacNearStair(B,f,c),f,c).length+2,pf=tacPf(len,f-B.bf,1);
+  const len=tacPath(B,f,tacNearStair(B,f,c),f,c).length+2,pf=tacPf(len,f-B.bf,1,tacRelayOK(B,'sp'));
   if(!best||pf>best.pf)best={src:'sp',u:B.sp.u,len,pf,ent:null}}
  return best}
 // 消防栓那側要有幫浦車佔水，否則只能用車上水箱
