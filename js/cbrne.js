@@ -31,6 +31,8 @@ const TAC_CP={
 const tacCP=c=>c?Object.assign({},TAC_CPD,TAC_CP[c.n]||{}):TAC_CPD;
 // 化工廠、槽車等可能出現的化學品（新增）
 TAC_CHEM.push({n:'硫酸',lv:2},{n:'氫氟酸',lv:3,tox:1.6},{n:'氫氧化鈉（液鹼）',lv:2},{n:'甲醇',lv:2,fl:1,lelk:70},{n:'金屬鈉',lv:2,fl:1,lelk:40});
+// 快速救援例外：著消防衣與空氣呼吸器（F）可短時間進入中等危害（2 級）的區域搶救受困者（會重度污染、受傷）；3 級（需 A 級）不行
+const tacPPEx=(q,k)=>{const lv=q.ppe||'F',p=TAC_PPE[lv].p;return lv==='F'&&(k==='search'||k==='search2'||q.carry)?Math.max(p,2):p};
 const TAC_PHN={g:'氣體',l:'液體',s:'固體／粉末'};
 const tacCbOn=B=>!!(B.chem&&!B.chem.fuel&&!B.chem.nochem&&B.chem.lv>0);
 // ===== 物理：蒸氣沉降或上升、水霧稀釋、遇水反應、廢水 =====
@@ -136,6 +138,8 @@ function tacCbTask(inc,B,q,k,cl,dt){
  if(k==='dike'){if(q.wk<(q.ty==='hazmat'||q.epa?12:20))return true;q.wk=0;cl.dike=1;q.task='idle';
   radio(inc,q.cs,tacNm(B,q.f,q.c)+'圍堵完成（沙包、吸附棉、導水板），外洩液體與廢水不再往外流。');tacEvt(inc,B,'milestone','圍堵：'+tacNm(B,q.f,q.c));return true}
  if(k==='neut'){if(q.wk<(q.ty==='hazmat'||q.epa?12:22))return true;q.wk=0;q.task='idle';
+  // 固體（粉末、金屬鈉、電石）外洩：覆蓋收集後就不再外洩
+  if(P.ph==='s'&&B.leak&&B.leak.on&&B.leak.f===q.f&&B.leak.c===q.c){B.leak.on=0;tacEvt(inc,B,'milestone','覆蓋收集完成（'+q.cs+'）')}
   if(P.wr){cl.cover=1;if(cl.h>.05){cl.h=0;cl.fu*=.5}radio(inc,q.cs,tacNm(B,q.f,q.c)+'以乾砂、D 類滅火劑覆蓋'+B.chem.n+'，隔絕水氣'+(cl.h===0?'，火勢悶熄':'')+'。')}
   else if(P.cor){cl.neu=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'中和處理：'+P.neu+'。')}
   else{cl.foam=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'泡沫覆蓋完成，抑制蒸氣與起火。')}

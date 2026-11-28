@@ -139,7 +139,7 @@ function tacYardCell(g,G,B,n,x,r,T){
  else if(k==='shack'){g.fillStyle=dark?'#1a1816':'#5a6268';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(200,205,210,.35)';g.lineWidth=1;for(let yy=r[1]+10;yy<r[1]+r[3]-8;yy+=5){g.beginPath();g.moveTo(r[0]+7,yy);g.lineTo(r[0]+r[2]-7,yy);g.stroke()}}
  else if(k==='cars')tacCarRow(g,r,dark,rnd);
  else if(k==='wash'){g.strokeStyle='rgba(125,179,232,.3)';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/5,r[1]+4);g.lineTo(r[0]+r[2]*i/5,r[1]+r[3]-4);g.stroke()}}
- tacScDraw(g,G,B,n,x,r,k,dark,rnd);
+ tacScDraw(g,G,B,n,x,r,k,dark,rnd);tacSc3Pin(g,B,x,r);
  g.strokeStyle='rgba(190,185,170,.18)';g.lineWidth=1;g.strokeRect(r[0]+1,r[1]+1,r[2]-2,r[3]-2)}
 // 繪製：遮雨棚、化學品危害區、風向
 function tacYardTop(g,G,B,T){

@@ -18,6 +18,8 @@ const TAC_GRP=[
  ['搜救',[['search','初期搜索','S','各組（救助組最快，機器人除外）｜點房間｜快速掃過可能有人的地方，發現受困者就搬運撤出；本室完成後自動往同層下一間｜濃煙中可能漏人'],
   ['search2','次級搜索','D','各組（救助組最快，機器人除外）｜點房間（通常是已初搜的房間）｜徹底翻找，找出初搜遺漏的人；本室完成後自動往同層下一間｜比初搜慢'],
   ['gas','氣體偵測','Y','各組｜點空間｜到點以五用氣體偵測器量測約 5 秒（O₂、LEL、CO、H₂S、HCN）｜結果顯示在空間參數，超標以紅、橘色標示'],
+  ['stab','車輛穩固','','各組（雲梯組、機器人除外）｜點有人被夾住的事故車｜墊木、支撐、拔鑰匙斷電，約 6 秒｜沒穩固就破壞，車體晃動會讓受困者與隊員受傷'],
+  ['extr','破壞救援','','救助組、特搜最快，幫浦組較慢｜點有人被夾住的車輛或倒塌結構｜車輛用油壓剪、擴張器開門掀頂；倒塌結構以氣墊頂升（要先支撐）；每次救出 1 名，交由搬運｜倒塌結構沒支撐不能頂升'],
   ['shore','支撐','','救助組、特搜｜點瓦礫空間｜架設支撐（約 20 秒，特搜較快）：防止二次崩塌，瓦礫中搜救加快｜只有瓦礫空間需要'],
   ['roofres','屋頂救援','U','各組（機器人除外；雲梯組直接架梯）｜立即執行，或點畫面上的屋頂｜上屋頂把避難民眾帶下來｜走樓梯的小組每趟帶 1～2 人，人多要再下令；屋頂超出雲梯高度時雲梯組不能執行']]],
  ['排煙',[['vent','破窗排煙','V','各組（排煙組較快，機器人除外）｜點有窗的房間｜打破窗戶建立排煙開口；點頂樓樓梯間則改為屋頂排煙｜火點還沒有水線就開口會助燃；悶燒缺氧時可能爆燃'],
@@ -45,7 +47,7 @@ const TAC_GRP=[
   ['hyd','佔據水源','','幫浦組（人員須在車邊）｜立即執行｜移車到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
   ['stand','送水口加壓','C','幫浦組（人員須在車邊）｜立即執行｜移車到送水口那一側，接連結送水管，約 8 秒後各樓層出水口可接線｜七層以上，或五層以上的大型場所（百貨、醫院、機構）才有']]]];
 // 指令的 Emoji
-const TAC_EMO={zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={stab:'🪵',extr:'✂️',zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
@@ -61,7 +63,7 @@ function tacFlameGlow(g,fx,fy,rad,alpha){
  if(alpha!==undefined&&alpha<1){g.save();g.globalAlpha=alpha;g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2);g.restore()}
  else g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2)}
 // 需要再點選目標的指令
-const TAC_NEEDT={dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={stab:1,extr:1,dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 let TAC_UIS=1; // 戰術畫面的縮放倍率（寬螢幕放大）
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');

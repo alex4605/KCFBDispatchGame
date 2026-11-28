@@ -34,7 +34,7 @@ function tacStnPick(inc,B,k){
   if(d.drv)return{u:u.id};                 // 由司機操作，不看小組狀態
   if(d.tp&&!u.tp)continue;
   const q=B.sq.find(x=>x.u===u.id);
-  if(q&&(tacIn(q)||q.down||(q.task!=='idle'&&q.task!=='rit')||q.tmv))continue;
+  if(q&&(tacIn(q)||q.down||q.cont||(q.task!=='idle'&&q.task!=='rit')||q.tmv))continue; // 受污染的小組要先除污
   return{u:u.id}}
  return{why:'需要'+d.need}}
 function tacStnOpen(inc,B,k,quiet){

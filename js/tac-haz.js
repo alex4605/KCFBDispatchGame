@@ -46,7 +46,8 @@ function tacChemStep(inc,B,dt){
  const L=B.chem.fuel?0:B.chem.lv;
  for(const x of B.cells){x.hz=!L||!(x.cz>.06)?0:Math.max(1,Math.min(L,x.cz>.55?L:x.cz>.25?L-1:1));
   // 受困者暴露在化學品中也會惡化
-  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz*(B.chem.tox||1)}
+  // 化學洩漏、實驗室：受困者會自行遠離、摀住口鼻，惡化較慢；待在有牆的室內（就地避難）再減半
+  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz*(B.chem.tox||1)*(B.sc&&/chem|lab/.test(B.sc.k)?.55:1)*(B.out&&B.L.N[x.c].walled?.5:1)}
  tacCbStep(inc,B,dt)}
 // 每幀：換裝、化學暴露、防護衣受熱、C 級的限制、空氣與體力、除污；回傳 true 表示這一幀已用掉
 function tacHazStep(inc,B,q,dt){
@@ -94,7 +95,8 @@ function tacIdent(inc,B,q,dt){
 function tacPlug(inc,B,q,dt){
  const lk=B.leak;
  if(!lk||!lk.on||lk.f!==q.f||lk.c!==q.c){q.task='idle';if(lk&&!lk.on)radio(inc,q.cs,'洩漏已止住。');else radio(inc,q.cs,'此處不是洩漏源。');return}
- q.wk+=dt;if(q.wk<(B.chem.util?10:q.epa?15:q.ty==='hazmat'?35:70))return;q.wk=0;
+ // 進度記在洩漏源上：換瓶、除污後回來接著做
+ const need=B.chem.util?10:tacCP(B.chem).ph==='s'?8:q.epa?15:q.ty==='hazmat'?35:70;lk.pw=(lk.pw||0)+dt/need;if(lk.pw<1)return;
  lk.on=0;q.task='idle';
  radio(inc,q.cs,B.chem.plug?B.chem.plug:B.chem.fuel?'已關閉緊急遮斷閥並止漏，油料停止外洩。':'止漏完成，'+(B.chemK?B.chem.n:'化學品')+'停止外洩。');
  tacEvt(inc,B,'milestone','止漏完成（'+q.cs+'）')}

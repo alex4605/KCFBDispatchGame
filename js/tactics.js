@@ -587,6 +587,7 @@ function tacRefuse(B,q,k,f,c){
 function tacCan(B,q,k,f,c){
  if(q.down)return'該組已倒地，等待 RIT 救援';
  {const cb=tacCbCan(B,q,k,f,c);if(cb!==null)return cb}
+ {const s3=tacSc3Can(B,q,k,f,c);if(s3!==null)return s3}
  {const w=tacOutCan(B,q,k,f,c)||tacHazCan(B,q,k)||tacScCan(B,q,k,f,c)||tacSdbCan(q,k);if(w)return w}
  if(q.sk==='vol'&&(TAC_VOLNO[k]||(k==='move'&&f>=0&&(tacCel(B,f,c).h>.05||tacCel(B,f,c).s>.4))||(k==='dctrl'&&f>=0)))return'拒絕：義消（一般）不執行入室攻擊、搜索等深入火場的任務（可改派義消+或正職）';
  if(q.vol&&(k==='attack'||k==='sky'||k==='confine'||k==='trans'||k==='cover'||k==='hydro'))return'義消徒步到場、沒有車輛水線';
@@ -669,7 +670,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
  const why=tacCan(B,q,k,f,c)||tacRefuse(B,q,k,f,c);
  if(why){if(!quiet)tacNo(inc,q,why);return false}
  // AI 下令（quiet）：路線或目標經過超過本組防護等級的化學品區域就不派
- if(quiet&&B.chem&&f>=0&&k!=='exit'&&q.ty!=='ladder'){const p=TAC_PPE[q.ppe||'F'].p,st=q.f>=0?[q.f,q.c]:null;
+ if(quiet&&B.chem&&f>=0&&k!=='exit'&&q.ty!=='ladder'){const p=tacPPEx(q,k),st=q.f>=0?[q.f,q.c]:null;
   const e=st?null:tacBestEnt(B,q.side,f,c,false),path=st?tacPath(B,st[0],st[1],f,c):e?[[tacEF(B,e),e.c]].concat(tacPath(B,tacEF(B,e),e.c,f,c)):[];
   if(path.some(x=>(tacCel(B,x[0],x[1]).hz||0)>p))return false}
  // 攻擊線：先確認水帶拉得到
@@ -731,7 +732,7 @@ function tacDown(inc,B,q,why){
  else{B.noRit++;radio(inc,'受理','現場未編成 RIT！請立即指派小組救援 '+q.cs+'。')}}
 // 已發現但還沒有人去搬的受困者（換瓶回來的小組優先去接手）
 function tacKnownVic(B,q){if(q.ty==='robot'||q.ty==='ladder'||q.sk==='vol')return null;
- return B.cells.find(x=>x.vic>0&&x.srch>=1&&x.h<.6&&!B.sq.some(y=>y!==q&&(y.task==='search'||y.task==='search2')&&y.tf===x.f&&y.tc===x.c))||null}
+ return B.cells.find(x=>tacPinFree(x)>0&&x.srch>=1&&x.h<.6&&!B.sq.some(y=>y!==q&&(y.task==='search'||y.task==='search2')&&y.tf===x.f&&y.tc===x.c))||null}
 // 換瓶休息後回原任務；有已發現的受困者待搬運就先去接手
 function tacResume(inc,B,q,p,where){const kv=tacKnownVic(B,q);
  if(kv){q.task='search';q.tf=kv.f;q.tc=kv.c;radio(inc,q.cs,where+'換瓶完成，前往'+tacNm(B,kv.f,kv.c)+'接手搬運受困者。');return}
@@ -956,6 +957,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='beat'||k==='brk'){tacWildTask(inc,B,q,k,cl,dt,cmd);return}
  if(k==='ident'){tacIdent(inc,B,q,dt);return}
  if(k==='dike'||k==='neut'){tacCbTask(inc,B,q,k,cl,dt);return}
+ if(k==='stab'||k==='extr'){tacSc3Task(inc,B,q,k,cl,dt);return}
  if(k==='plug'){tacPlug(inc,B,q,dt);return}
  if(k==='shore'){q.wk+=dt;if(q.wk>=(q.usar?14:20)){q.wk=0;cl.shore=1;q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'支撐架設完成，可以進入瓦礫搜救。');tacEvt(inc,B,'milestone','支撐：'+tacNm(B,q.f,q.c))}return}
  if(k==='dcool'){tacDcoolStep(inc,B,q,dt);return}
@@ -1019,7 +1021,8 @@ function tacSquad(inc,B,q,dt,eff){
    const need=(fw?tacPath(B,q.f,q.c,B.fwd.f,tacNearStair(B,B.fwd.f,0)).length:sf!==null?tacPath(B,q.f,q.c,sf,tacNearStair(B,sf,0)).length:tacPath(B,q.f,q.c,-1,0).length)*2.6*1.3*((cl.bedv||0)>0?tacBedSlow(q)/1.5*1.45:1.3)/TAC_AIR+.05;   // 搬運較慢、耗氣較多，留 30% 餘裕（臥床病患更慢）
    if(q.air<need){q.prev=null;q.task='exit';q.tf=-1;q.tc=0;
     radio(inc,q.cs,tacNm(B,q.f,q.c)+'發現受困者 '+cl.vic+' 名，本組氣量不足以搬運，回報位置撤出，請後續小組接手。');return}}
-  if(cl.vic>0){const bed=(cl.bedv||0)>0,take=bed?1:Math.min(cl.vic,q.n>=4?2:1);cl.vic-=take;if(bed){cl.bedv--;if(q.n<4)radio(inc,q.cs,'臥床病患要 4 人以上抬，本組只有 '+q.n+' 人，搬運會很慢。')}q.cbed=bed?1:0;q.carry=take;q.cvh=cl.vh;q.cvc=cl.vcz||0;q.task='carry';q.tf=-1;q.tc=0;
+  if(cl.pin>0&&!tacPinFree(cl)&&!cl.pinW){cl.pinW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'受困者被'+(cl.rub?'倒塌結構壓住':'車體夾住')+'，需要'+(cl.rub?'支撐後頂升':'車輛穩固後破壞救援')+'。')}
+  if(tacPinFree(cl)>0){const bed=(cl.bedv||0)>0,take=bed?1:Math.min(tacPinFree(cl),q.n>=4?2:1);cl.vic-=take;if(bed){cl.bedv--;if(q.n<4)radio(inc,q.cs,'臥床病患要 4 人以上抬，本組只有 '+q.n+' 人，搬運會很慢。')}q.cbed=bed?1:0;q.carry=take;q.cvh=cl.vh;q.cvc=cl.vcz||0;q.task='carry';q.tf=-1;q.tc=0;
    radio(inc,q.cs,tacNm(B,q.f,q.c)+'發現受困者 '+take+' 名，搬運撤出。');q.sayT=0;tacSay(q,'found');tacEvt(inc,B,'victim',tacNm(B,q.f,q.c)+'發現受困者 '+take+' 名（'+q.cs+'）');return}
   // 本室無人：往同層下一個還沒做到這一級的房間
   const lv=k==='search'?1:2;
@@ -1281,8 +1284,8 @@ function tacAI(inc,B,dt,M){
  if(M.stn&&B.st.icp&&!B.role.safety&&Object.values(B.role).filter(Boolean).length<tacRoleSlots(inc,B))tacRoleSet(inc,B,'safety',1);
  // A 級化學品但 A 級防護衣不足 2 套：請求增派化災車
  if(M.stn&&B.chem&&B.chem.lv>=3&&!B.chem.fuel&&tacPPECap(inc).A<2&&!B.hzReq){B.hzReq=1;tacReinf(inc,B,'hazmat')}
- // 油料火：清水只能打散油火，現場（含途中）沒有泡沫車、特殊化學車或 CAFS 車時請求泡沫車
- if(M.stn&&B.chem&&B.chem.fuel&&!B.foamReq&&B.cells.some(x=>x.fuel&&x.h>.1)&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='57'||u.code==='01'||u.cafs)){B.foamReq=1;tacReinf(inc,B,'foam')}
+ // 油料火或油料外洩（油池可能被引燃）：清水只能打散油火，現場（含途中）沒有泡沫車、特殊化學車或 CAFS 車時請求泡沫車
+ if(M.stn&&B.chem&&B.chem.fuel&&!B.foamReq&&(B.cells.some(x=>x.fuel&&x.h>.1)||(B.leak&&B.leak.on&&B.sc))&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='57'||u.code==='01'||u.cafs)){B.foamReq=1;tacReinf(inc,B,'foam')}
  // 高樓：起火層在 3F 以上，或火在低樓層但上方樓層還要搜索時，開設前進指揮所
  const upS=B.F-B.bf>=5&&B.cells.some(x=>x.f-B.bf>=3&&x.ty==='room'&&(x.sl<2||x.vic>0));
  if(M.stn&&B.F-B.bf>=5&&(B.of-B.bf>=3||B.of<B.bf||upS)){
@@ -1312,7 +1315,7 @@ function tacAI(inc,B,dt,M){
   for(const q of B.sq){if(!tacIn(q)||q.down||q.ty==='robot'||q.task==='exit'||q.task==='carry'||q.task==='ritgo')continue;
    const x=tacCel(B,q.f,q.c),prot=q.task==='attack'&&q.line&&q.pf>.3&&q.f===q.tf&&q.c===q.tc;
    // 化學品濃度超過防護等級：撤出
-   if((x.hz||0)>TAC_PPE[q.ppe||'F'].p&&q.task!=='exit'){q.prev=null;q.task='exit';q.tf=-1;q.tc=0;radio(inc,'安全官',tacNm(B,q.f,q.c)+'化學品濃度超過'+q.cs+'的防護等級，立即撤出！');continue}
+   if((x.hz||0)>tacPPEx(q,q.task)&&q.task!=='exit'){q.prev=null;q.task='exit';q.tf=-1;q.tc=0;radio(inc,'安全官',tacNm(B,q.f,q.c)+'化學品濃度超過'+q.cs+'的防護等級，立即撤出！');continue}
    // 地下室熱煙排不出去，閃燃前兆的門檻較低
    const ub=q.f<B.bf?.12:0;
    if(!prot&&!x.fl&&((x.h>.7-ub&&x.s>.6-ub)||(tacLayV(x)<.15&&x.h>.65&&x.layD<0))){q.prev=null;q.task='exit';q.tf=-1;q.tc=0;radio(inc,'安全官',tacNm(B,q.f,q.c)+'出現閃燃前兆（煙層下降、溫度急升），'+q.cs+' 立即撤出！')}}}
@@ -1415,7 +1418,7 @@ function tacAI(inc,B,dt,M){
    // 屋頂避難民眾：救助組優先，現場沒有救助組時由其他小組上屋頂
    if(B.roofV&&!B.roofS&&!B.sq.some(y=>y.task==='roofres')&&(q.ty==='resc'||!B.sq.some(y=>y.ty==='resc'&&!y.down&&free.includes(y)))&&tacOrder(inc,q,'roofres',B.F-1,0,1))continue;
    if(B.roofS&&B.roofV>0&&!B.sq.some(y=>y.task==='roofres')&&tacOrder(inc,q,'roofres',B.F-1,0,1))continue;
-   const un=B.cells.filter(x=>(x.ty==='room'&&x.sl<1||x.vic>0)&&x.h<.45&&!((x.hz||0)>(TAC_PPE[q.ppe||'F'].p))&&!B.sq.some(y=>y!==q&&y.task==='search'&&y.tf===x.f&&y.tc===x.c));
+   const un=B.cells.filter(x=>(x.ty==='room'&&x.sl<1||tacPinFree(x)>0)&&x.h<.45&&!((x.hz||0)>tacPPEx(q,'search'))&&!B.sq.some(y=>y!==q&&y.task==='search'&&y.tf===x.f&&y.tc===x.c));
    // 搜索順序：受困通報樓層 → 起火層 → 上一層 → 下一層，再往外擴（上方略優先）
    const pri=x=>(x.vic>0&&x.srch>=1?-30:0)+(x.rep?-15:0)+(x.rub?-12:0)+(x.f===B.hint?-20:0)+Math.abs(x.f-B.of)-(x.f>B.of?.5:0)+tacGd(B,0,x.c)*.1;
    un.sort((a,b)=>pri(a)-pri(b));
@@ -1499,7 +1502,7 @@ function tacIncident0(inc,dt,first,flow){
  const evac=B.pts.length+onScene(inc).filter(u=>u.load>0).length;
  // 主要目標達成（火已撲滅、受困者與現場傷患都已處置、沒有洩漏）：可交給轄區分隊善後
  B.hOK=!B.hoax&&!B.wui&&B.peak>0&&out&&!left&&!B.pts.length&&!tacLeakOn(B)&&!tacVapLeft(B);
- if(out&&!left&&!evac&&!B.cells.some(x=>x.emb)&&!tacLeakOn(B)&&!tacVapLeft(B)){B.doneT+=dt;
+ if(out&&!left&&!evac&&!B.cells.some(x=>x.emb)&&!(tacCbOn(B)&&B.sq.some(q=>q.cont&&q.task!=='station'))&&!tacLeakOn(B)&&!tacVapLeft(B)){B.doneT+=dt;
   if(B.doneT>=3&&!B.done){B.done=1;
    B.burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
    const half=B.burnt>B.R*B.F*.5;
