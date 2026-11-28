@@ -97,7 +97,7 @@ document.body.addEventListener('click',e=>{
  if(D.rosterclose){rosterOn=false;rsh='';return}
  if(D.shopclose){shopOn=false;$('shop').classList.remove('open');sh='';return}
  if(D.hire){if(S.money>=2500){S.money-=2500;S.tp[shopSt]++}dirty();return}
- if(D.buy){const c=D.buy;if(S.money>=CODE[c].c){S.money-=CODE[c].c;addU(shopSt,c)}dirty();return}
+ if(D.buy){const c=D.buy;if(shopOK(shopSt)&&shopList(shopSt).some(g=>g[1].includes(c))&&S.money>=CODE[c].c){S.money-=CODE[c].c;addU(shopSt,c)}dirty();return}
  if(D.newst){if(S.money>=12000&&S.nst<SPOT.length){S.money-=12000;
   const i=S.nst++;addU(i,'11');addU(i,'11');addU(i,'11');addU(i,'91');addU(i,'41');
   // 鄉間分隊另配越野警備車；新設分隊的第一輛幫浦車為新式 CAFS

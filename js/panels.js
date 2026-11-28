@@ -38,17 +38,17 @@ function callsHTML(){
  for(const i of list){
   const d=KIND[i.k],f=fill(i,0),got=f.reduce((a,b)=>a+b,0),tot=i.need.reduce((a,g)=>a+g.n,0);
   const urg=i.left/i.max<.35,col=i.rev?d.col:'#6b6960';
-  out.push('<div class="call'+(sel===i.id?' sel':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
+  out.push('<div class="call'+(sel===i.id?' sel':'')+(i.req?' pend':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
    '<div class="row" style="padding:0"><span class="tag" style="background:'+col+';color:'+(i.rev?'#111110':'#eceae3')+'">'+
    (i.rev?(i.nm||d.n)+(i.pm.lvl>1?' '+['','一級','二級','三級','四級'][i.pm.lvl]+'火警':'')+(i.pm.trap?' 困'+i.pm.trap:''):d.cls+'類 · 待確認')+'</span>'+
    '<span class="mono" style="color:'+(urg?'var(--red)':'var(--fg2)')+'">'+(tacFrozen(i)?'⏸ ':'')+fmt(i.left)+'</span></div>'+
    '<div class="sub" style="margin-top:3px">'+esc(i.addr)+' · 同時 '+(i.calls||1)+' 通 · 編組 '+got+'/'+(i.rev?tot:'?')+
-   (i.rev&&i.ph>=0?' · '+i.phs[i.ph]:'')+(i.req?' · 待回覆':'')+(KIND[i.k].pol&&i.pol<2?' · 待警方':'')+(KIND[i.k].pow&&i.pow<2?' · 待斷電':'')+
+   (i.rev&&i.ph>=0?' · '+i.phs[i.ph]:'')+(i.req?' · <b class="pendb">⚑ 待回覆 '+Math.ceil(i.reqT)+' 秒</b>':'')+(KIND[i.k].pol&&i.pol<2?' · 待警方':'')+(KIND[i.k].pow&&i.pow<2?' · 待斷電':'')+
    (i.note?' · '+esc(i.note):'')+'</div></div>')}
  for(const r of S.mr||[])
-  out.push('<div class="call'+(sel===r.id?' sel':'')+'" data-sel="'+r.id+'" style="border-left-color:#7f77dd">'+
+  out.push('<div class="call'+(sel===r.id?' sel':'')+(r.sent?'':' pend')+'" data-sel="'+r.id+'" style="border-left-color:#7f77dd">'+
    '<div class="row" style="padding:0"><span class="tag" style="background:#7f77dd">跨縣市支援請求 · '+r.from+'</span>'+
-   '<span class="mono" style="color:var(--fg2)">'+(r.sent?'支援中':fmt(r.left))+'</span></div>'+
+   '<span class="mono" style="color:var(--fg2)">'+(r.sent?'支援中':'<b class="pendb">⚑ 待回覆</b> '+fmt(r.left))+'</span></div>'+
    '<div class="sub" style="margin-top:3px">'+r.n+' · 請求 '+r.need.map(g=>(g.c==='usar'?'USAR':LB[g.c]||g.c)+'×'+g.n).join('、')+' · 評鑑 +'+r.rep+'</div></div>');
  for(const d of S.duties)
   out.push('<div class="call'+(sel===d.id?' sel':'')+'" data-sel="'+d.id+'" style="border-left-color:var(--pur)">'+
@@ -107,16 +107,24 @@ function rosterHTML(){
   for(const i of grp[k])h+=row(ST_FULL[SPOT[i].n]||SPOT[i].n+'分隊',stUs(i))});
  const ap=SNAME.indexOf('機場');if(ap>=0&&ap<S.nst)h+='<div class="rg">機場消防隊 <span class="sub">民航局所屬，僅呼叫機場消防時協力出動</span></div>'+row('機場消防隊',stUs(ap));
  return h}
+// 採購：依分隊類型列出可購車種（特搜沒有一般救護車；機場消防隊屬民航局，不在採購範圍）
+const SHOP_REG=[['滅火',['11','16','57','61','21','31']],['救助',['71','43','艇','履']],['救護',['91']],['指揮與特種',['41','75','51','01','警']]];
+const SHOP_USAR=[['滅火',['11','16']],['救助',['搜','71','43','履']],['救護',['99']],['指揮與特種',['41','75']]];
+const shopOK=i=>SPOT[i]&&SPOT[i].n!=='機場';
+const shopList=i=>/^特/.test(SPOT[i].n)?SHOP_USAR:SHOP_REG;
 function shopHTML(){
- let h='<div class="row" style="padding:0"><span class="hd" style="margin:0">車輛採購 · 經費 $'+S.money+
-  '</span><button data-shopclose="1">關閉</button></div><select id="selSt" style="margin:8px 0">';
- for(let i=0;i<S.nst;i++)h+='<option value="'+i+'"'+(i===shopSt?' selected':'')+'>'+SPOT[i].n+
-  '分隊（'+S.ix.bySt[i].length+' 輛 · EMT-P '+S.tp[i]+' 人）</option>';
- h+='</select><div class="buy">';
- h+='<button data-hire="1">招募高級救護技術員<br><span class="sub">EMT-P · $2500</span></button>';
- for(const c of FLEET)h+='<button data-buy="'+c+'"><span class="mono">'+SPOT[shopSt].n+c+'</span><br>'+
-  '<span class="sub">'+CODE[c].n+(CODE[c].cap?' '+CODE[c].cap+'L':'')+' · $'+CODE[c].c+'</span></button>';
- h+='</div>';
- if(S.nst<SPOT.length)h+='<button data-newst="1" style="width:100%;margin-top:8px">增設 '+
-  SPOT[S.nst].n+'分隊 · $12000（附編 11 三輛、91 一輛、41 一輛）</button>';
+ if(!shopOK(shopSt))shopSt=SPOT.findIndex((s,i)=>i<S.nst&&shopOK(i));
+ const st=SPOT[shopSt],nm=ST_FULL[st.n]||st.n+'分隊',us=S.ix.bySt[shopSt]||[],cnt=c=>us.filter(u=>u.code===c).length;
+ let h='<div class="row shophd"><span class="hd" style="margin:0">車輛採購 · 經費 <b class="mono">$'+S.money+'</b></span><button data-shopclose="1">關閉</button></div>';
+ h+='<select id="selSt" style="margin:8px 0;width:100%">';
+ for(let i=0;i<S.nst;i++)if(shopOK(i))h+='<option value="'+i+'"'+(i===shopSt?' selected':'')+'>'+(ST_FULL[SPOT[i].n]||SPOT[i].n+'分隊')+'（'+(S.ix.bySt[i]||[]).length+' 輛 · EMT-P '+S.tp[i]+' 人）</option>';
+ h+='</select>';
+ h+='<div class="sub" style="margin-bottom:6px">'+nm+'現有：'+(us.length?us.map(u=>u.cs).join('、'):'無')+'</div>';
+ for(const[gn,cs]of shopList(shopSt)){h+='<div class="shopg">'+gn+'</div><div class="buy">';
+  if(gn==='救護')h+='<button data-hire="1"'+(S.money<2500?' disabled':'')+'><b>高級救護技術員</b> <span class="sub">現有 '+S.tp[shopSt]+' 人</span><br><span class="sub">EMT-P 招募 · $2500</span></button>';
+  for(const c of cs){const d=CODE[c];h+='<button data-buy="'+c+'"'+(S.money<d.c?' disabled title="經費不足"':'')+'><span class="mono">'+unitCsNext(shopSt,c)+'</span> <span class="sub">'+(cnt(c)?'現有 '+cnt(c):'新車種')+'</span><br>'+
+   '<span class="sub">'+d.n+(d.cap?' '+d.cap+'L':'')+' · $'+d.c+'</span></button>'}
+  h+='</div>'}
+ if(S.nst<SPOT.length){const n2=SPOT[S.nst].n,rur=SABS[n2]||SABSN[n2];
+  h+='<button data-newst="1" class="newst"'+(S.money<12000?' disabled':'')+'>增設 '+n2+'分隊 · $12000<br><span class="sub">附編幫浦車 3 輛（第一輛為 CAFS）、救護車 1 輛、指揮車 1 輛'+(rur?'、越野警備車 1 輛（鄉間分隊）':'')+'</span></button>'}
  return h}

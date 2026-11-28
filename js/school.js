@@ -1,15 +1,15 @@
-// 消防學校（楠梓分隊旁）：三關教學，通過後玩家才能接管現場指揮權（進入戰術指揮）
+// 消防學校（楠梓分隊旁）：三關教學，通過後玩家才能接管現場指揮權（進入戰術指揮）；第四關為進階化災（化工廠）訓練
 // 訓練案件建在學校訓練場，由楠梓分隊（不足時就近）的車直接到場；訓練期間不進新案件、其他案件時限暫停，不影響評鑑與經費
 'use strict';
 const SCHOOL_ID=-7;
 // SCHOOL：{x0,y0,w,h,cells,set, p:園區中心, burn:火災模擬屋格, x:模擬屋臨路格, side:臨路側}（園區 2×2 格）
 let SCHOOL=null;
 // 園區設施（CROP 代碼）：13 訓練塔、15 操場、16 報廢消防車停車場、17 火災模擬屋
-const TRAIN={pass:[0,0,0],inc:null,lv:0};
-try{const v=JSON.parse(localStorage.getItem('kcfb.train')||'null');if(v&&Array.isArray(v.pass))TRAIN.pass=v.pass.slice(0,3)}catch(e){}
-const tacUnlocked=()=>TRAIN.pass.every(Boolean);
+const TRAIN={pass:[0,0,0,0],inc:null,lv:0};
+try{const v=JSON.parse(localStorage.getItem('kcfb.train')||'null');if(v&&Array.isArray(v.pass))TRAIN.pass=[0,1,2,3].map(i=>v.pass[i]?1:0)}catch(e){}
+const tacUnlocked=()=>TRAIN.pass.slice(0,3).every(Boolean);
 // 跳過教學：三關視為通過
-function trainSkip(){TRAIN.pass=[1,1,1];trainSave();msg='已跳過教學，取得現場指揮權；之後仍可回消防學校練習。';dirty()}
+function trainSkip(){TRAIN.pass=[1,1,1,TRAIN.pass[3]?1:0];trainSave();msg='已跳過教學，取得現場指揮權；之後仍可回消防學校練習。';dirty()}
 function trainSave(){try{localStorage.setItem('kcfb.train',JSON.stringify({pass:TRAIN.pass}))}catch(e){}}
 // 關卡：車輛、受困人數、說明與目標（每個目標回傳是否達成）
 const TRAIN_LV=[
@@ -20,9 +20,13 @@ const TRAIN_LV=[
   brief:'屋內有一名受困者。以「初期搜索 S」找到受困者，救助組會把人帶出，交由救護車後送；同時以幫浦組壓制火勢掩護。',
   goals:[['找到並救出受困者',(inc,B)=>B.vtot>0&&B.resc>=B.vtot],['傷患送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]},
  {n:'第三關：安全管理與指揮',units:['11','11','16','71','41','91'],trap:1,
-  brief:'開設指揮站（右側 ICS 分頁點「指揮站」），指派安全官，以一組小組「RIT R」在入口待命，再入室救人滅火。過程不能有人員倒地。',
+  brief:'開設指揮站（右側 ICS 分頁點「指揮站」），指派安全官，以一組小組「RIT R」在入口待命，再入室救人滅火。過程不能有人員倒地。現場有一組實習自衛消防編組（訓練普通）：可向他們詢問受困者與起火位置（答案不一定準），或派去關門侷限、引導；他們沒有空氣呼吸器，會陸續離開。',sdb:1,
   goals:[['開設指揮站',(inc,B)=>!!B.st.icp],['指派安全官',(inc,B)=>!!B.role.safety],['編成 RIT',(inc,B)=>B.sq.some(q=>q.task==='rit'||q.task==='ritgo')||!!B.trRit],
-   ['救出受困者並送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]}];
+   ['救出受困者並送醫',(inc,B)=>B.vtot>0&&B.tx>=B.vtot],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]},
+ {n:'第四關：化工廠火災與化學品洩漏',k:'chemfire',units:['11','11','57','51','71','41','91'],trap:0,epa:1,
+  brief:'訓練場的模擬化工廠起火，同時有化學品外洩。現場有一組實習毒化災應變隊（環保署化災應變隊的實習編組）可協助化物辨識、止漏與除污（實習生動作較慢）。先開設指揮站，以化災組或應變隊「化物辨識 I」確認化學品，換穿足夠的防護衣（A／B／C 級）後「止漏 Z」，開設除污站讓進出熱區的人員除污，再以泡沫車壓制火勢。辨識前進入熱區一律著 A 級；不能有人員倒地。',
+  goals:[['開設指揮站',(inc,B)=>!!B.st.icp],['化物辨識',(inc,B)=>!!B.chemK],['止漏',(inc,B)=>!(B.leak&&B.leak.on)],['開設除污站',(inc,B)=>!!B.st.decon],
+   ['受污染人員都已除污',(inc,B)=>!B.sq.some(q=>q.cont)],['撲滅所有火點',(inc,B)=>tacFireOut(B)]]}];
 const tacFireOut=B=>B.peak>0&&!B.cells.some(x=>x.h>.05);
 // 地圖生成後：在楠梓分隊附近找一塊沒有道路、一側臨一般道路或幹道的 2×2 陸地，設訓練中心園區
 // 前排（臨路）：除役消防車停車場、火災模擬屋；後排：操場、訓練塔
@@ -55,21 +59,23 @@ function placeSchool(){
  S0.cells=cells;S0.set=set;S0.burn=at(bi,0);S0.x=out(bi);if(!road(S0.x[0],S0.x[1]))S0.x=nbRoad(S0.burn[0],S0.burn[1])||S0.x;
  S0.p=[S0.x0+(S0.w-1)/2,S0.y0+(S0.h-1)/2]}
 function schoolHTML(){
- let h='<div class="dh"><b>🎓 消防學校（楠梓）</b></div><div class="sub" style="margin:4px 0 10px">完成三關訓練後，才能親自接管現場指揮權（進入戰術指揮）。訓練期間不會進新案件，其他案件時限暫停，訓練結果不影響評鑑與經費。</div>';
+ let h='<div class="dh"><b>🎓 消防學校（楠梓）</b></div><div class="sub" style="margin:4px 0 10px">完成前三關訓練後，才能親自接管現場指揮權（進入戰術指揮）；第四關為進階的化工廠化災訓練。訓練期間不會進新案件，其他案件時限暫停，訓練結果不影響評鑑與經費。</div>';
  TRAIN_LV.forEach((L,i)=>{const ok=TRAIN.pass[i],lock=i>0&&!TRAIN.pass[i-1];
   h+='<div class="trlv'+(ok?' ok':'')+'"><div class="row" style="padding:0"><b>'+(ok?'✅ ':lock?'🔒 ':'📘 ')+L.n+'</b>'+
    '<button data-train="'+(i+1)+'"'+(lock||TRAIN.inc?' disabled':'')+'>'+(ok?'再練一次':'開始')+'</button></div>'+
    '<div class="sub">'+esc(L.brief)+'</div><div class="sub">目標：'+L.goals.map(g=>g[0]).join('、')+'</div></div>'});
  h+=tacUnlocked()?'<div class="note" style="background:#24463a;color:#d9f3e8">已取得現場指揮權：建物火災類案件可「⚔ 進入戰術指揮」。</div>':
-  '<div class="sub" style="margin-top:6px">進度 '+TRAIN.pass.filter(Boolean).length+' / 3</div>';
+  '<div class="sub" style="margin-top:6px">進度 '+TRAIN.pass.slice(0,3).filter(Boolean).length+' / 3</div>';
+ if(tacUnlocked())h+='<div class="sub" style="margin-top:4px">進階訓練 '+(TRAIN.pass[3]?'✅ 已完成':'第四關未完成')+'</div>';
  if(TRAIN.inc)h+='<button data-trainstop="1" style="margin-top:6px">放棄目前的訓練</button>';
  if(!tacUnlocked()&&!TRAIN.inc)h+='<button data-trainskip="1" style="margin-top:6px" title="不經訓練直接取得現場指揮權（之後仍可回來練習）">⏭ 跳過教學，直接取得指揮權</button>';
  return h}
 // 開始訓練：在訓練場建立一件民宅火警，楠梓分隊（不足時就近）的車直接到場
 function trainStart(lv){
  if(TRAIN.inc||!SCHOOL)return;const L=TRAIN_LV[lv-1];if(!L)return;
- const inc=makeInc('mfire',SCHOOL.burn,SCHOOL.x,'city',true,{ax:SCHOOL.x[0],ay:SCHOOL.x[1]});
- inc.train=lv;inc.nm='消防學校訓練（'+L.n.split('：')[0]+'）';inc.addr='楠梓消防學校訓練場';inc.pay=0;inc.pen=0;inc.left=inc.max=99999;
+ const inc=makeInc(L.k||'mfire',SCHOOL.burn,SCHOOL.x,'city',true,{ax:SCHOOL.x[0],ay:SCHOOL.x[1]});
+ inc.train=lv;
+ if(L.epa){inc.epa=3;inc.epaTr=1;inc.epaB=epaBase()} // 實習毒化災應變隊已在訓練場inc.nm='消防學校訓練（'+L.n.split('：')[0]+'）';inc.addr='楠梓消防學校訓練場';inc.pay=0;inc.pen=0;inc.left=inc.max=99999;
  inc.pm.trap=L.trap;inc.pm.special=false;inc.calls=1;
  // 教學用的火勢較小：燃燒面積與火警分級壓低
  inc.pm.area=Math.min(inc.pm.area||40,40+lv*15);inc.pm.lvl=1;
@@ -100,7 +106,7 @@ function trainStep(){
  if(!TAC.open){trainEnd('已離開訓練場，訓練中止。');return}
  if(B.lost||B.lodd||B.sq.some(q=>q.down)){trainEnd('訓練未通過：'+(B.lost?'受困者罹難':'有隊員倒地（MAYDAY）')+'。請再試一次。');return}
  if(L.goals.every(g=>g[1](inc,B))){TRAIN.pass[TRAIN.lv-1]=1;trainSave();
-  trainEnd('🎉 '+L.n+' 通過！'+(tacUnlocked()?'已取得現場指揮權，建物火災可以進入戰術指揮。':'繼續下一關。'))}}
+  trainEnd('🎉 '+L.n+' 通過！'+(TRAIN.lv===4?'完成進階化災訓練。':tacUnlocked()?'已取得現場指揮權，建物火災可以進入戰術指揮。'+(TRAIN.lv===3?'可以挑戰第四關（化工廠）。':''):'繼續下一關。'))}}
 // 戰術側欄上方：訓練目標清單
 function trainGoalsHTML(inc){
  if(!inc.train)return'';const B=inc.tac,L=TRAIN_LV[inc.train-1];

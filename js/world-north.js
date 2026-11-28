@@ -4,7 +4,7 @@
 function shiftWorld(dx,dy){
  const mv=(A,fill)=>{const B=A.slice();A.fill(fill);
   for(let x=0;x+dx<N;x++)for(let y=0;y+dy<N;y++)A[K(x+dx,y+dy)]=B[K(x,y)]};
- for(const A of[RD,HWL,HG,RGF,RUN])mv(A,0);
+ for(const A of[RD,HWL,HG,RGF,RUN,HILL])mv(A,0);
  mv(TR,1);mv(SH,0);
  for(let k=0;k<N*N;k++)if(!SH[k])SH[k]=Math.random();
  for(let i=0;i<RC.length;i++)RC[i]+=dx;for(let i=0;i<RR.length;i++)RR[i]+=dy;
@@ -92,6 +92,8 @@ function extendNorth(){
  pruneDeadEnds();
  // 北側分隊：鄉鎮中心右下一格
  for(const s of SPOT){if(s.p||!SABSN[s.n])continue;const o=SABSN[s.n];s.p=[OX+o[0],OY+o[1]];
+  // 不要壓在道路上：往旁邊找臨路的空地
+  if(RD[K(s.p[0],s.p[1])]){let b=null;for(let r=1;r<5&&!b;r++)for(let a=-r;a<=r&&!b;a++)for(let c2=-r;c2<=r;c2++){const x=s.p[0]+a,y=s.p[1]+c2,kk=K(x,y);if(!RD[kk]&&TR[kk]!==1&&!HWL[kk]&&nbRoad(x,y)){b=[x,y];break}}if(b)s.p=b}
   const k=K(s.p[0],s.p[1]);TR[k]=0;RD[k]=0;const e=nbRoad(s.p[0],s.p[1]);s.x=e||null}}
 // 移除山區（含丘陵）只連一端的道路格，直到沒有死路；地圖邊緣的路視為通往圖外，保留
 function pruneDeadEnds(){
