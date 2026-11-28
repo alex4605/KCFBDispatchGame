@@ -70,7 +70,7 @@ const TAC_SKL={rookie:{n:'菜鳥',t:1.25,w:.7,fat:1.3},vol:{n:'義消',t:1.25,w:
 // 入室對話泡泡（臨場感）：同一組至少間隔 12 秒
 const TAC_SAY={search:['有人嗎？我們是消防隊的！','消防隊！有人聽得到嗎？','出個聲音！我們來救你了！','有沒有人？敲牆壁讓我們知道！'],
  attack:['開水！','水線往前推！','溫度很高，壓低身體！','注意頭上！','火點在前面，射水！'],found:['找到人了！','這裡有人！準備搬運！'],
- stair:['上樓，注意腳步。','樓梯間有煙，跟緊！'],smoke:['什麼都看不到，沿牆走！','能見度零，保持接觸！']};
+ stair:['上樓，注意腳步。','樓梯間有煙，跟緊！'],dpulse:['開門！短點射！','關門！再一次！','門後還很熱，再冷卻一輪！','打煙層，短促一點！','開——射——關！'],smoke:['什麼都看不到，沿牆走！','能見度零，保持接觸！']};
 function tacSay(q,k){if(q.sayT&&S.t-q.sayT<12)return;q.sayT=S.t;const a=TAC_SAY[k];q.say={s:a[Math.floor(Math.random()*a.length)],t:performance.now()}}
 const tacTIC=q=>!q.vol&&!q.rookie&&q.ty!=='robot';
 // 能見度（濃煙）對作業效率的影響：煙濃到能見度近 0 時，沒有 TIC 的小組效率大減
@@ -94,7 +94,8 @@ const TAC_WET={confine:1,attack:1,sky:1,hold:1,trans:1,guard:1,hydro:1,cover:1,m
 const TAC_WET2={sky:1};
 // 門的開關：關上的門延燒與煙的流動都大幅降低（人員通過時會打開）
 const tacDK=(B,f,a,b)=>f*B.W*B.W+Math.min(a,b)*B.W+Math.max(a,b);
-const tacShut=(B,f,a,b)=>B.cd&&B.cd.has(tacDK(B,f,a,b));
+// 門關著且確實隔絕煙熱（具通風口、玻璃窗門、被破壞的門關著也擋不住，見 tac-door.js）
+const tacShut=(B,f,a,b)=>tacSeal(B,f,a,b);
 // 相通區塊之間沒有門的開口
 const tacOpn=(B,a,b)=>!!B.L.op&&B.L.op.has(Math.min(a,b)*1000+Math.max(a,b));
 const tacRint=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
@@ -463,6 +464,7 @@ function tacInit(inc){
  B.elev=Fa>=6&&T.lay==='corridor'; // 六層以上走廊式建物有消防專用升降機
  B.fwdF=Math.max(bf+1,of>=bf+3?of-2:bf+Math.floor((F-bf)/2)); // 火在低樓層時設在建物中段，方便上方樓層搜索
  tacLayPost(inc,B);
+ tacDoorInit(inc,B);
  tacSdbInit(inc,B);
  if(T.sc)tacScInit(inc,B,T);
  tacSysInit(inc,B);
@@ -683,7 +685,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
  if(k==='attack'||k==='guard'||k==='hydro'||k==='confine'){ln=tacLineTo(B,q,f,c);
   if(!ln){if(!quiet)msg=q.cs+'：水帶長度不足（上限 '+TAC_HOSE+' 條）'+(B.sp&&f>=1?'，請先做送水口加壓，改由各樓層出水口接線':'')+'，或移車到較近入口那側';return false}}
  if(B.sp&&B.sp.u===q.u&&k!=='stand'){B.sp.on=0;B.sp.u=null;radio(inc,q.cs,'離開送水口，連結送水管停止加壓！')}
- q.prev=null;q.wk=0;q.ext=0;q.ws=null;q.dcd=0;q.dto=(k==='force'||k==='dctrl')&&door!=null?door:null;
+ q.prev=null;q.wk=0;q.ext=0;q.ws=null;q.dcd=0;q.dpK=null;q.dpO=0;q.dto=(k==='force'||k==='dctrl')&&door!=null?door:null;
  q.ent=ln&&ln.ent&&ln.src==='pump'&&ln.u===q.u?ln.ent:(f>=0&&q.ty!=='ladder'?tacBestEnt(B,q.side,f,c,false):null);
  if(k==='exit'){q.task='exit';q.tf=-1;q.tc=0}
  else if(k==='stand'){q.task='stand';q.tf=-1;q.tc=0;
@@ -793,18 +795,19 @@ function tacSquad(inc,B,q,dt,eff){
  if(ns){q.nf=ns[0];q.nc=ns[1];
   const lockE=q.f<0&&ns[0]>=0&&q.ent&&q.ent.lock?q.ent:null;
   const lockD=q.f>=0&&ns[0]===q.f&&B.lk.has(tacDK(B,q.f,q.c,ns[1]));
-  if(lockE||lockD){const need=(q.ty==='resc'?4:q.ty==='robot'?6:9)/(q.usar?1.6:1)*(tacEntryMode(B,q)==='dctrl'?1.5:1); // 特搜分隊破壞器材較強；門控較慢
+  if(lockE||lockD){const need=(q.ty==='resc'?4:q.ty==='robot'?6:9)/(q.usar?1.6:1)*(tacEntryMode(B,q)==='dctrl'?1.5:1)*(lockD?tacDoorHard(B,tacDK(B,q.f,q.c,ns[1])):1); // 特搜分隊破壞器材較強；門控較慢；鐵門、變形的門較久
    if(!q.frc&&!B.sq.some(y=>y!==q&&y.frc>0&&y.nf===ns[0]&&y.nc===ns[1]))radio(inc,q.cs,(lockE?TAC_SDN[lockE.side]+'側'+(lockE.shop?'店面':lockE.ramp?'車道':'入口')+'鐵捲門上鎖':tacNm(B,q.f,ns[1])+'房門上鎖')+'，破壞進入中。');
    q.frc=(q.frc||0)+dt;q.mt=0;
    if(lockE)lockE.known=1;else(B.lkK||(B.lkK=new Set())).add(tacDK(B,q.f,q.c,ns[1]));
    if(q.frc>=need){q.frc=0;const md=tacEntryMode(B,q);
     if(lockE){lockE.lock=0;lockE.open=1;radio(inc,q.cs,TAC_SDN[lockE.side]+'側入口'+(md==='dctrl'?'破壞完成，門控開門。':'破壞完成。'));tacDoorIn(inc,B,q,tacCel(B,ns[0],ns[1]),md)}
-    else{B.lk.delete(tacDK(B,q.f,q.c,ns[1]));B.cd.delete(tacDK(B,q.f,q.c,ns[1]));radio(inc,q.cs,tacNm(B,q.f,ns[1])+(md==='dctrl'?'門鎖破壞完成，門控開門。':'門鎖破壞完成。'));tacDoorIn(inc,B,q,tacCel(B,ns[0],ns[1]),md)}}
+    else{B.lk.delete(tacDK(B,q.f,q.c,ns[1]));tacDoorBrk(B,tacDK(B,q.f,q.c,ns[1]));B.cd.delete(tacDK(B,q.f,q.c,ns[1]));radio(inc,q.cs,tacNm(B,q.f,ns[1])+(md==='dctrl'?'門鎖破壞完成，門控開門。':'門鎖破壞完成。'));tacDoorIn(inc,B,q,tacCel(B,ns[0],ns[1]),md)}}
    return}
-  // 門控：關著的門後面有熱或濃煙，先控制開度、觀察煙況約 3 秒再通過
-  {const cdk=q.f>=0&&ns[0]===q.f?tacDK(B,q.f,q.c,ns[1]):null;
-   if(cdk&&B.cd.has(cdk)&&q.task!=='exit'&&tacEntryMode(B,q)==='dctrl'){const y=tacCel(B,ns[0],ns[1]);
-    if(y.h>.2||y.s>.5){if(q.dcoK!==cdk){q.dcoK=cdk;q.dco=0}q.dco+=dt;if(q.dco<3){q.mt=0;return}}}}
+  // 門控進入：關著的門（或還沒開的入口）後面有熱或濃煙，在門口反覆開關門、短促射水冷卻，溫度降到可進入才通過
+  if(q.task!=='exit'&&tacEntryMode(B,q)==='dctrl'){
+   const cdk=q.f>=0&&ns[0]===q.f?tacDK(B,q.f,q.c,ns[1]):null;
+   if(cdk&&B.cd.has(cdk)&&tacDPulse(inc,B,q,tacCel(B,ns[0],ns[1]),cdk,dt,{f:q.f,a:q.c,b:ns[1]}))return;
+   if(q.f<0&&ns[0]>=0&&q.ent&&!q.ent.open&&tacDPulse(inc,B,q,tacCel(B,ns[0],ns[1]),'E'+q.ent.side,dt,{e:q.ent.side}))return}
   q.frc=0;q.mt+=dt;
   if(q.mt>=tacStepTime(B,q,ns)){q.mt=0;const pc=q.c,pf=q.f;
    if(q.f>=0&&ns[0]>q.f&&Math.random()<.3)tacSay(q,'stair');
@@ -937,8 +940,9 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='gas'){q.wk+=dt;if(q.wk>=5){q.wk=0;tacGasMeas(inc,B,q,cl);q.task='idle'}return} // 氣體偵測：到點量測約 5 秒
  if(k==='dctrl'){ // 門控（室內）：指定門則慢慢破開、控制開度開門並守住；否則先把本處通往火點或濃煙的門關上，再守在門邊控制開度，相鄰火點吃不到新鮮空氣
   if(q.dto!=null&&!q.dcd){const dk=tacDK(B,q.f,q.c,q.dto);
-   if(B.lk.has(dk)){q.wk+=dt;q.frc=q.wk;if(q.wk<(q.ty==='resc'?4:9)/(q.usar?1.6:1)*1.5)return;q.wk=0;q.frc=0;B.lk.delete(dk)}
-   q.wk+=dt;if(q.wk<3)return;q.wk=0;q.dcd=1;B.cd.delete(dk);
+   if(B.lk.has(dk)){q.wk+=dt;q.frc=q.wk;if(q.wk<(q.ty==='resc'?4:9)/(q.usar?1.6:1)*1.5*tacDoorHard(B,dk))return;q.wk=0;q.frc=0;B.lk.delete(dk);tacDoorBrk(B,dk)}
+   if(B.cd.has(dk)&&tacDPulse(inc,B,q,tacCel(B,q.f,q.dto),dk,dt,{f:q.f,a:q.c,b:q.dto}))return;
+   q.wk+=dt;if(q.wk<1)return;q.wk=0;q.dcd=1;B.cd.delete(dk);
    radio(inc,q.cs,'門控開門：'+tacNm(B,q.f,q.dto)+'的門控制開度中。');tacDoorIn(inc,B,q,tacCel(B,q.f,q.dto),'dctrl');return}
   if(!q.dcd){q.wk+=dt;if(q.wk<3)return;q.wk=0;q.dcd=1;
    const nd=B.L.N[q.c];let sh=nd.nb.filter(o=>{const y=tacCel(B,q.f,o);return y.h>.05||y.s>.35});
@@ -946,14 +950,16 @@ function tacSquad(inc,B,q,dt,eff){
    if(nd.ty==='stair')sh=nd.nb.filter(o=>B.L.N[o].ty!=='stair'); // 在樓梯間：關上該層的防火門
    const nod=sh.filter(o=>tacOpn(B,q.c,o));sh=sh.filter(o=>!nod.includes(o));
    const gone=sh.filter(o=>!tacFDClose(B,tacDK(B,q.f,q.c,o)));sh=sh.filter(o=>!gone.includes(o));
+   const lost=sh.filter(o=>tacDGone(B,tacDK(B,q.f,q.c,o)));sh=sh.filter(o=>!lost.includes(o));if(lost.length)radio(inc,q.cs,'通往'+tacNm(B,q.f,lost[0])+'的門已經燒毀或熔毀，關不起來。');
+   if(sh.some(o=>tacDLeak(B.dm&&B.dm.get(tacDK(B,q.f,q.c,o)))))radio(inc,q.cs,'有的門是百葉、玻璃窗門或已破壞，關上了煙熱還是會穿過。');
    for(const o of sh)B.cd.add(tacDK(B,q.f,q.c,o));if(nod.length)radio(inc,q.cs,'通往'+tacNm(B,q.f,nod[0])+'是沒有門的開口，無法關閉。');
    radio(inc,q.cs,tacNm(B,q.f,q.c)+'關閉 '+sh.length+' 扇門，門控中。'+(gone.length?'防火門已被拆除，無法關閉！':''))}
   return}
  if(k==='force'){ // 破壞進入：沿路的鎖都已在移動時破開；指定門則破開那扇門並打開，否則把本室其餘門鎖破開
   if(q.dto!=null){const dk=tacDK(B,q.f,q.c,q.dto);
-   if(B.lk.has(dk)){q.wk+=dt;if(q.wk<(q.ty==='resc'?4:9)/(q.usar?1.6:1))return;q.wk=0;B.lk.delete(dk)}
+   if(B.lk.has(dk)){q.wk+=dt;if(q.wk<(q.ty==='resc'?4:9)/(q.usar?1.6:1)*tacDoorHard(B,dk))return;q.wk=0;B.lk.delete(dk);tacDoorBrk(B,dk)}
    B.cd.delete(dk);radio(inc,q.cs,'破壞進入，'+tacNm(B,q.f,q.dto)+'的門已打開。');tacDoorIn(inc,B,q,tacCel(B,q.f,q.dto),'force');q.dto=null;q.task='idle';return}
-  for(const o of B.L.N[q.c].nb)B.lk.delete(tacDK(B,q.f,q.c,o));
+  for(const o of B.L.N[q.c].nb){const k2=tacDK(B,q.f,q.c,o);if(B.lk.delete(k2))tacDoorBrk(B,k2)}
   q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'破壞進入完成。');return}
  if(k==='overhaul'){ // 殘火處理：翻開夾層、家具與天花板，徹底澆熄餘燼
   if(!cl.emb){const nx=tacNear(B,q.f,q.c,x=>x.emb&&x.h<.05&&!B.sq.some(y=>y!==q&&y.task==='overhaul'&&y.tf===q.f&&y.tc===x.c));
@@ -1067,14 +1073,11 @@ function tacFire(inc,B,dt){
   if(q.task==='npv'&&q.f===q.tf&&q.c===q.tc&&tacIn(q))npv.add(q.f*W+q.c);
   if(q.task==='dctrl'){if(tacIn(q)&&q.f===q.tf&&q.c===q.tc)dcN.add(q.f*W+q.c);else if(!tacIn(q)&&q.side===q.dside)dcS.add(q.dside)}}
  B.npvS=npv;B.dcS=dcS;B.dcN=dcN;
- // 入口最近 20 秒有人進出、又沒有門控：形成進氣路徑，助長地面附近的火勢
- const flow=Object.keys(B.eo).some(s=>S.t-B.eo[s]<20&&!dcS.has(s));
- B.flow=flow;
  for(const x of B.cells){
   // 含氧量：火燒與濃煙消耗，開口越多回復越快（8% 以下幾乎無法燃燒）
   const op=x.v||x.vv||npv.has(x.f*W+x.c);
   // 門窗都關著的空間（密閉）：氧氣耗得更快，容易形成通風控制的悶燒
-  const sealed=!op&&x.ty==='room'&&B.L.N[x.c].nb.every(o=>B.cd.has(tacDK(B,x.f,x.c,o))||B.lk.has(tacDK(B,x.f,x.c,o)));
+  const sealed=!op&&x.ty==='room'&&B.L.N[x.c].nb.every(o=>tacShut(B,x.f,x.c,o)||B.lk.has(tacDK(B,x.f,x.c,o)));
   const tg=Math.max(8,20.9-(sealed?x.h*10+x.s*8:(x.h*7+x.s*7)*(op?.35:1)));
   x.o2+=(tg-x.o2)*Math.min(1,dt*.3);
   if(x.ty==='stair')continue;
@@ -1090,7 +1093,6 @@ function tacFire(inc,B,dt){
   if(x.h>.92&&!x.v&&x.wcr&&B.L.N[x.c].win&&x.f>=B.bf&&Math.random()<dt*.01){x.v=1;radio(inc,'安全官',tacNm(B,x.f,x.c)+'窗戶受熱爆裂，濃煙火舌竄出窗外！')}
   if(x.fu>0&&x.h>.02){
    let ox=.45+.55*x.v+(x.v&&B.ppvS&&B.ppvS.has(x.f*W+x.c)?.6:0)+(x.vv?.2:0)-(x.s>.85&&!x.v?.2:0);
-   if(flow&&x.f<=B.bf+1)ox+=.2;
    if(nd.nb.some(o=>dcN.has(x.f*W+o)))ox-=.3;
    ox=Math.max(.05,ox)*Math.max(.15,Math.min(1.1,(x.o2-9)/11));
    // 成長：初期（起火後幾分鐘）較慢，火勢大了才加速
@@ -1108,11 +1110,10 @@ function tacFire(inc,B,dt){
   if(nd.atr&&x.f+1<F&&x.h>.3)dh[(x.f+1)*W+x.c]+=dt*.01*(x.h-.3);
   if(x.h>.45&&!x.wet){
    // 經門延燒較快、隔牆較慢；有窗的房間經外牆往上層延燒（開窗更快）
-   for(const cc of tacNb(B,x.f,x.c)){const nb=B.cells[x.f*W+cc];if(nb.fu<=0)continue;const sh=tacShut(B,x.f,x.c,cc);
-    dh[x.f*W+cc]+=dt*(sh?.0013:.0068)*(x.h-.45)*(nb.wet?.2:1)*(B.wind?tacWF(B,x.c,cc):1)*(nb.gr?2.5:1);
-    // 關著的門持續受熱會被燒穿（約 60 秒，現實約 10 分鐘）
-    if(sh&&x.h>.7){const key=tacDK(B,x.f,x.c,cc),bt=B.dbt||(B.dbt={});bt[key]=(bt[key]||0)+dt;
-     if(bt[key]>60&&B.cd.has(key)){B.cd.delete(key);radio(inc,'安全官',tacNm(B,x.f,x.c)+'通往'+tacNm(B,x.f,cc)+'的門被燒穿，火勢擴大！')}}}
+   for(const cc of tacNb(B,x.f,x.c)){const nb=B.cells[x.f*W+cc];if(nb.fu<=0)continue;const sh=tacShut(B,x.f,x.c,cc),lc=!sh&&tacLeakC(B,x.f,x.c,cc);
+    dh[x.f*W+cc]+=dt*(sh?.0013:lc?.004:.0068)*(x.h-.45)*(nb.wet?.2:1)*(B.wind?tacWF(B,x.c,cc):1)*(nb.gr?2.5:1);
+    // 關著的門持續受熱：塑膠門熔毀、玻璃破裂、木門燒穿（約 60 秒，現實約 10 分鐘）、鐵門變形卡死
+    if(B.cd.has(tacDK(B,x.f,x.c,cc)))tacDoorHeat(inc,B,x,cc,dt)}
    for(const cc of nd.wl){if(x.f<B.bf&&nd.nbO&&nd.nbO.includes(cc))continue;const nb=B.cells[x.f*W+cc];if(nb.fu>0)dh[x.f*W+cc]+=dt*(B.thin?.01:.003)*(B.out&&B.L.N[cc].walled?.45:1)*(x.h-.4)*(nb.wet?.2:1)}
    // 往上層：主要經外牆窗口（開窗更快）；樓板延燒很慢
    if(x.f+1<F){const up=B.cells[(x.f+1)*W+x.c];if(up.fu>0)dh[(x.f+1)*W+x.c]+=dt*(nd.win&&x.f>=B.bf?.004:x.f<B.bf?.0008:.0015)*(x.h-.5)*(1+x.v*2)}}}
@@ -1127,7 +1128,7 @@ function tacFire(inc,B,dt){
  // 建物上半部（中性面以上）樓梯間的煙更容易被壓進樓層，防火門關著時大幅減少
  const stk=B.out?0:tacStack(B),midF=B.bf+(F-B.bf)/2;
  for(let f=0;f<F;f++)for(const n of B.L.N)for(const cc of tacNb(B,f,n.c)){if(cc<n.c)continue;
-  const a=B.cells[f*W+n.c],b=B.cells[f*W+cc];let k=tacShut(B,f,n.c,cc)?.04:.25;
+  const a=B.cells[f*W+n.c],b=B.cells[f*W+cc];let k=tacShut(B,f,n.c,cc)?.04:tacLeakC(B,f,n.c,cc)?.15:.25;
   if(stk&&f>=midF){const sa=n.ty==='stair',sb=B.L.N[cc].ty==='stair';if((sa&&a.s>b.s)||(sb&&b.s>a.s))k*=1+stk*.8}
   const m=(a.s-b.s)*dt*k;a.s-=m;b.s+=m}
  for(const n of B.L.N)if(n.ty==='stair'||n.atr)for(let f=0;f<F-1;f++){const a=B.cells[f*W+n.c],b=B.cells[(f+1)*W+n.c],m=a.s*dt*(n.atr?.3:.2)*(n.atr?1:.6+stk)*(1-b.s);a.s-=m;b.s+=m}
@@ -1373,7 +1374,7 @@ function tacAI(inc,B,dt,M){
   // 搜索：救助組（AI 指揮時幫浦組與排煙組也會搜）
   if(M.search&&(entryOK||tacIn(q))&&(q.ty==='resc'||(M.attack&&(q.ty==='pump'||q.ty==='vent')))){
    // 屋頂避難民眾：救助組優先，現場沒有救助組時由其他小組上屋頂
-   if(B.roofV&&!B.roofS&&!B.sq.some(y=>y.task==='roofres')&&(q.ty==='resc'||!B.sq.some(y=>y.ty==='resc'&&!y.down))&&tacOrder(inc,q,'roofres',B.F-1,0,1))continue;
+   if(B.roofV&&!B.roofS&&!B.sq.some(y=>y.task==='roofres')&&(q.ty==='resc'||!B.sq.some(y=>y.ty==='resc'&&!y.down&&free.includes(y)))&&tacOrder(inc,q,'roofres',B.F-1,0,1))continue;
    if(B.roofS&&B.roofV>0&&!B.sq.some(y=>y.task==='roofres')&&tacOrder(inc,q,'roofres',B.F-1,0,1))continue;
    const un=B.cells.filter(x=>(x.ty==='room'&&x.sl<1||x.vic>0)&&x.h<.45&&!((x.hz||0)>(TAC_PPE[q.ppe||'F'].p))&&!B.sq.some(y=>y!==q&&y.task==='search'&&y.tf===x.f&&y.tc===x.c));
    // 搜索順序：受困通報樓層 → 起火層 → 上一層 → 下一層，再往外擴（上方略優先）
