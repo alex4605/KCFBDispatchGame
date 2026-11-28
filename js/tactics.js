@@ -43,7 +43,8 @@ const TAC_VAR={
  solarfire:[[/公寓/,{lay:'corridor',f:[3,6],k:[3,3],st:0,unit:1,kinds:null}]],
  alarm:[[/燒焦味/,{hoax:0,cook:1,away:1}],[/沒看到煙/,{hoax:0,nofire:1,elder:1}],[/煎魚/,{smk:1}]],
  gasblast:[[/公寓/,{ok:1}]],
- grassfire:[[/河堤/,{river:1}]]};
+ grassfire:[[/河堤/,{river:1}]],
+ ship:[[/漁船/,{f:[2,2],k:[2,2]}],[/貨船|貨輪/,{f:[4,5],k:[3,4]}]]};
 const tacTxt=inc=>{const sc=inc.pm&&inc.pm.sc;return Array.isArray(sc)?sc.slice(0,2).join(' '):''};
 function tacVar(inc){const T=Object.assign({},TACK[inc.k]),t=tacTxt(inc);T.txt=t;
  for(const v of TAC_VAR[inc.k]||[])if(v[0].test(t))Object.assign(T,v[1]);

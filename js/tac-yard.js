@@ -135,7 +135,7 @@ function tacYardCell(g,G,B,n,x,r,T){
  else if(k==='home'){g.fillStyle=dark?'#1a1816':'#4a3530';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle=dark?'#2a221c':'#8a5a4a';g.lineWidth=2;
   g.beginPath();g.moveTo(r[0]+6,r[1]+r[3]/2);g.lineTo(r[0]+r[2]-6,r[1]+r[3]/2);g.stroke();g.strokeStyle='#8a857a';g.lineWidth=3;g.strokeRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12)}
  else if(k==='shack'){g.fillStyle=dark?'#1a1816':'#5a6268';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(200,205,210,.35)';g.lineWidth=1;for(let yy=r[1]+10;yy<r[1]+r[3]-8;yy+=5){g.beginPath();g.moveTo(r[0]+7,yy);g.lineTo(r[0]+r[2]-7,yy);g.stroke()}}
- else if(k==='cars'){for(let i=0;i<3;i++){g.fillStyle=dark?'#1e1c19':['#6a7a8a','#8a6a5a','#5a5a5a'][i];scRR(g,r[0]+r[2]*(.1+i*.3),r[1]+r[3]*.25,r[2]*.22,r[3]*.5,3);g.fill()}}
+ else if(k==='cars')tacCarRow(g,r,dark,rnd);
  else if(k==='wash'){g.strokeStyle='rgba(125,179,232,.3)';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/5,r[1]+4);g.lineTo(r[0]+r[2]*i/5,r[1]+r[3]-4);g.stroke()}}
  tacScDraw(g,G,B,n,x,r,k,dark,rnd);
  g.strokeStyle='rgba(190,185,170,.18)';g.lineWidth=1;g.strokeRect(r[0]+1,r[1]+1,r[2]-2,r[3]-2)}

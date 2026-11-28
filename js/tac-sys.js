@@ -159,3 +159,37 @@ function tacSysDraw(g,G,B,vf){
   g.fillText((dir>0?'車流 →　':'')+'上游（'+TAC_SDN[up]+'側）'+(B.traf.blk?'已有大型車阻擋':'未阻擋：後方來車危險')+(dir<0?'　← 車流':''),up==='w'?x0:x1,y)}
  if(B.sys&&B.sys.jet&&B.sys.jet.on){const d=B.sys.jet.dir==='e'?1:-1;g.fillStyle='rgba(125,179,232,.55)';
   for(const n of B.L.N){if(!n.tube||n.ty!=='hall')continue;const r=G.r(n.c);for(let i=0;i<3;i++){const ph=((T*.6*d+i/3)%1+1)%1,xx=r[0]+r[2]*ph;g.beginPath();g.moveTo(xx,r[1]+r[3]/2-4);g.lineTo(xx+8*d,r[1]+r[3]/2);g.lineTo(xx,r[1]+r[3]/2+4);g.fill()}}}}
+// ===== 四周環境（依類型畫：水域、山體、護欄外、騎樓店面、民宅、圍籬、農田、魚塭、樹林、廠區） =====
+const TAC_BANDT={'水域':1,'海面':1,'山體':1,'護欄外':1,'高架護欄外':1,'騎樓店面':1,'民宅':1,'鄰棟':1,'工區圍籬':1,'停車場邊界':1,'農田':1,'魚塭':1,'樹林':1,'廠區':1,'貨櫃堆':1};
+// 建物面向這條帶的那一邊（帶在北側時，建物在它的南邊）
+const tacBandIn=(b,s)=>s==='n'?[b[0],b[1]+b[3],b[0]+b[2],b[1]+b[3]]:s==='s'?[b[0],b[1],b[0]+b[2],b[1]]:s==='w'?[b[0]+b[2],b[1],b[0]+b[2],b[1]+b[3]]:[b[0],b[1],b[0],b[1]+b[3]];
+function tacBandBg(g,b,d,s,T){
+ const nm=d.nm,hz=s==='n'||s==='s';let sd=s.charCodeAt(0)*977+13;const rnd=()=>((sd=(sd*9301+49297)%233280)/233280);
+ g.save();g.beginPath();g.rect(b[0],b[1],b[2],b[3]);g.clip();
+ if(nm==='水域'||nm==='海面'){g.fillStyle='#0e2436';g.fillRect(b[0],b[1],b[2],b[3]);g.strokeStyle='rgba(125,179,232,.22)';g.lineWidth=1.2;
+  for(let k=0;k<6;k++){const off=((T*8+k*37)%60);g.beginPath();for(let u=0;u<=(hz?b[2]:b[3]);u+=6){const w=Math.sin((u+off)/14+k)*2.5,p=(k+.5)/6*(hz?b[3]:b[2]);if(hz)g.lineTo(b[0]+u,b[1]+p+w);else g.lineTo(b[0]+p+w,b[1]+u)}g.stroke()}}
+ else if(nm==='山體'){g.fillStyle='#24211c';g.fillRect(b[0],b[1],b[2],b[3]);for(let k=0;k<40;k++){g.fillStyle=['#2e2a24','#1c1a16','#34302a'][k%3];g.beginPath();g.ellipse(b[0]+b[2]*rnd(),b[1]+b[3]*rnd(),6+rnd()*10,4+rnd()*6,rnd()*3,0,TAU);g.fill()}}
+ else if(nm==='護欄外'||nm==='高架護欄外'){g.fillStyle=nm==='護欄外'?'#1f2a1c':'#0a0b0d';g.fillRect(b[0],b[1],b[2],b[3]);
+  if(nm==='護欄外')for(let k=0;k<60;k++){g.fillStyle='rgba(90,120,60,.35)';g.fillRect(b[0]+b[2]*rnd(),b[1]+b[3]*rnd(),2,3)}
+  else{g.fillStyle='rgba(236,234,227,.35)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('（高架橋下方，懸空）',b[0]+b[2]/2,b[1]+b[3]*.7)}}
+ else if(nm==='騎樓店面'||nm==='民宅'||nm==='鄰棟'||nm==='廠區'){g.fillStyle='#1d1b18';g.fillRect(b[0],b[1],b[2],b[3]);const L=hz?b[2]:b[3];let u=0;
+  while(u<L){const w=(nm==='廠區'?60:28)+rnd()*(nm==='廠區'?50:24);const r=hz?[b[0]+u+1,b[1]+3,w-2,b[3]-6]:[b[0]+3,b[1]+u+1,b[2]-6,w-2];
+   g.fillStyle=nm==='廠區'?'#2c2e30':['#2c2823','#27241f','#302b25'][Math.floor(rnd()*3)];g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=1;g.strokeRect(r[0]+.5,r[1]+.5,r[2]-1,r[3]-1);
+   if(nm==='廠區'){g.strokeStyle='rgba(255,255,255,.06)';for(let q=4;q<(hz?r[2]:r[3]);q+=5){g.beginPath();if(hz){g.moveTo(r[0]+q,r[1]);g.lineTo(r[0]+q,r[1]+r[3])}else{g.moveTo(r[0],r[1]+q);g.lineTo(r[0]+r[2],r[1]+q)}g.stroke()}}
+   u+=w}}
+ else if(nm==='工區圍籬'||nm==='停車場邊界'||nm==='貨櫃堆'){g.fillStyle='#1c1b18';g.fillRect(b[0],b[1],b[2],b[3]);const e=tacBandIn(b,s);
+  g.strokeStyle=nm==='工區圍籬'?'rgba(233,161,59,.6)':'rgba(200,200,190,.35)';g.lineWidth=2;g.setLineDash([6,4]);g.beginPath();g.moveTo(e[0]+(hz?0:(s==='w'?-6:6)),e[1]+(hz?(s==='n'?-6:6):0));g.lineTo(e[2]+(hz?0:(s==='w'?-6:6)),e[3]+(hz?(s==='n'?-6:6):0));g.stroke();g.setLineDash([])}
+ else if(nm==='農田'){g.fillStyle='#1f2a18';g.fillRect(b[0],b[1],b[2],b[3]);g.strokeStyle='rgba(120,150,70,.3)';g.lineWidth=2;for(let k=0;k<(hz?b[2]:b[3]);k+=7){g.beginPath();if(hz){g.moveTo(b[0]+k,b[1]);g.lineTo(b[0]+k,b[1]+b[3])}else{g.moveTo(b[0],b[1]+k);g.lineTo(b[0]+b[2],b[1]+k)}g.stroke()}}
+ else if(nm==='魚塭'){g.fillStyle='#163230';g.fillRect(b[0],b[1],b[2],b[3]);g.strokeStyle='#2a2620';g.lineWidth=4;for(let k=60;k<(hz?b[2]:b[3]);k+=80){g.beginPath();if(hz){g.moveTo(b[0]+k,b[1]);g.lineTo(b[0]+k,b[1]+b[3])}else{g.moveTo(b[0],b[1]+k);g.lineTo(b[0]+b[2],b[1]+k)}g.stroke()}}
+ else if(nm==='樹林'){g.fillStyle='#16241a';g.fillRect(b[0],b[1],b[2],b[3]);for(let k=0;k<50;k++){g.fillStyle=['#203a26','#28462e','#1b3020'][k%3];g.beginPath();g.arc(b[0]+b[2]*rnd(),b[1]+b[3]*rnd(),5+rnd()*7,0,TAU);g.fill()}}
+ else{g.fillStyle='#191816';g.fillRect(b[0],b[1],b[2],b[3])}
+ g.restore()}
+// 道路：靠建物側的緣石與人行道；碼頭畫繫船柱；國道畫護欄
+function tacRoadDeco(g,b,d,s){
+ const e=tacBandIn(b,s),hz=s==='n'||s==='s',dx=hz?0:(s==='w'?-1:1),dy=hz?(s==='n'?-1:1):0;
+ if(d.nm!=='碼頭'&&d.road!==4&&d.road!==7){g.fillStyle='rgba(120,116,106,.35)';if(hz)g.fillRect(b[0],s==='n'?b[1]+b[3]-7:b[1],b[2],7);else g.fillRect(s==='w'?b[0]+b[2]-7:b[0],b[1],7,b[3])}
+ g.strokeStyle='rgba(236,234,227,.35)';g.lineWidth=1.5;g.beginPath();g.moveTo(e[0]+dx*7,e[1]+dy*7);g.lineTo(e[2]+dx*7,e[3]+dy*7);g.stroke();
+ const far=s==='n'?[b[0],b[1]+3,b[0]+b[2],b[1]+3]:s==='s'?[b[0],b[1]+b[3]-3,b[0]+b[2],b[1]+b[3]-3]:s==='w'?[b[0]+3,b[1],b[0]+3,b[1]+b[3]]:[b[0]+b[2]-3,b[1],b[0]+b[2]-3,b[1]+b[3]];
+ if(d.road===4){g.strokeStyle='rgba(200,200,190,.55)';g.lineWidth=2;g.beginPath();g.moveTo(far[0],far[1]);g.lineTo(far[2],far[3]);g.stroke()}
+ if(d.nm==='碼頭'){g.fillStyle='#4a4a46';const L=hz?b[2]:b[3];for(let u=20;u<L;u+=46){g.beginPath();g.arc(hz?b[0]+u:far[0],hz?far[1]:b[1]+u,3.5,0,TAU);g.fill()}
+  g.strokeStyle='rgba(233,200,90,.5)';g.lineWidth=2;g.beginPath();g.moveTo(far[0],far[1]);g.lineTo(far[2],far[3]);g.stroke()}}

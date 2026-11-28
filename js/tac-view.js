@@ -110,7 +110,7 @@ function tacParkPlan(inc,B,G){
  for(const u of onScene(inc)){if(u.st!=='work')continue;const sl=P.slots[u.id];if(!sl)continue;
   if(sl.off){off.push({u,s:sl.s});continue}
   const s=sl.s,[A,Z]=seg[s],ppm=(Z-A)/P.front[s],hz=s==='n'||s==='s',m=(A+Z)/2+sl.o*ppm,cc=rowC(s,sl.row);
-  cars.push({u,s,ghost:sl.ghost,len:Math.max(22,sl.len*Math.min(ppm,9)),vert:!hz,x:hz?m:cc,y:hz?cc:m,hp:hz?[m,cc]:[cc,m]})}
+  cars.push({u,s,ghost:sl.ghost,len:Math.max(28,sl.len*Math.min(ppm,9)),vert:!hz,x:hz?m:cc,y:hz?cc:m,hp:hz?[m,cc]:[cc,m]})}
  return{cars,off,edge}}
 // 建物四角的路口：放站點帳篷（車輛不會停在那裡）；抵達側兩角優先
 function tacCorners(G,side){
@@ -159,7 +159,7 @@ function tacFurn(g,r,kind,seed,dark){
  else if(kind==='park'){ // 停車格與車輛
   const n2=Math.max(2,Math.floor(w/(u*.34)));g.strokeStyle=dark?lc:'rgba(233,200,90,.35)';g.lineWidth=1;
   for(let i=0;i<=n2;i++){const px=x+p+i*(w-2*p)/n2;g.beginPath();g.moveTo(px,y+p);g.lineTo(px,y+p+h*.38);g.stroke()}
-  for(let i=0;i<n2;i++)if(rnd()<.75){const px=x+p+i*(w-2*p)/n2,cw=(w-2*p)/n2;g.fillStyle=dark?fc:['#5a6470','#6e5a4a','#4a5a50','#707070'][Math.floor(rnd()*4)];scRR(g,px+cw*.18,y+p+2,cw*.64,h*.34,3);g.fill()}}
+  for(let i=0;i<n2;i++)if(rnd()<.75){const px=x+p+i*(w-2*p)/n2,cw=(w-2*p)/n2,cwid=cw*.6,clen=Math.min(h*.36,cwid*2.5);tacCarDraw(g,px+cw/2,y+p+2+clen/2,clen,cwid,['#5a6470','#6e5a4a','#4a5a50','#707070'][Math.floor(rnd()*4)],1,dark)}}
  else if(kind==='mech'){box(x+p,y+p,w*.4,h*.45,dark?fc:'#4f555c');box(x+w*.55,y+p,w*.3,h*.3,dark?fc:'#4f555c');g.strokeStyle=lc;g.lineWidth=2;g.beginPath();g.moveTo(x+p,y+h*.75);g.lineTo(x+w-p,y+h*.75);g.stroke()}
  else if(kind==='shop'){box(x+p,y+h*.62,w*.55,u*.12);const n2=Math.max(1,Math.floor(w/(u*.5)));for(let i=0;i<n2;i++)box(x+p+i*(w-2*p)/n2,y+p,(w-2*p)/n2*.7,u*.1)}
  else if(kind==='lobby'){box(x+w*.35,y+h*.4,w*.3,u*.14);for(let k=0;k<2;k++)box(x+p+k*w*.6,y+h-p-u*.18,w*.25,u*.14)}
@@ -207,10 +207,10 @@ function tacFloorPat(g,r,n,kd){
 // 俯視車輛：50×20、車頭朝右；依車種畫車頂設備
 function tacVeh(g,u,T){
  const c=u.code;
- g.fillStyle='rgba(0,0,0,.35)';scRR(g,1.5,2,50,20,3);g.fill(); // 陰影
+ g.fillStyle='rgba(0,0,0,.35)';g.fillRect(1.5,2,50,20); // 陰影
  // 消防車一律消防紅，救護車白色、警車白色；車種靠車頂設備區分
  const body=u.trainee?(c==='91'?'#d8d6cc':'#9a4a40'):c==='91'||c==='警'?'#f2f2ee':'#c8332c';   // 訓練中心的除役車：褪色
- g.fillStyle=body;scRR(g,0,0,50,20,3);g.fill();
+ g.fillStyle=body;g.fillRect(0,0,50,20);g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1;g.strokeRect(.5,.5,49,19);
  // 駕駛艙與擋風玻璃
  g.fillStyle=c==='91'||c==='警'?'#d8d8d2':'rgba(0,0,0,.18)';g.fillRect(38,1,11,18);
  g.fillStyle='#22303c';g.fillRect(45,3,3,14);
@@ -228,7 +228,7 @@ function tacVeh(g,u,T){
   for(let k=0;k<3;k++){const a=k*TAU/3+T*6;g.moveTo(18,10);g.lineTo(18+Math.cos(a)*5.5,10+Math.sin(a)*5.5)}g.stroke()}
  else if(c==='71'||c==='搜'){g.strokeStyle='rgba(0,0,0,.3)';g.lineWidth=1;for(let x=5;x<36;x+=8){g.strokeRect(x,3,6,14)}}
  else if(c==='警'){g.fillStyle='#2f6fd0';g.fillRect(0,8,38,4);g.fillStyle='#22303c';g.fillRect(26,3,8,14)}
- else if(c==='機'){g.fillStyle='#d8b83a';scRR(g,0,0,50,20,3);g.fill();g.fillStyle='#c8332c';g.fillRect(0,8,38,4);g.fillStyle='#3a3d44';g.beginPath();g.arc(30,10,4,0,TAU);g.fill();g.fillStyle='#eceae3';g.fillRect(30,9,14,2)}
+ else if(c==='機'){g.fillStyle='#d8b83a';g.fillRect(0,0,50,20);g.fillStyle='#c8332c';g.fillRect(0,8,38,4);g.fillStyle='#3a3d44';g.beginPath();g.arc(30,10,4,0,TAU);g.fill();g.fillStyle='#eceae3';g.fillRect(30,9,14,2)}
  else if(c==='43'){g.fillStyle='#3b2a24';g.fillRect(2,3,22,14);g.strokeStyle='#d8d4c8';g.lineWidth=1;g.strokeRect(4,5,18,10);g.fillStyle='#1a1a1a';g.fillRect(0,0,3,20)}
  else if(c==='履'){g.fillStyle='#222';g.fillRect(2,0,34,4);g.fillRect(2,16,34,4)}
  else{ // 幫浦車：水帶床、白色腰線
@@ -276,13 +276,13 @@ function drawTac(){
   if(d.road){g.fillStyle=d.big?'#2a2a27':'#232320';g.fillRect(b[0],b[1],b[2],b[3]);
    g.strokeStyle='rgba(233,231,224,.16)';g.setLineDash([12,10]);g.beginPath();
    if(s==='n'||s==='s'){g.moveTo(b[0],b[1]+b[3]/2);g.lineTo(b[0]+b[2],b[1]+b[3]/2)}else{g.moveTo(b[0]+b[2]/2,b[1]);g.lineTo(b[0]+b[2]/2,b[1]+b[3])}
-   g.stroke();g.setLineDash([]);
+   g.stroke();g.setLineDash([]);tacRoadDeco(g,b,d,s);
    TAC.hits.push({t:'side',s,x:b[0],y:b[1],w:b[2],h:b[3]})}
-  else{g.fillStyle=d.nm==='水域'?'#0e2436':'#191816';g.fillRect(b[0],b[1],b[2],b[3]);
+  else{tacBandBg(g,b,d,s,T);
    if(B.exp[s]!==undefined){const ex=B.exp[s];
     if(ex>.02){g.fillStyle=B.expL[s]?'rgba(255,90,30,'+(.35+.15*Math.sin(T*6)).toFixed(2)+')':'rgba(255,110,40,'+(ex*.5).toFixed(2)+')';g.fillRect(b[0],b[1],b[2],b[3])}
     TAC.hits.push({t:'side',s,x:b[0],y:b[1],w:b[2],h:b[3]})}
-   if(d.nm!=='水域'){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;g.beginPath();
+   if(!TAC_BANDT[d.nm]){g.strokeStyle='rgba(255,255,255,.05)';g.lineWidth=1;g.beginPath();
     for(let k=-b[3];k<b[2];k+=10){g.moveTo(b[0]+k,b[1]+b[3]);g.lineTo(b[0]+k+b[3],b[1])}g.save();g.rect(b[0],b[1],b[2],b[3]);g.clip();g.stroke();g.restore()}}}
  for(const s of TAC_SIDES){const b=G.band[s],d=B.sd[s];
   g.font='11px '+FONT;g.fillStyle=d.road?(d.big?'#9d9a92':'#e9a13b'):'#6b6960';g.textBaseline='middle';
@@ -295,7 +295,8 @@ function drawTac(){
  for(const v of PL.cars){const u=v.u;TP[u.id]=v.hp;
   g.save();if(v.ghost)g.globalAlpha=.45;
   g.translate(v.x,v.y);if(v.vert)g.rotate(Math.PI/2);
-  g.scale(v.len/50,1);g.translate(-25,-10);tacVeh(g,u,T);g.restore();
+  // 車寬依車長等比例（約 1:2.6），不會被壓成方塊
+  const vw=Math.max(10,Math.min(20,v.len/2.6));g.scale(v.len/50,vw/20);g.translate(-25,-10);tacVeh(g,u,T);g.restore();
   g.fillStyle='rgba(236,234,227,.55)';g.font='9px '+FONT;g.textAlign='center';
   if(v.vert){g.save();g.translate(v.x+(v.s==='w'?18:-18),v.y);g.rotate(-Math.PI/2);g.textBaseline='middle';g.fillText(u.cs,0,0);g.restore()}
   else{g.textBaseline=v.s==='n'?'bottom':'top';g.fillText(u.cs,v.x,v.s==='n'?v.y-11:v.y+11)}}

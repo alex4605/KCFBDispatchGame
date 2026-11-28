@@ -13,7 +13,8 @@ Object.assign(TACK,{
 TAC_CVW.gas=TAC_RES;
 Object.assign(TAC_RK,{car:{n:'汽車',fk:1.1,sr:.6},scoot:{n:'機車列',fk:.9,sr:.5},shopf:{n:'騎樓店面',fk:1.2,sr:1},cab:{n:'車頭',fk:.9,sr:2.2},cargo:{n:'貨斗',fk:1.5,sr:1},
  tankr:{n:'槽體',fk:.6,sr:1},verge:{n:'邊坡',fk:1.2,sr:.5},site:{n:'工區',fk:.4,sr:.6},hole:{n:'人孔',fk:.1,sr:.5},pipe:{n:'地下管道',fk:.1,sr:1.6},pool:{n:'泳池區',fk:.2,sr:1.2}});
-Object.assign(TAC_YFU,{car:1,scoot:.7,shopf:1.2,cab:.9,cargo:1.4,tankr:.8,verge:.5,site:.3,hole:0,pipe:0});
+Object.assign(TAC_RK,{bay:{n:'空車格',fk:.1,sr:.3},basin:{n:'污水池',fk:.1,sr:1.8}});
+Object.assign(TAC_YFU,{bay:0,basin:0,car:1,scoot:.7,shopf:1.2,cab:.9,cargo:1.4,tankr:.8,verge:.5,site:.3,hole:0,pipe:0});
 // 現場氣體：lelk 濃度換算 LEL 的倍率；tox 受困者中毒速度倍率；util 一般小組就能止漏（關閉開關）；vap 結案前要通風到濃度降下來
 const TAC_SCCHEM={
  gas:{n:'天然氣',zone:'可燃氣體',ppeN:'消防衣＋空氣呼吸器，禁止火源',lv:1,fl:1,lelk:140,vap:1,util:1,tox:.4,plug:'已關閉瓦斯開關與表前總閥，停止外洩。'},
@@ -33,36 +34,54 @@ function tacScLay(T,K,L,add,room,cuts,R){
  if(tacSc2Lay(T,K,L,add,room,cuts,R))return;
  const lane=(gx,gy,gw,gh,o)=>add(Object.assign({ty:'hall',gx,gy,gw,gh,lane:1},o||{}));
  const lanes=(x0,x1,y0,y1,o)=>{if(x1-x0<.05)return;const hs=cuts(x0,x1,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],y0,hs[i+1]-hs[i],y1-y0,o)};
- if(T.yard==='pit'){ // 侷限空間：道路、工區（中間一個人孔），下方是地下管道（只能經人孔進出）
+ const pk=a=>a[Math.floor(R()*a.length)];
+ if(T.yard==='pit'){ // 侷限空間：工區旁人孔／路中人孔／化糞池（污水池），下方只能經人孔進出
+  const v=L.var=/化糞池|污水池|清淤/.test(T.txt||'')?'tank':T.sc==='pit'&&/人孔|下水道/.test(T.txt||'')?pk(['site','road']):pk(['site','road','tank']);
+  L.varN={site:'工區人孔',road:'路中人孔',tank:'污水池'}[v];
   L.GW=3.6+K*.35;L.GH=3;const y1=.6,y2=1.35;
   lanes(0,L.GW,0,y1);
-  const xs=cuts(0,L.GW,.8,1.2),hi=Math.floor(xs.length/2)-1>=0?Math.floor((xs.length-1)/2):0;
-  for(let i=0;i<xs.length-1;i++){
-   if(i!==hi){room(xs[i],y1,xs[i+1]-xs[i],y2-y1,'site');continue}
+  const xs=cuts(0,L.GW,.8,1.2),hi=Math.floor((xs.length-1)/2);
+  for(let i=0;i<xs.length-1;i++){const mid=v==='road'?(x0,x1)=>lanes(x0,x1,y1,y2):(x0,x1)=>room(x0,y1,x1-x0,y2-y1,'site');
+   if(i!==hi){mid(xs[i],xs[i+1]);continue}
    const w=xs[i+1]-xs[i],hx=xs[i]+(w-.5)/2;
-   if(hx-xs[i]>.05)room(xs[i],y1,hx-xs[i],y2-y1,'site');
+   if(hx-xs[i]>.05)mid(xs[i],hx);
    room(hx,y1,.5,y2-y1,'hole').hole=1;
-   if(xs[i+1]-hx-.5>.05)room(hx+.5,y1,xs[i+1]-hx-.5,y2-y1,'site')}
-  const ps=cuts(0,L.GW,.9,1.3);for(let i=0;i<ps.length-1;i++)room(ps[i],y2,ps[i+1]-ps[i],L.GH-y2,'pipe').pipe=1;
+   if(xs[i+1]-hx-.5>.05)mid(hx+.5,xs[i+1])}
+  const ps=v==='tank'?cuts(0,L.GW,1.6,2.3):cuts(0,L.GW,.9,1.3);for(let i=0;i<ps.length-1;i++)room(ps[i],y2,ps[i+1]-ps[i],L.GH-y2,v==='tank'?'basin':'pipe').pipe=1;
   return}
  L.GW=3.8+K*.4;
  const veh=(x0,y0,parts)=>{let x=x0;const id=Math.random();for(const p of parts){const n=room(x,y0[0],p[1],y0[1]-y0[0],p[0]);n.vid=id;x+=p[1]}return x};
- if(T.sc==='truck'){ // 國道：路肩、外側車道（火燒車）、內側車道（受阻車輛）、邊坡
-  L.GH=3;const y1=.5,y2=y1+.8,y3=y2+.8;
+ if(T.sc==='truck'){ // 國道：路肩、外側車道（火燒車）、內側車道（受阻車輛）、可能有第三車道；平面路段外側是邊坡，高架路段兩側懸空
+  const n3=R()<.4,via=R()<.35;L.var=(n3?'3':'2')+(via?'v':'');L.varN=(n3?'三車道':'雙車道')+(via?'高架路段':'平面路段');
+  const y1=.5,y2=y1+.8,y3=y2+.8,y4=n3?y3+.8:y3;L.GH=y4+(via?.5:.7);
   lanes(0,L.GW,0,y1,{shd:1});
   const x0=L.GW*(.28+R()*.12);lanes(0,x0,y1,y2);const xe=veh(x0,[y1,y2],[['cab',.55],['cargo',1.5]]);lanes(xe,L.GW,y1,y2);
-  const xc=Math.max(.2,x0-1.2-R()*.3);lanes(0,xc,y2,y3);room(xc,y2,.75,y3-y2,'car');lanes(xc+.75,L.GW,y2,y3);
-  const vs=cuts(0,L.GW,.9,1.4);for(let i=0;i<vs.length-1;i++)room(vs[i],y3,vs[i+1]-vs[i],L.GH-y3,'verge');
+  const xc=Math.max(.2,x0-1.2-R()*.3);lanes(0,xc,y2,y3);room(xc,y2,.9,y3-y2,'car');lanes(xc+.9,L.GW,y2,y3);
+  if(n3){const xd=Math.min(L.GW-1.2,xe+.4+R()*.8);lanes(0,xd,y3,y4);room(xd,y3,.9,y4-y3,'car');lanes(xd+.9,L.GW,y3,y4)}
+  if(via)lanes(0,L.GW,y4,L.GH,{shd:1});
+  else{const vs=cuts(0,L.GW,.9,1.4);for(let i=0;i<vs.length-1;i++)room(vs[i],y4,vs[i+1]-vs[i],L.GH-y4,'verge')}
   return}
- // 市區道路：兩側騎樓店面、路邊停車（汽車或機車列）、雙向車道
- const y1=.7,y2=y1+.62,y3=y2+.8,y4=y3+.62;L.GH=y4+.7;const moto=/機車/.test(T.txt||'');
- const shops=(ya,yb)=>{const xs=cuts(0,L.GW,.9,1.3);for(let i=0;i<xs.length-1;i++)room(xs[i],ya,xs[i+1]-xs[i],yb-ya,'shopf').walled=1};
+ const moto=/機車/.test(T.txt||''),v=L.var=T.sc==='car'?(moto?pk(['street','alley']):pk(['street','street','lot','alley'])):pk(['street','ind']);
+ L.varN={street:'市區道路',lot:'平面停車場',alley:'巷弄',ind:'工業區道路'}[v];
+ if(v==='lot'){ // 平面停車場：兩排直停車格、中間車道，外側出入車道
+  L.GH=3.2;const rows=[[0,.5,0],[.5,1.3,1],[1.3,1.9,0],[1.9,2.7,1],[2.7,3.2,0]];
+  for(const[a,b,c]of rows){if(!c){lanes(0,L.GW,a,b);continue}const xs=cuts(0,L.GW,.42,.5);for(let i=0;i<xs.length-1;i++)room(xs[i],a,xs[i+1]-xs[i],b-a,R()<.85?'car':'bay')}
+  return}
+ if(v==='alley'){ // 巷弄：兩側透天民宅，騎樓停滿機車，單線窄巷
+  L.GH=3;const y1=1,y2=y1+.5,y3=y2+.55,y4=y3+.45;
+  const homes=(ya,yb)=>{const xs=cuts(0,L.GW,.8,1.1);for(let i=0;i<xs.length-1;i++)room(xs[i],ya,xs[i+1]-xs[i],yb-ya,'home').walled=1};
+  homes(0,y1);{const xs=cuts(0,L.GW,.55,.85);for(let i=0;i<xs.length-1;i++)room(xs[i],y1,xs[i+1]-xs[i],y2-y1,'scoot')}
+  lanes(0,L.GW,y2,y3);{const xs=cuts(0,L.GW,.55,.85);for(let i=0;i<xs.length-1;i++)room(xs[i],y3,xs[i+1]-xs[i],y4-y3,R()<.7?'scoot':'car')}
+  homes(y4,L.GH);return}
+ // 市區道路／工業區道路：兩側騎樓店面（或鐵皮廠房）、路邊停車、雙向車道
+ const y1=.7,y2=y1+.62,y3=y2+.8,y4=y3+.62;L.GH=y4+.7;
+ const shops=(ya,yb)=>{const xs=cuts(0,L.GW,v==='ind'?1.2:.9,v==='ind'?1.7:1.3);for(let i=0;i<xs.length-1;i++)room(xs[i],ya,xs[i+1]-xs[i],yb-ya,v==='ind'?'shack':'shopf').walled=1};
  const curb=(ya,yb,mk)=>{const xs=cuts(0,L.GW,.55,.85);for(let i=0;i<xs.length-1;i++)room(xs[i],ya,xs[i+1]-xs[i],yb-ya,mk())};
  shops(0,y1);
- curb(y1,y2,()=>moto||R()<.35?'scoot':'car');
+ curb(y1,y2,()=>v==='ind'?(R()<.5?'car':'bay'):moto||R()<.35?'scoot':'car');
  if(T.sc==='tanker'){const x0=L.GW*(.3+R()*.15);lanes(0,x0,y2,y3);const xe=veh(x0,[y2,y3],[['cab',.55],['tankr',1.6]]);lanes(xe,L.GW,y2,y3)}
  else lanes(0,L.GW,y2,y3);
- curb(y3,y4,()=>R()<.75?'car':'scoot');
+ curb(y3,y4,()=>v==='ind'?(R()<.6?'car':'bay'):R()<.75?'car':'scoot');
  shops(y4,L.GH)}
 // 初始化（tacInit 最後）：起火點、氣源、受困者、周邊道路
 function tacScInit(inc,B,T){
@@ -84,14 +103,19 @@ function tacScInit(inc,B,T){
   B.sd=sd;B.exp={};B.sp=null;
   B.ents=TAC_SIDES.filter(s=>sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s],lock:0}));
   if(!sd[B.arr]||!sd[B.arr].road)B.arr=B.ents[0].side;
+  // 變化：高架路段兩側懸空；停車場、巷弄、工業區的兩側；巷弄只有巷口能進大型車
+  const V=B.L.var;
+  if(hw&&/v/.test(V||''))for(const s of['n','s'])sd[s].nm='高架護欄外';
+  if(!hw&&sc!=='pit'&&V&&V!=='street')for(const s of['n','s'])sd[s].nm={lot:'停車場邊界',alley:'民宅',ind:'廠區'}[V];
+  if(V==='alley'){const o={e:'w',w:'e'}[B.arr]||'w';sd[o]={road:1,big:false,nm:'巷弄'};sd[B.arr]={road:2,big:true,nm:'巷口道路'}}
   if(hw)B.hyd=null;else if(B.hyd&&!sd[B.hyd.side].road)B.hyd.side=B.arr};
  if(sc==='car'||sc==='truck'||sc==='tanker'){road();
   let o;
   if(sc==='car'){const cs=rooms.filter(n=>n.kind==='car'||n.kind==='scoot');o=pk(/機車/.test(t)?cs.filter(n=>n.kind==='scoot').concat(cs).slice(0,9):cs);
    const x=cel(0,o.c);x.h=.4+R()*.2;x.s=.6;if(/電動/.test(t))x.li=1;
    // 店面鐵捲門關著：火要燒穿才會進店
-   for(const n of rooms)if(n.kind==='shopf')for(const m of n.nb)B.cd.add(tacDK(B,0,n.c,m));
-   B.sc.brief='汽機車火警：'+tacNm(B,0,o.c)+'起火，兩側騎樓店面與路邊停放車輛有延燒風險；路邊停車是一格格分開的，火會沿車列延燒。'}
+   for(const n of rooms)if(n.kind==='shopf'||n.kind==='home'||n.kind==='shack')for(const m of n.nb)B.cd.add(tacDK(B,0,n.c,m));
+   B.sc.brief='汽機車火警：'+tacNm(B,0,o.c)+'起火，'+({lot:'停車格裡的車一輛挨著一輛，火會沿車列延燒，車道要留給消防車進出。',alley:'巷子窄、只有巷口能停大型車，騎樓停滿機車，火會沿機車列燒進兩側民宅。'}[B.L.var]||'兩側騎樓店面與路邊停放車輛有延燒風險；路邊停車是一格格分開的，火會沿車列延燒。')}
   else if(sc==='truck'){const cab=rooms.find(n=>n.kind==='cab'),cg=rooms.find(n=>n.kind==='cargo');o=/車頭/.test(t)||R()<.5?cab:cg;
    const x=cel(0,o.c);x.h=.5+R()*.15;x.s=.7;cel(0,cg.c).deep=1;
    B.traf={up:R()<.5?B.arr:{e:'w',w:'e'}[B.arr]||'w'};
@@ -144,6 +168,7 @@ function tacScInit(inc,B,T){
   for(let i=0,n=tacRint(4,7);i<n;i++)put(0,pk(pr.length?pr:rooms).c,1,.75+R()*.2,0);
   seed(120);
   B.sc.brief='游泳池氯氣外洩：'+tacNm(B,0,o.c)+'加氯設備洩漏，泳池區多人咳嗽、倒地。先化物辨識、劃設熱區（氯氣需 A 級），開窗通風降低濃度；救人的小組要著足夠的防護，受污染人員須除污。'}
+ if(B.L.varN&&B.sc.brief)B.sc.brief=B.sc.brief.replace('：','（'+B.L.varN+'）：');
  B.vtot=vt;if(vt){let h=-1;for(const x of B.cells)if(x.vic){h=x.f;break}B.hint=h}}
 // 侷限空間的空氣：管道內缺氧（濃度越高含氧越低）；送風機運轉時快速稀釋
 function tacScAir(B){
@@ -254,18 +279,31 @@ function tacScCiv(inc,B,k){
  return''}
 // 結案時的現場回報
 const tacScDone=B=>tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
+// 俯視車輛（長方形）：中心 x,y、車長 len、車寬 wid；vert 車頭朝下（停車格）；moto 機車
+function tacCarDraw(g,x,y,len,wid,col,vert,dark,moto){
+ g.save();g.translate(x,y);if(vert)g.rotate(Math.PI/2);
+ g.fillStyle='rgba(0,0,0,.35)';g.fillRect(-len/2+1.5,-wid/2+1.5,len,wid);
+ g.fillStyle=dark?'#1e1c19':col;g.fillRect(-len/2,-wid/2,len,wid);
+ if(!dark){if(moto){g.fillStyle='#2a2a2a';g.fillRect(-len/2,-wid*.2,len*.14,wid*.4);g.fillRect(len/2-len*.14,-wid*.2,len*.14,wid*.4)}
+  else{g.fillStyle='rgba(20,24,30,.65)';g.fillRect(len*.14,-wid*.38,len*.13,wid*.76);g.fillRect(-len*.36,-wid*.36,len*.09,wid*.72);
+   g.fillStyle='rgba(255,255,255,.1)';g.fillRect(-len*.24,-wid*.4,len*.36,wid*.8)}}
+ g.restore()}
+// 一格內的一排汽車：格子寬就橫停（沿車道），格子高就直停（停車格）
+function tacCarRow(g,r,dark,rnd){
+ const vert=r[3]>r[2]*1.15,L2=vert?r[3]:r[2],W2=vert?r[2]:r[3],wid=Math.min(W2*.52,L2*.86/2.5),len=wid*2.5,n2=Math.max(1,Math.floor(L2/(len*1.15)));
+ for(let i=0;i<n2;i++){const c=['#6a7a8a','#8a6a5a','#5a5a5a','#7a7a6a','#3a4a6a'][Math.floor(rnd()*5)],o=(i+.5)*L2/n2;
+  tacCarDraw(g,vert?r[0]+r[2]/2:r[0]+o,vert?r[1]+o:r[1]+r[3]/2,len,wid,c,vert,dark)}}
 // 繪製：場區的車輛、騎樓店面、人孔、地下管道、邊坡
 function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
  const t=G.t,col=c=>dark?'#1e1c19':c;
  tacSc2Draw(g,G,B,n,x,r,k,dark,rnd);
- if(k==='car'){const n2=Math.max(1,Math.round(r[2]/(t*.55)));for(let i=0;i<n2;i++){const w=r[2]/n2;g.fillStyle=col(['#6a7a8a','#8a6a5a','#5a5a5a','#7a7a6a'][i%4]);scRR(g,r[0]+w*i+w*.12,r[1]+r[3]*.2,w*.76,r[3]*.6,4);g.fill();
-   g.fillStyle=dark?'#141210':'rgba(20,24,30,.6)';g.fillRect(r[0]+w*i+w*.3,r[1]+r[3]*.26,w*.4,r[3]*.48)}}
- else if(k==='scoot'){const n2=Math.max(2,Math.floor(r[2]/(t*.12)));for(let i=0;i<n2;i++){g.fillStyle=col(['#8a8a8a','#6a7a9a','#9a6a5a'][i%3]);g.fillRect(r[0]+r[2]*(i+.3)/n2,r[1]+r[3]*.18,r[2]*.4/n2,r[3]*.64)}}
+ if(k==='car')tacCarRow(g,r,dark,rnd);
+ else if(k==='scoot'){const wid=Math.max(3,Math.min(r[2]*.08,t*.07)),len=Math.min(r[3]*.7,wid*2.6),n2=Math.max(2,Math.floor((r[2]-6)/(wid*1.7)));for(let i=0;i<n2;i++)tacCarDraw(g,r[0]+3+wid+i*(r[2]-6-wid*2)/Math.max(1,n2-1),r[1]+r[3]/2,len,wid,['#8a8a8a','#6a7a9a','#9a6a5a','#4a4a4a'][i%4],1,dark,1)}
  else if(k==='shopf'){g.fillStyle=col('#3a3630');g.fillRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6);g.strokeStyle=dark?'#2a221c':'#8a857a';g.lineWidth=2;g.strokeRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6);
   g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;for(let yy=r[1]+8;yy<r[1]+r[3]-4;yy+=4){g.beginPath();g.moveTo(r[0]+6,yy);g.lineTo(r[0]+r[2]-6,yy);g.stroke()}}
- else if(k==='cab'){g.fillStyle=col('#3a5a8a');scRR(g,r[0]+r[2]*.12,r[1]+r[3]*.14,r[2]*.8,r[3]*.72,5);g.fill();g.fillStyle=dark?'#141210':'rgba(20,24,30,.7)';g.fillRect(r[0]+r[2]*.2,r[1]+r[3]*.22,r[2]*.22,r[3]*.56)}
- else if(k==='cargo'){g.fillStyle=col('#7a7468');g.fillRect(r[0]+2,r[1]+r[3]*.12,r[2]-6,r[3]*.76);g.strokeStyle='rgba(30,28,25,.5)';g.lineWidth=1;for(let i=1;i<8;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/8,r[1]+r[3]*.12);g.lineTo(r[0]+r[2]*i/8,r[1]+r[3]*.88);g.stroke()}}
- else if(k==='tankr'){g.fillStyle=col('#b8b4aa');scRR(g,r[0]+2,r[1]+r[3]*.14,r[2]-6,r[3]*.72,r[3]*.3);g.fill();g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(.12);
+ else if(k==='cab'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r[0]+3,y0+2,r[2]-4,hh);g.fillStyle=col('#3a5a8a');g.fillRect(r[0]+2,y0,r[2]-4,hh);g.fillStyle=dark?'#141210':'rgba(20,24,30,.7)';g.fillRect(r[0]+r[2]*.68,y0+hh*.12,r[2]*.14,hh*.76);g.fillStyle='rgba(255,255,255,.12)';g.fillRect(r[0]+r[2]*.12,y0+hh*.15,r[2]*.45,hh*.7)}
+ else if(k==='cargo'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r[0]+1,y0+2,r[2]-2,hh);g.fillStyle=col('#7a7468');g.fillRect(r[0],y0,r[2]-2,hh);g.strokeStyle='rgba(30,28,25,.5)';g.lineWidth=1;for(let i=1;i<8;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/8,y0);g.lineTo(r[0]+r[2]*i/8,y0+hh);g.stroke()}}
+ else if(k==='tankr'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(.06);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(-r[2]/2+3,-hh/2+3,r[2]-4,hh);g.fillStyle=col('#b8b4aa');g.fillRect(-r[2]/2+2,-hh/2,r[2]-4,hh);g.fillStyle=dark?'#1e1c19':'#8a8680';g.fillRect(-r[2]/2+2,-hh*.08,r[2]-4,hh*.16);g.restore();g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(Math.PI/4);
   g.fillStyle=dark?'#1e1c19':'#e9a13b';g.fillRect(-t*.12,-t*.12,t*.24,t*.24);g.restore();
   g.fillStyle='rgba(236,234,227,.6)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText('翻覆',r[0]+r[2]/2,r[1]+r[3]-2)}
  else if(k==='verge'){g.fillStyle=dark?'#161412':'#2e3a24';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle='rgba(200,200,190,.5)';g.lineWidth=2;g.beginPath();g.moveTo(r[0],r[1]+2);g.lineTo(r[0]+r[2],r[1]+2);g.stroke()}
@@ -274,6 +312,9 @@ function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
  else if(k==='hole'){const cx=r[0]+r[2]/2,cy=r[1]+r[3]/2,rr=Math.min(r[2],r[3])*.3;g.fillStyle='#0a0a09';g.beginPath();g.arc(cx,cy,rr,0,TAU);g.fill();
   g.strokeStyle='#8a857a';g.lineWidth=3;g.stroke();g.strokeStyle='#c8a03a';g.lineWidth=2;g.beginPath();g.moveTo(cx-rr*1.3,cy+rr*1.4);g.lineTo(cx,cy-rr*1.5);g.lineTo(cx+rr*1.3,cy+rr*1.4);g.stroke();
   g.fillStyle='rgba(236,234,227,.7)';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText(B.ppv?'人孔（送風中）':'人孔',cx,r[1]+r[3]-2)}
+ else if(k==='bay'){g.strokeStyle='rgba(233,231,224,.35)';g.lineWidth=1.5;g.beginPath();g.moveTo(r[0]+2,r[1]+3);g.lineTo(r[0]+2,r[1]+r[3]-3);g.moveTo(r[0]+r[2]-2,r[1]+3);g.lineTo(r[0]+r[2]-2,r[1]+r[3]-3);g.stroke()}
+ else if(k==='basin'){g.fillStyle='#14130f';g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='rgba(70,80,50,.7)';g.fillRect(r[0]+6,r[1]+r[3]*.35,r[2]-12,r[3]*.58);g.strokeStyle='rgba(160,170,120,.3)';g.lineWidth=1;for(let i=0;i<3;i++){g.beginPath();g.moveTo(r[0]+10,r[1]+r[3]*(.5+i*.12));g.lineTo(r[0]+r[2]-10,r[1]+r[3]*(.5+i*.12));g.stroke()}
+  g.strokeStyle='rgba(125,179,232,.35)';g.lineWidth=2;g.setLineDash([8,5]);g.strokeRect(r[0]+4,r[1]+4,r[2]-8,r[3]-8);g.setLineDash([]);g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('污水池（只能經人孔進出）',r[0]+r[2]/2,r[1]+r[3]*.2)}
  else if(k==='pipe'){g.fillStyle='#14130f';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle='rgba(125,179,232,.35)';g.lineWidth=2;g.setLineDash([8,5]);g.strokeRect(r[0]+4,r[1]+4,r[2]-8,r[3]-8);g.setLineDash([]);
   g.fillStyle='rgba(60,80,70,.5)';g.fillRect(r[0]+6,r[1]+r[3]*.62,r[2]-12,r[3]*.3);
   g.fillStyle='rgba(236,234,227,.45)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('地下（只能經人孔進出）',r[0]+r[2]/2,r[1]+r[3]*.28)}
