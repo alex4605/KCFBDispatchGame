@@ -105,7 +105,7 @@ function tacSc4Init(inc,B,T,put,seed){
  if(sc==='elec'){B.lk.clear();
   sides({e:{road:2,big:true,nm:'道路'},w:{road:2,big:true,nm:'道路'},n:{road:0,big:false,nm:'騎樓店面'},s:{road:0,big:false,nm:'騎樓店面'}});
   for(const n of rooms)if(n.kind==='shopf'||n.kind==='shack')for(const m of n.nb)B.cd.add(tacDK(B,0,n.c,m));
-  const cs=rooms.filter(n=>/car|scoot|bay/.test(n.kind)),o=pk(cs.length?cs:rooms);o.kind='ebox';o.walled=0;const x=cel(0,o.c);x.fu=.8;x.h=.5;x.s=.6;x.k='ebox';
+  const cs=rooms.filter(n=>/^(car|scoot|bay)$/.test(n.kind)),o=pk(cs.length?cs:rooms);o.kind='ebox';o.walled=0;const x=cel(0,o.c);x.fu=.8;x.h=.5;x.s=.6;x.k='ebox';
   B.ebx=o.c;B.pwScn=1;B.of=0;B.oc=o.c;
   B.sc.brief='變電箱起火：路邊'+tacNm(B,0,o.c)+'冒火、有爆裂聲，旁邊停著車、騎樓店面。斷電前禁止射水（觸電危險）：先用 CO₂ 或乾粉滅火器壓制（「滅火器」），通知台電斷電（側欄），斷電後才能射水；保護旁邊的車輛與店面。';
   return true}

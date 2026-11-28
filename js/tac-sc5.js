@@ -15,7 +15,7 @@ function tacSc5Post(inc,B,T){
  const k=inc.k,R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room'),cel=c=>tacCel(B,0,c),pk=a=>a[Math.floor(R()*a.length)];let d=0;
  const clr=x=>{d-=x.vic||0;x.vic=0;x.pin=0;x.hid=0;x.rep=0},add=(x,n,vh)=>{x.vic=(x.vic||0)+n;x.vh=vh;x.rep=1;d+=n};
  const noLeak=()=>{if(B.leak){const x=cel(B.leak.c);x.fuel=0;x.h=0;x.s=0}B.chem=null;B.leak=null;B.chemK=0;for(const x of B.cells)x.cz=0};
- if(k==='rtc'){const vs=rooms.filter(n=>/car|cab/.test(n.kind));
+ if(k==='rtc'){const vs=rooms.filter(n=>/^(car|cab)$/.test(n.kind));
   if(vs.length&&!B.cells.some(x=>x.pin>0)){const x=cel(vs[0].c);if(!(x.vic>0))add(x,1,.6);x.pin=1}
   const p=B.cells.reduce((s,x)=>s+(x.pin||0),0);
   B.sc.brief='車禍受困：市區道路 '+vs.length+' 輛車碰撞，'+p+' 名駕駛或乘客被變形的車體夾住。先在來車方向設置警戒，車輛穩固（墊木、拔鑰匙斷電，避免未爆氣囊爆開）後破壞救援；受困較久的先醫療處置，救出後上長背板送醫'+(B.chem?'；有車輛漏油，禁止火源':'')+'。';
@@ -37,7 +37,7 @@ function tacSc5Post(inc,B,T){
   B.sc.brief='工安墜落：工人從鷹架摔落'+tacNm(B,0,c.c)+'，人有反應但不能動，疑似頸椎、脊椎受傷：不可隨意搬動，要上長背板、頸圈固定（4 人以上搬運）；鷹架上還可能有受傷的同事。';
   B.sc.done='墜落工人已固定、送醫';return d}
  if(k==='powerline'){const o=N[B.ebx],x=cel(B.ebx);o.kind='wire';x.k=0;x.h=0;x.s=0;x.fu=0;B.wire=B.ebx;
-  const nb=rooms.filter(n=>/car|scoot/.test(n.kind)).sort((a,b)=>tacGd(B,a.c,o.c)-tacGd(B,b.c,o.c)),cr=nb[0]||null;
+  const nb=rooms.filter(n=>/^(car|scoot)$/.test(n.kind)).sort((a,b)=>tacGd(B,a.c,o.c)-tacGd(B,b.c,o.c)),cr=nb[0]||null;
   if(cr){const y=cel(cr.c);add(y,R()<.5?2:1,.9);y.inCar=1}
   B.sc.brief='電線掉落：颱風吹斷的電線垂到路面，還在冒火花'+(cr?'，壓在旁邊'+tacNm(B,0,cr.c)+'上，車上的人被困在車內':'')+'。電線還帶電：請車上的人留在車內不要下車，所有人遠離電線，通知台電斷電；斷電前不能接近電線與車輛，斷電後再救出。';
   B.sc.done='台電已斷電、車上民眾已救出';return d}

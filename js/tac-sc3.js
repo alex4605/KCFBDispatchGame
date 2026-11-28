@@ -125,7 +125,7 @@ function tacSc3Init(inc,B,T,put,seed){
    n:{road:0,big:false,nm:city?'騎樓店面':mtn?'邊坡':/v/.test(V)?'高架護欄外':'護欄外'},s:{road:0,big:false,nm:city?'騎樓店面':mtn?'溪谷':/v/.test(V)?'高架護欄外':'護欄外'}});
   if(!city)B.hyd=null;if(!city)B.traf={up:R()<.5?B.arr:{e:'w',w:'e'}[B.arr]||'w'};
   for(const n of rooms)if(n.kind==='shopf')for(const m of n.nb)B.cd.add(tacDK(B,0,n.c,m));
-  const vs=rooms.filter(n=>/car|cab|bus/.test(n.kind));let pin=0,tot=0;
+  const vs=rooms.filter(n=>/^(car|cab|bus)$/.test(n.kind));let pin=0,tot=0;
   for(const n of vs){const bus=n.kind==='bus',k=bus?tacRint(8,15):tacRint(1,3),x=cel(0,n.c);
    put(0,n.c,k,bus?.75+R()*.2:.55+R()*.35,1);tot+=k;
    const p=bus?tacRint(1,2):R()<(inc.k==='hiway'?.6:.45)?Math.min(k,tacRint(1,2)):0;if(p){x.pin=p;pin+=p}}

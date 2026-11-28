@@ -42,7 +42,15 @@ function tacExtrStep(inc,B,q,cl,dt){
  const n=B.sq.filter(y=>y.task==='extr'&&y.f===q.f&&y.c===q.c&&!y.down).length;
  cl.exP=(cl.exP||0)+dt*tacExtrRate(q)/(cl.rub?1.3:1)*(cl.kidc?4:1);
  if(n>1&&!cl.coW){cl.coW=1;radio(inc,q.cs,'兩組協同破壞救援'+tacNm(B,q.f,q.c)+'，一組撐開、一組剪切，進度加快。')}
- if(cl.exP<1)return;cl.exP=0;q.ex0=0;cl.coW=0;
+ // 擠壓症候群的風險：長時間受壓又還沒醫療處置。玩家指揮的組只提醒；SOP／AI 的組在釋放前暫停等輸液（沒人來處置就由本組先給），最多等 60 秒
+ const risk=tacHeavy(B,cl)&&(cl.pT||0)>75&&!tacCared(cl);
+ if(risk&&q.pc&&cl.exP>.7&&!cl.crW){cl.crW=1;radio(inc,'安全官',tacNm(B,q.f,q.c)+'受困者已受壓 '+fmt(cl.pT)+'，快要釋放了：釋放前先「醫療處置」（輸液），否則可能擠壓症候群。')}
+ if(risk&&!q.pc&&cl.exP>=.9){cl.exP=.9;cl.holdT=(cl.holdT||0)+dt;
+  if(!cl.holdW){cl.holdW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'破壞完成、暫不釋放：受困者受壓已久，等醫療處置（輸液）後再頂開。')}
+  const care=B.sq.some(y=>y.task==='care'&&y.tf===q.f&&y.tc===q.c&&!y.down);
+  if(!care&&cl.holdT>25){cl.careT=S.t+1.5;if(!cl.selfC){cl.selfC=1;radio(inc,q.cs,'沒有醫療組可以支援，本組先給受困者輸液、監測生命徵象。')}}
+  if(cl.holdT<60&&!(cl.selfC&&cl.holdT>35))return}
+ if(cl.exP<1&&!(cl.holdT>0&&cl.exP>=.9))return;cl.exP=0;q.ex0=0;cl.coW=0;cl.holdT=0;cl.holdW=0;cl.selfC=0;cl.crW=0;
  // 擠壓症候群：受壓超過 90 秒、釋放前沒有醫療處置
  const crush=tacHeavy(B,cl)&&(cl.pT||0)>90;
  if(crush&&!tacCared(cl)){cl.vh=Math.max(.02,(cl.vh||.6)-.35);(B.viol||(B.viol={})).crush=1;

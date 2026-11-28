@@ -139,8 +139,8 @@ function tacEMS(inc,B,dt){
    continue}
   if(!B.pts.length)continue;
   // 有檢傷站才依傷勢排序，否則照救出先後
-  const q=(B.st.triage?B.pts.slice().sort((a,b)=>TAC_SEVP[a.sev]-TAC_SEVP[b.sev]||a.t-b.t):B.pts.slice()).filter(p=>!(p.cont>0&&B.st.decon));
-  if(!q.length)continue;
+  const q=(B.st.triage?B.pts.slice().sort((a,b)=>TAC_SEVP[a.sev]-TAC_SEVP[b.sev]||a.t-b.t):B.pts.slice()).filter(p=>!(p.cont>0));
+  if(!q.length){if(B.pts.some(p=>p.cont>0)&&!B.st.decon&&S.t-(B.contW||-99)>60){B.contW=S.t;radio(inc,u.cs,'傷患集結處有受污染的傷患，要先除污才能上救護車：請開設除污站（化災車、幫浦車）。')}continue}
   const take=[q[0]];
   if(q[0].sev!=='red'&&q[1]&&q[1].sev!=='red')take.push(q[1]);
   for(const p of take)B.pts.splice(B.pts.indexOf(p),1);

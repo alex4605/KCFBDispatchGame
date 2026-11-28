@@ -483,8 +483,10 @@ function tacNo(inc,q,why){const r=/^拒絕：/.test(why);msg=q.cs+'：'+(r?why.s
 function tacLadSide(B,q,wins){
  const ok=(wins||TAC_SIDES).filter(s=>!tacCanSide(B,q,s));
  return ok.includes(q.tside)?q.tside:ok[0]||null}
+// 親自指揮的程度（0～1）：親自下令過的小組數相對全部小組（6 成以上、至少 2 組全額）；同一組反覆下令不會加分
+const tacPlayF=B=>{const n=Object.keys(B.pcU||{}).length;return n<1?0:Math.min(1,n/Math.max(2,Math.ceil(B.sq.length*.6)))};
 function tacOrder(inc,q,k,f,c,quiet,side,door){
- const B=inc.tac;q.wd=0;if(!tacAIRun){q.pc=1;q.pcI=0} // 玩家下的命令：該組改由玩家指揮
+ const B=inc.tac;q.wd=0;if(!tacAIRun){q.pc=1;q.pcI=0;B.pcN=(B.pcN||0)+1;(B.pcU||(B.pcU={}))[q.u]=1} // 玩家下的命令：該組改由玩家指揮
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
  if(k==='relay')return tacRelayOrder(inc,B,q,quiet);
  let rOpen=0;if(k==='vent'&&f===B.F-1&&tacStair(B,c)){k='roof';rOpen=1} // 破窗排煙點頂樓樓梯間＝開啟屋頂出入口
@@ -1051,10 +1053,12 @@ function tacIncident0(inc,dt,first,flow){
    if(B.st.media)repGain(2);
    // 親自指揮的戰術案件：依結案報告等級累積評鑑
    // 親自指揮的獎勵（略高於交給 AI）：等級評鑑、依案件等級加成的指揮獎金、每名送醫多 100 元
-   const gd=B.played&&!inc.train?(B.report0=tacReport(inc,B)).grade:'',rg={S:7,A:5,B:2.5,C:1}[gd]||0;
-   if(rg){const g=repGain(rg),bn=Math.round(({S:1500,A:1000,B:500,C:200}[gd])*(1+(KIND[inc.k].lv||0)*.25));S.money+=bn;S.score+=Math.round(bn/10);B.bonus=bn;
-    radio(inc,'受理','戰術指揮成果（'+gd+' 級）：評鑑 +'+g.toFixed(1)+'、指揮獎金 $'+bn+'。')}
-   if(!B.paid&&!inc.train){B.paid=1;S.money+=B.tx*(B.played?500:400);S.score+=B.tx*50+(B.lodd?0:60)}
+   // 依親自下令的程度給獎勵（tacPlayF）；只開著畫面、全交給 SOP 不算親自指揮
+   const pf=tacPlayF(B),gd=B.played&&!inc.train&&pf>0?(B.report0=tacReport(inc,B)).grade:'',rg=({S:7,A:5,B:2.5,C:1}[gd]||0)*pf;B.pf=pf;
+   if(rg){const g=repGain(rg),bn=Math.round(({S:1500,A:1000,B:500,C:200}[gd])*(1+(KIND[inc.k].lv||0)*.25)*pf);S.money+=bn;S.score+=Math.round(bn/10);B.bonus=bn;
+    radio(inc,'受理','戰術指揮成果（'+gd+' 級，親自指揮 '+Object.keys(B.pcU||{}).length+' 組，獎勵 '+Math.round(pf*100)+'%）：評鑑 +'+g.toFixed(1)+'、指揮獎金 $'+bn+'。')}
+   else if(B.played&&!inc.train&&!pf)radio(inc,'受理','本案由 SOP 自動處置，未親自下令，不計戰術指揮獎勵。');
+   if(!B.paid&&!inc.train){B.paid=1;S.money+=B.tx*(pf>0?400+Math.round(100*pf):400);S.score+=B.tx*50+(B.lodd?0:60)}
    tacEvt(inc,B,'milestone','結案');
    B.report=tacReport(inc,B);if(B.played)tacShowRep(B.report)}}
  else B.doneT=0;
