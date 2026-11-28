@@ -163,6 +163,7 @@ function tacCivOpen(inc,B){
  const L=B.civ.log=[],who=tacCivWho(inc),say=s=>{L.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},
   me=s=>{L.push({w:'場',s});inc.log.push({w:'場',s:'（現場指揮官）'+s,t:S.t-inc.t0})};
  me('我是消防隊現場指揮官，裡面的狀況可以跟我說嗎？');
+ if(B.sc){for(const s of tacScCiv(inc,B,'open'))say(s);me('收到，請先退到安全的地方，有其他狀況再告訴我們。');B.civ.next=S.t+5;return}
  if(B.hoax){say('我只是聞到燒焦味，有人說'+tacFlr(B,B.hint>=0?B.hint:B.of)+'在冒煙，我自己沒看到火。');me('收到，我們會逐層查證，請先在外面等。');return}
  const f=Math.random()<.85?B.of:Math.max(B.bf,Math.min(B.F-1,B.of+(Math.random()<.5?-1:1)));
  const st=B.cells.filter(x=>x.ty==='stair'&&x.s>.3).length;
@@ -185,6 +186,7 @@ function tacAsk(inc,B,k){
  tacCivOpen(inc,B);
  const who=tacCivWho(inc),say=s=>{B.civ.log.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},Q=TAC_ASK.find(x=>x.k===k).q;
  B.civ.log.push({w:'場',s:Q});inc.log.push({w:'場',s:'（現場指揮官）'+Q,t:S.t-inc.t0});
+ if(B.sc){const a=tacScCiv(inc,B,k);if(a)say(a);return}
  if(k==='who'){
   const rs=B.cells.filter(x=>x.ty==='room'&&x.vic+x.hid>0),told=[];
   for(const x of rs)if(Math.random()<.75){x.rep=1;told.push(tacNm(B,x.f,x.c))}

@@ -26,7 +26,7 @@ const TAC_GRP=[
  ['野火',[['beat','撲打','','各組（雲梯組、機器人除外）｜點草地火線｜以打火拍、背負式水袋撲打低矮火線，撲滅後自動往附近火線｜火勢猛烈時無法靠近'],
   ['brk','防火線','','各組（雲梯組、機器人除外）｜點還沒燒到的草地｜清除可燃物開設防火線，阻斷延燒（救助組較快）｜要在火頭前方預先開設']]],
  ['化災',[['ident','化物辨識','I','化災組、化災應變隊｜點洩漏處｜偵檢辨識化學品並劃設危害區｜辨識前請著適當防護'],
-  ['plug','止漏','Z','各組（化災應變隊最快、化災組次之，其他組很慢）｜點洩漏源｜止漏；加油站為關閉緊急遮斷閥｜'],
+  ['plug','止漏','Z','各組（化災應變隊最快、化災組次之，其他組很慢；瓦斯、熱水器各組約 10 秒）｜點洩漏源｜止漏；加油站、油罐車為關閉緊急遮斷閥，瓦斯外洩為關閉開關與總閥，一氧化碳為關閉熱水器｜侷限空間持續產生的氣體無法止漏，要送風'],
   ['ppeF','消防衣','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜換回消防衣帽鞋｜耐火，但不防化學品'],
   ['ppeC','C級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜濾毒罐與防濺衣，不耗氣｜不耐火，不能進濃煙、缺氧或高濃度區'],
   ['ppeB','B級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜空氣呼吸器＋防濺衣｜每輛化災車 2 套'],
@@ -163,6 +163,7 @@ function tacFurn(g,r,kind,seed,dark){
  else if(kind==='shop'){box(x+p,y+h*.62,w*.55,u*.12);const n2=Math.max(1,Math.floor(w/(u*.5)));for(let i=0;i<n2;i++)box(x+p+i*(w-2*p)/n2,y+p,(w-2*p)/n2*.7,u*.1)}
  else if(kind==='lobby'){box(x+w*.35,y+h*.4,w*.3,u*.14);for(let k=0;k<2;k++)box(x+p+k*w*.6,y+h-p-u*.18,w*.25,u*.14)}
  else if(kind==='nurse'){box(x+p,y+h*.45,w-2*p,u*.14);box(x+p,y+p,u*.18,h*.3)}
+ else if(kind==='pool'){g.fillStyle=dark?fc:'#2f6a8a';g.fillRect(x+p,y+p,w-2*p,h-2*p);g.strokeStyle=dark?lc:'#9ad0e8';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(x+p+(w-2*p)*i/5,y+p);g.lineTo(x+p+(w-2*p)*i/5,y+h-p);g.stroke()}}
  else if(kind==='machine'){box(x+w*.12,y+h*.2,w*.45,h*.4,dark?fc:'#4f555c');g.strokeStyle=lc;g.lineWidth=2;
   for(let k=0;k<2;k++){g.beginPath();g.arc(x+w*.25+k*w*.2,y+h*.4,u*.07,0,TAU);g.stroke()}
   g.lineWidth=1;g.beginPath();g.moveTo(x+w*.1,y+h*.78);g.lineTo(x+w*.9,y+h*.78);g.moveTo(x+w*.1,y+h*.84);g.lineTo(x+w*.9,y+h*.84);g.stroke()}}
@@ -388,7 +389,7 @@ function drawTac(){
      g.fillStyle='#7a4a9a';g.beginPath();g.ellipse(vx,vy,t*.07,t*.03,0,0,TAU);g.fill();
      g.fillStyle='#d9bfae';g.beginPath();g.arc(vx+t*.08,vy,t*.025,0,TAU);g.fill()}
     if(x.vic&&(T*2)%1<.6){g.fillStyle='#ff5a4a';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='bottom';g.fillText('受困 '+x.vic,r[0]+r[2]*.18,r[1]+r[3]*.64)}
-    if(!x.vic&&!B.wild){g.fillStyle=x.sl>=2?'rgba(93,202,165,.75)':'rgba(233,161,59,.75)';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText(x.sl>=2?'次搜✓':'初搜',r[0]+4,r[1]+4)}
+    if(!x.vic&&!B.wild&&!(B.sc&&B.out)){g.fillStyle=x.sl>=2?'rgba(93,202,165,.75)':'rgba(233,161,59,.75)';g.font='600 10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText(x.sl>=2?'次搜✓':'初搜',r[0]+4,r[1]+4)}
     if(x.sl===1&&x.s2>0&&x.s2<1){g.fillStyle='rgba(93,202,165,.85)';g.fillRect(r[0]+4,r[1]+r[3]-6,(r[2]-8)*x.s2,3)}}
    else{
     if(x.srch>0){g.fillStyle='rgba(125,179,232,.85)';g.fillRect(r[0]+4,r[1]+r[3]-6,(r[2]-8)*x.srch,3)}
@@ -779,7 +780,7 @@ function tacSideHTML(inc){
  const cap=tacPPECap(inc);
  if(B.chem||cap.A||B.sq.some(q=>q.epa)){const rw=(a,b)=>'<div class="row"><span>'+a+'</span><span>'+b+'</span></div>';
   h+='<div class="hd mt">化學災害</div><div class="twater">';
-  if(B.chem)h+=rw('化學品',B.chemK?'<b>'+esc(B.chem.n)+'</b>（'+(B.chem.fuel?'消防衣＋空氣呼吸器':['','C','B','A'][B.chem.lv]+' 級以上')+'）':'<b style="color:#b9a0ee">未辨識</b>');
+  if(B.chem)h+=rw('化學品',B.chemK?'<b>'+esc(B.chem.n)+'</b>（'+(B.chem.ppeN||(B.chem.fuel?'消防衣＋空氣呼吸器':['','C','B','A'][B.chem.lv]+' 級以上'))+'）':'<b style="color:#b9a0ee">未辨識</b>');
   if(B.leak)h+=rw('洩漏',B.leak.on?'<b style="color:var(--red)">持續外洩（'+esc(tacNm(B,B.leak.f,B.leak.c))+'）</b>':'已止漏');
   h+=rw('防護衣',cap.A||cap.B?'A 級 '+(cap.A-tacPPEUsed(B,'A'))+'/'+cap.A+'　B 級 '+(cap.B-tacPPEUsed(B,'B'))+'/'+cap.B+'　C 級 不限':'<span class="sub">無化災車（僅 C 級）</span>');
   if(B.chem&&!B.chem.fuel)h+=rw('除污站',B.st.decon?'已開設':'<span style="color:var(--amb)">未開設</span>'+(B.sq.some(q=>q.cont)?'（'+B.sq.filter(q=>q.cont).length+' 組待除污）':''));

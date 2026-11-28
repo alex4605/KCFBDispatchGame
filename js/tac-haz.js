@@ -46,7 +46,7 @@ function tacChemStep(inc,B,dt){
  const L=B.chem.fuel?0:B.chem.lv;
  for(const x of B.cells){x.hz=!L||!(x.cz>.06)?0:Math.max(1,Math.min(L,x.cz>.55?L:x.cz>.25?L-1:1));
   // 受困者暴露在化學品中也會惡化
-  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz}}
+  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz*(B.chem.tox||1)}}
 // 每幀：換裝、化學暴露、防護衣受熱、C 級的限制、空氣與體力、除污；回傳 true 表示這一幀已用掉
 function tacHazStep(inc,B,q,dt){
  if(q.task==='dress'){q.wk+=dt;if(q.wk>=tacDressT(q,q.ppeT)){q.wk=0;q.ppe=q.ppeT;q.task='idle';
@@ -73,7 +73,7 @@ function tacHazStep(inc,B,q,dt){
   if(q.hp<.3)tacDown(inc,B,q,'防護衣受熱損壞')}
  // C 級沒有空氣呼吸器：不耗氣，但不能進濃煙、缺氧或高濃度區
  if(lv==='C'){q.air=1;
-  if(x.s>.3||x.o2<19.5||hz>1){q.hp-=dt*.02;if(!q.cW){q.cW=1;radio(inc,q.cs,'C 級濾毒罐無法應付'+(hz>1?'高濃度化學品':x.o2<19.5?'缺氧環境':'濃煙')+'，撤出！')}
+  if(x.s>.3||x.o2<19.5||hz>1||(B.chem&&B.chem.noC&&hz>0)){q.hp-=dt*.02;if(!q.cW){q.cW=1;radio(inc,q.cs,'C 級濾毒罐無法應付'+(hz>1?'高濃度化學品':x.o2<19.5?'缺氧環境':'濃煙')+'，撤出！')}
    if(q.task!=='exit'){q.prev=null;q.task='exit';q.tf=-1;q.tc=0}}}
  // A、B 級：較耗氣、較易疲勞
  if(lv==='A'||lv==='B'){q.air-=dt/TAC_AIR*(lv==='A'?.25:.15);q.fat=Math.min(1.2,q.fat+dt/220*(lv==='A'?.8:.4))}
@@ -92,9 +92,9 @@ function tacIdent(inc,B,q,dt){
 function tacPlug(inc,B,q,dt){
  const lk=B.leak;
  if(!lk||!lk.on||lk.f!==q.f||lk.c!==q.c){q.task='idle';if(lk&&!lk.on)radio(inc,q.cs,'洩漏已止住。');else radio(inc,q.cs,'此處不是洩漏源。');return}
- q.wk+=dt;if(q.wk<(q.epa?15:q.ty==='hazmat'?35:70))return;q.wk=0;
+ q.wk+=dt;if(q.wk<(B.chem.util?10:q.epa?15:q.ty==='hazmat'?35:70))return;q.wk=0;
  lk.on=0;q.task='idle';
- radio(inc,q.cs,B.chem.fuel?'已關閉緊急遮斷閥並止漏，油料停止外洩。':'止漏完成，'+(B.chemK?B.chem.n:'化學品')+'停止外洩。');
+ radio(inc,q.cs,B.chem.plug?B.chem.plug:B.chem.fuel?'已關閉緊急遮斷閥並止漏，油料停止外洩。':'止漏完成，'+(B.chemK?B.chem.n:'化學品')+'停止外洩。');
  tacEvt(inc,B,'milestone','止漏完成（'+q.cs+'）')}
 // 化災應變隊到場：加入一組（自備 A／B／C 級，不受化災車套數限制）
 function tacEpaSync(inc,B){
@@ -110,6 +110,7 @@ function tacHazCan(B,q,k){
  if(q.epa&&!['ident','plug','gas','move','exit','search','search2'].includes(k)&&!/^ppe/.test(k))return'化災應變隊只執行化物辨識、止漏、氣體偵測與搜索';
  if(k==='ident'&&q.ty!=='hazmat'&&!q.epa)return'需要化災車的偵檢器材（化災組）或化災應變隊';
  if(k==='plug'&&!(B.leak&&B.leak.on))return'目前沒有洩漏需要止漏';
+ if(k==='plug'&&B.leak.np)return'管道內持續產生的硫化氫無法止漏，請往人孔送風（正壓排煙）';
  return''}
 // 幕僚建議
 function tacHazHints(inc,B,add){

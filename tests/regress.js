@@ -52,7 +52,7 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    return{t:Math.round(S.t),solved:S.solved,rep:Math.round(S.rep)}});
   ok('一般玩法 600 秒',r.solved>3&&!errs.length,{...r,errs:errs.slice(0,3)});await p.close()}
  if(which==='all'||which==='tac'){let closed=0,n=0;
-  for(const k of['mfire','hifire','fact','tinfire','nursing','skyscraper','wastefire','mfire']){const {p,errs}=await page(b);
+  for(const k of['mfire','hifire','fact','tinfire','nursing','skyscraper','wastefire','mfire','carfire','truckfire','tanker','gas','co','sewer','confined']){const {p,errs}=await page(b);
    const r=await p.evaluate(eval(TAC_RUN),k);n++;if(r.closed||r.early)closed++;console.log('  ',JSON.stringify(r),errs.slice(0,2).join(' | '));
    if(errs.length)fail++;await p.close()}
   ok('戰術 AI 結案率',closed>=n-1,{closed,n})}
