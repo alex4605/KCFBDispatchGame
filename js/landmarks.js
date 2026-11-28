@@ -20,6 +20,10 @@ const LMK_DEF=[
  {k:'edu',n:'高中',sub:'',w:2,h:1,near:['苓雅',-4,4],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'國小',sub:'',w:1,h:1,near:['岡山',2,3],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'大學',sub:'',w:2,h:2,near:['楠梓',5,-4],col:'#5a6a3a',ic:'🎓'},
+ // 市區與山區交界（山坡郊區）：澄清湖、遊樂園、燕巢的大學
+ {k:'lake',n:'澄清湖',sub:'風景區',w:3,h:3,near:['高雄長庚',5,-2],nearH:1,col:'#2a5a6a',ic:'🌊'},
+ {k:'amuse',n:'遊樂園',sub:'主題樂園',w:2,h:2,near:['高雄長庚',7,-8],nearH:1,col:'#7a4a8a',ic:'🎡'},
+ {k:'edu',n:'大學',sub:'燕巢校區',w:2,h:1,near:['燕巢',3,-3],col:'#5a6a3a',ic:'🎓'},
  {k:'edu',n:'國中',sub:'',w:1,h:1,near:['大寮',2,2],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'國小',sub:'',w:1,h:1,near:['旗山',2,2],any:1,col:'#5a6a3a',ic:'🏫'},
  {k:'dept',n:'百貨公司',sub:'大遠百',w:1,h:1,near:['苓雅',-2,-2],col:'#7a4a6a',ic:'🛍'},
@@ -46,7 +50,7 @@ function placeLandmarks(){
  // sea：沙灘，要臨海（不需臨路），港區、魚塭也可
  let any=0,sea=0;const land=(x,y)=>{if(x<1||y<1||x>=N-1||y>=N-1)return false;const k=K(x,y);return!RD[k]&&!HWL[k]&&!HG[k]&&(TR[k]===0||any&&(TR[k]===5||TR[k]===6)||sea&&TR[k]===3)&&!inFacility(x,y)&&!LMKC.has(k)};
  const road=(x,y)=>{if(sea)return x>=0&&y>=0&&x<N&&y<N&&TR[K(x,y)]===1;const r=cls(x,y);return r===1||r===2||r===3};
- for(const d of LMK_DEF){const s=SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;any=d.any?1:0;sea=d.sea?1:0;
+ for(const d of LMK_DEF){const s=d.nearH?HOSP.find(z=>z.n===d.near[0]):SPOT.find(z=>z.n===d.near[0]);if(!s||!s.p)continue;any=d.any?1:0;sea=d.sea?1:0;
   const cx=s.p[0]+d.near[1],cy=s.p[1]+d.near[2];let best=null,bd=1e9;
   for(const [W,H] of(d.w===d.h?[[d.w,d.h]]:[[d.w,d.h],[d.h,d.w]]))
    for(let x0=cx-12;x0<=cx+12;x0++)for(let y0=cy-12;y0<=cy+12;y0++){
@@ -67,6 +71,19 @@ function placeLandmarks(){
 function lmkDetail(L,px,py,c){
  const m=L.m,i=L.i,j=L.j,hz=m.w>=m.h,first=hz?i===0:j===0,last=hz?i===m.w-1:j===m.h-1;
  ctx.fillStyle='#3a3833';ctx.fillRect(px,py,c+.6,c+.6);
+if(m.k==='lake'){ // 澄清湖：湖面、湖岸步道，中間一列是九曲橋
+  ctx.fillStyle='#24402c';ctx.fillRect(px,py,c+.6,c+.6);
+  const e=c*.12,l=i===0?e:0,r=i===m.w-1?e:0,t=j===0?e:0,b=j===m.h-1?e:0;ctx.fillStyle='#16384e';ctx.fillRect(px+l,py+t,c-l-r+.6,c-t-b+.6);
+  ctx.fillStyle='rgba(125,179,232,.16)';ctx.fillRect(px+c*.2,py+c*.3,c*.3,Math.max(1,c*.04));
+  if(j===(m.h>>1)){ctx.strokeStyle='#c8b48a';ctx.lineWidth=Math.max(1.5,c*.05);ctx.beginPath();for(let q=0;q<=4;q++){const xx=px+c*q/4,yy=py+c*(q%2?.38:.62);q?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.stroke()}
+  return}
+ if(m.k==='amuse'){ // 遊樂園：摩天輪、雲霄飛車軌道、彩色遊樂設施
+  ctx.fillStyle='#2e2a34';ctx.fillRect(px,py,c+.6,c+.6);
+  if(i===0&&j===0){const cx=px+c*.55,cy=py+c*.55,R=c*.36;ctx.strokeStyle='#d8d0e8';ctx.lineWidth=Math.max(1,c*.03);ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.stroke();
+   for(let q=0;q<8;q++){const a=q*TAU/8;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);ctx.stroke();ctx.fillStyle=['#e2564f','#e9a13b','#5dcaa5','#7db3e8'][q%4];ctx.fillRect(cx+Math.cos(a)*R-c*.04,cy+Math.sin(a)*R-c*.04,c*.08,c*.08)}}
+  else if(i===1&&j===0||i===0&&j===1){ctx.strokeStyle='#e9a13b';ctx.lineWidth=Math.max(1.5,c*.05);ctx.beginPath();ctx.moveTo(px,py+c*.7);ctx.bezierCurveTo(px+c*.3,py+c*.1,px+c*.6,py+c*.9,px+c,py+c*.3);ctx.stroke()}
+  else{for(let q=0;q<4;q++){ctx.fillStyle=['#a04a8a','#4a7aa8','#c8a03a','#3a8a6a'][q];ctx.fillRect(px+c*(.12+.22*q),py+c*(.25+.3*(q%2)),c*.16,c*.16)}}
+  return}
  if(m.k==='t85'||m.k==='t50'){ // 超高層：塔樓量體（投影陰影）、屋頂停機坪
   const big=m.k==='t85';ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(px+c*.3,py+c*.3,c*.66,c*.66);
   ctx.fillStyle=big?'#8a8f98':'#6f747c';ctx.fillRect(px+c*.18,py+c*.12,c*.6,c*.66);

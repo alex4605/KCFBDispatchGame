@@ -3,6 +3,8 @@
 const RD=new Uint8Array(N*N),TR=new Uint8Array(N*N),SH=new Float32Array(N*N),RUN=new Uint8Array(N*N);
 // 鄉間地貌細節（只影響繪製）：CROP 作物／設施種類、CANAL 灌溉水圳
 const CROP=new Uint8Array(N*N),CANAL=new Uint8Array(N*N);
+// 山坡郊區：市區與東北山區交界的過渡帶（燕巢、澄清湖、遊樂園、長庚一帶），值為離平地的距離（1～7）
+const HILL=new Uint8Array(N*N);
 // 道路分層與分級
 // HWL：此格有「高速公路層」從地面道路／水面上方（高架）或下方（地下道）交錯通過，兩層不互通
 // HG：此格高速公路的等級（RGK.HWE 高架國道、RGK.HWG 平面國道、RGK.EXP 快速道路），RG：地面道路等級，RGF：生成時指定的等級
@@ -13,7 +15,7 @@ let ROUTES=[];   // 有編號的路線：{n:'台3', g, cells}
 // 郊區：市區外圍（含機場一帶）與鄉間緊鄰市區的一圈，街廓較大、混有農地與工廠
 const SUBX=74,SUBY=86;
 // 北側（岡山、橋頭以北）的郊區帶較寬，約 12 格才過渡到鄉間
-const isSub=(x,y)=>inCity(x,y)?(x-OX>=SUBX||y-OY>=SUBY):(Math.max(OX-x,(x-OX-CITY+1)*.8,(OY-y)*.75,(y-OY-CITY+1)*.8)<=9);
+const isSub=(x,y)=>(x>=0&&y>=0&&x<N&&y<N&&HILL[K(x,y)]>0)||(inCity(x,y)?(x-OX>=SUBX||y-OY>=SUBY):(Math.max(OX-x,(x-OX-CITY+1)*.8,(OY-y)*.75,(y-OY-CITY+1)*.8)<=9));
 const K=(x,y)=>x*N+y;
 const RC=[],RR=[];
 let FX=0,FY=0,FYE=0,SPOT=[],HOSP=[],AP=null;   // AP：機場範圍
@@ -71,6 +73,24 @@ function inFacility(x,y){
  if(typeof SCHOOL!=='undefined'&&SCHOOL&&SCHOOL.set&&SCHOOL.set.has(K(x,y)))return true;
  if(typeof LMKC!=='undefined'&&LMKC.has(K(x,y)))return true;
  return false}
+// 山坡郊區過渡帶：東北山區靠市區的一側約 7 格改為坡地住宅區（市區棋盤幹道延伸進來、次要道路稀疏）
+// HILL 值代表坡度高低：市區側約 6 格為 1～4（山腳的低密度住宅，高雄長庚、澄清湖在這一帶），原本山林的一側 5～11（坡地住宅、果園與樹林）
+function hillBelt(){
+ HILL.fill(0);const bfs=(seed,into,D)=>{const dist=new Int16Array(N*N).fill(-1),q=[];
+  for(let x=0;x<CITY;x++)for(let y=0;y<CITY;y++){const k=K(x,y);if(seed(k)){dist[k]=0;q.push(k)}}
+  for(let i=0;i<q.length;i++){const k=q[i],x=(k/N)|0,y=k%N;if(dist[k]>=D)continue;
+   for(const d of DIR){const nx=x+d[0],ny=y+d[1];if(nx<0||ny<0||nx>=CITY||ny>=CITY)continue;const nk=K(nx,ny);
+    if(dist[nk]>=0||!into(nk))continue;dist[nk]=dist[k]+1;q.push(nk)}}
+  return dist};
+ const land=k=>TR[k]!==2&&TR[k]!==1&&TR[k]!==4;
+ const din=bfs(k=>land(k),k=>TR[k]===2,7),dout=bfs(k=>TR[k]===2,k=>land(k),6);
+ for(let k=0;k<N*N;k++){if(din[k]>0){HILL[k]=4+din[k];TR[k]=0}else if(dout[k]>0)HILL[k]=Math.max(1,5-dout[k])}}
+// 鋪完道路後：坡地上沒有道路的地方，越往山上越多樹林與果園（成片），其餘為低密度住宅
+function hillCover(){
+ for(let x=0;x<CITY;x++)for(let y=0;y<CITY;y++){const k=K(x,y),d=HILL[k];if(!d||RD[k])continue;
+  const b=Math.abs(Math.sin(((x/3)|0)*12.9898+((y/3)|0)*78.233)*43758.5453%1);
+  if(d<=4){if(b<.04*d)TR[k]=5;continue}   // 山腳：偶有菜園果園
+  const e=d-4;if(b<.12+.07*e)TR[k]=2;else if(b<.3+.05*e)TR[k]=5}}
 function build(){
  OX=0;OY=0;RTOWN.forEach((t,i)=>t.c=RTOWN0[i].slice());
  grid();RD.fill(0);TR.fill(0);RUN.fill(0);HWL.fill(0);HG.fill(0);RG.fill(0);RGF.fill(0);ROUTES=[];
@@ -89,6 +109,7 @@ function build(){
  for(let x=Math.round(44*MF);x<CITY;x++)for(let y=0;y<CITY;y++)if((x-44*MF)+y<26*MF)TR[K(x,y)]=2;
  for(let x=Math.round(53*MF);x<CITY;x++)for(let y=0;y<Math.round(28*MF);y++)TR[K(x,y)]=2;
  ruralTerrain();
+ hillBelt();
  // 南側丘陵
  for(let x=Math.round(20*MF);x<Math.round(32*MF);x++)for(let y=Math.round(58*MF);y<CITY-1;y++)if(Math.random()<.9)TR[K(x,y)]=2;
  // 港區：南側舊港與河岸貨櫃場
@@ -107,6 +128,7 @@ function build(){
  const keep=(i,x,y)=>TR[K(x,y)]!==2&&(!isSub(x,y)||i%2===1||i%4===0);
  for(let i=0;i<RC.length;i++)for(let y=0;y<CITY;y++)if(keep(i,RC[i],y))set(RC[i],y,i%2?3:2);
  for(let i=0;i<RR.length;i++)for(let x=0;x<CITY;x++)if(keep(i,x,RR[i]))set(x,RR[i],i%2?3:2);
+ hillCover();
  // 機場：場內不鋪路，外圍一圈環場道路，西側航廈有連外道路
  {const ax0=Math.round(45*MF),ax1=Math.round(60*MF)-1,ay0=Math.round(43*MF),ay1=Math.round(58*MF)-1;
   AP={x0:ax0,x1:ax1,y0:ay0,y1:ay1};
@@ -158,7 +180,8 @@ function build(){
  // 分隊與醫院
  SPOT=SNAME.map((n,i)=>({n,tp:STP[i],p:SABSN[n]?null:n==='機場'&&AP?[AP.x0+AL.arff[0],AP.y0+AL.arff[1]]:SABS[n]?SABS[n].slice():[RC[SIDX[i][0]]+1,RR[SIDX[i][1]]+1]}));
  HOSP=HNAME.map((n,i)=>{
-  const px=RC[HIDX[i][0]]+1,py=RR[HIDX[i][1]]+1,w=HSIZE[i][0],h2=HSIZE[i][1],cells=[];
+  // 醫院量體夾在兩條棋盤道路之間，不壓到下一條路
+  const ci=Math.min(RC.length-2,HIDX[i][0]),ri=Math.min(RR.length-2,HIDX[i][1]),px=RC[ci]+1,py=RR[ri]+1,w=Math.max(1,Math.min(HSIZE[i][0],RC[ci+1]-px)),h2=Math.max(1,Math.min(HSIZE[i][1],RR[ri+1]-py)),cells=[];
   for(let a=0;a<w;a++)for(let b=0;b<h2;b++)if(px+a<N-1&&py+b<N-1)cells.push([px+a,py+b]);
   return{n,p:[px,py],w,h:h2,cells}});
  spreadStations();
@@ -180,7 +203,7 @@ function build(){
  // 隨機拆除路段製造繞路，保持全網連通
  for(let i=0;i<Math.round(260*MF*MF);i++){
   const x=1+Math.floor(Math.random()*(CITY-2)),y=1+Math.floor(Math.random()*(CITY-2)),k=K(x,y),c=RD[k];
-  if(!c||c>=4||prot[k]||HG[k]||TR[k]===4)continue;   // 機場內的滑行道與聯絡道不拆
+  if(!c||c>=3||prot[k]||HG[k]||TR[k]===4)continue;   // 只拆巷弄與一般道路：幹道（3）不拆，大條馬路不會被截斷；機場內的滑行道與聯絡道不拆
   RD[k]=0;if(!oneComponent())RD[k]=c}
  for(let k=0;k<N*N;k++)SH[k]=Math.random();
  for(const s of places){
@@ -259,11 +282,17 @@ function chase(f,u){let k=K(Math.round(u.x),Math.round(u.y));
  const p=[];while(f.P[k]>=0){k=f.P[k];const c=cellOf(k);p.push([(c/N)|0,c%N])}return p}
 const pathTo=(u,o)=>chase(getF(o,modeOf(u.code)),u);
 
+// 下一輛的呼號：同車種依序編號（11、12、13…），與其他車種撞號時再往後跳
+function unitCsNext(si,code){
+ const st=SPOT[si],b=parseInt(code,10);let same=S.units.filter(u=>u.si===si&&u.code===code).length;
+ if(st.n==='機場'&&code==='機')return'機消'+(same+1);
+ const mk=k=>st.n+(isNaN(b)?code+(k?String(k+1):''):b+k>99?code+'-'+(k+1):String(b+k));
+ while(S.units.some(u=>u.cs===mk(same)))same++;
+ return mk(same)}
 function addU(si,code){
- const st=SPOT[si],b=parseInt(code,10),same=S.units.filter(u=>u.si===si&&u.code===code).length;
- const num=isNaN(b)?code+(same?String(same+1):''):String(b+same);
+ const st=SPOT[si];
  // 機場消防隊的機場消防車呼號為「機消1、機消2…」
- S.units.push({id:uid++,si,code,cs:st.n==='機場'&&code==='機'?'機消'+(same+1):st.n+num,usar:/^特/.test(st.n)?1:0,lim:/^特/.test(st.n)?'usar':st.n==='機場'?'arff':null,x:st.x[0],y:st.x[1],path:[],st:'idle',
+ S.units.push({id:uid++,si,code,cs:unitCsNext(si,code),usar:/^特/.test(st.n)?1:0,lim:/^特/.test(st.n)?'usar':st.n==='機場'?'arff':null,x:st.x[0],y:st.x[1],path:[],st:'idle',
   inc:null,duty:null,off:0,wait:0,turn:0,oosT:0,mode:null,tp:false,crew:0,res:false,
   slot:null,arm:null,parked:0,ox:0,oy:0,hd:0,tank:CODE[code].cap||0,back:null})}
 // 評鑑：累積制，增加有邊際效應（評鑑越高，同樣的表現加得越少）；扣分不打折，歸零即失去指揮權

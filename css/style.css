@@ -281,3 +281,9 @@ button.hand:hover{background:#2d5a4a}
 .tglob{margin-left:auto}
 .tgrps button.evac{border-color:var(--red);color:#ff8a7a}
 @media (max-width:760px){.tinfo{flex-direction:column;gap:4px}.tisel{border-right:0;padding-right:0;max-width:none;flex-direction:row;gap:6px}.tglob{margin-left:0}}
+
+/* 採購面板 */
+.shopg{font-size:11px;color:var(--fg3);margin:8px 0 4px;letter-spacing:.05em}
+#shop .shophd{padding:0;display:flex;justify-content:space-between;align-items:center}
+#shop .buy button:disabled{opacity:.4}
+#shop .newst{width:100%;margin-top:10px;text-align:left;padding:8px 10px}

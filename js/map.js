@@ -24,9 +24,12 @@ function drawTerrain(c,x0,x1,y0,y1){
   else if(t===5){const cp=CROP[k];ctx.fillStyle=cp===2?(s<.5?'#1e3019':'#21341b'):cp===3?(s<.5?'#1b2b1d':'#1d2e1f'):cp===4?'#34362f':cp===5?(s<.5?'#22301b':'#25331d'):cp===6?(s<.5?'#2e2b1d':'#322e1f'):(s<.5?'#262f1b':'#29321d')}
   else if(t===6)ctx.fillStyle=CROP[k]===7?'#1d2633':s<.5?'#12282f':'#142c33';
   else if(t===7)ctx.fillStyle=s<.5?'#262a2f':'#2a2e33';
+  else if(HILL[k])ctx.fillStyle=CROP[k]===9?'#262a2e':s<.5?'#1e2119':'#22251c';   // 山坡郊區：帶綠的坡地
   else if(!inCity(x,y)||isSub(x,y))ctx.fillStyle=CROP[k]===9?'#262a2e':s<.5?'#1d1c19':'#211f1b';
   else ctx.fillStyle=s<.33?'#171716':s<.66?'#1b1b19':'#1f1f1c';
   ctx.fillRect(px,py,c+.6,c+.6);
+  // 山坡郊區：淡淡的等高線
+  if(HILL[k]&&c>=10&&t!==1&&!RD[k]){ctx.strokeStyle='rgba(170,180,120,'+(.05+.012*HILL[k]).toFixed(3)+')';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px+c*(.3+.4*s),py+c*1.5,c*(.9+.2*(HILL[k]%3)),Math.PI*1.22,Math.PI*1.78);ctx.stroke()}
   if(RUN[k]&&!RD[k]&&c>=6){ctx.fillStyle='rgba(235,235,225,.7)';ctx.fillRect(px+c*.2,py+c*.47,c*.45,Math.max(1,c*.06))}
   if(t===3&&c>11&&s>.7){ctx.fillStyle='#2c3a4a';ctx.fillRect(px+c*.2,py+c*.2,c*.6,c*.6)}
   if(t===2&&c>11&&s>.74){ctx.fillStyle='#1f3a25';ctx.beginPath();
