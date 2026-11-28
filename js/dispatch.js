@@ -78,16 +78,33 @@ function shuttleRun(inc){
   u.tank=left;refillRun(u,inc)}
  else if(ps[0].tank<=60)refillRun(ps[0],inc)}
 function hydShare(inc){
- if(!inc.hy)return 1;
+ if(!inc.hy||inc.draft)return 1;
  let n=1;
  for(const o of S.inc)if(o!==inc&&o.hy&&o.hy[0]===inc.hy[0]&&o.hy[1]===inc.hy[1]&&o.hooked)n++;
  return 1/n}
+// 供水管線的壓損：消防栓距離越遠損失越多（中繼車分段加壓，損失按段數分攤）；吸水有吸程損失
+function srcLoss(inc){if(inc.tender)return 1;if(inc.draft)return .92;return Math.max(.55,1-(inc.hd||0)*.018/(1+(inc.relay||0)))}
+// 每條攻擊線的瞄子壓力（kgf/cm²）與影響原因（面板顯示）：[壓力, [原因…]]
+function lineInfo(inc,noz){
+ const base=noz==='2.5 吋'?5:7,why=[];let f=1;
+ if(!waterOK(inc))return[0,['水源見底，射水中斷']];
+ if(!inc.hooked&&!inc.shuttle)why.push(inc.hook>0?'佔水中，暫用車上水箱':'尚未佔水，只用車上水箱');
+ else if(inc.shuttle)why.push('幫浦車往返運水，只用車上水箱');
+ else if(tenderOn(inc)){const T=inc.dk;why.push('水庫車循環送水'+(T&&T.on?'（水槽 '+(Math.round(T.v/100)/10)+' 噸）':'（水槽架設中）'))}
+ else if(inc.draft){f*=.92;why.push('由'+inc.drN+'吸水，吸程損失 −8%')}
+ else{const l=srcLoss(inc);if(l<.98){f*=l;why.push('供水管線 '+inc.hd+' 格 −'+Math.round((1-l)*100)+'%'+(inc.relay?'（'+inc.relay+' 輛中繼分段加壓）':''))}
+  else if(inc.relay)why.push(inc.relay+' 輛中繼加壓');
+  const sh=hydShare(inc);if(sh<1){f*=Math.max(.6,sh+.25);why.push('同一消防栓 '+Math.round(1/sh)+' 案共用 −'+Math.round((1-Math.max(.6,sh+.25))*100)+'%')}}
+ const use=Math.max(0,effLines(inc))*LPS,inflow=inflowOf(inc);
+ if(inc.hooked&&inflow<use){const tp=tankPool(inc);why.push('供水 '+inflow+' < 用水 '+use+' L/s，水箱補差（剩 '+(tp[1]?Math.round(tp[0]/tp[1]*100):0)+'%）')}
+ if(inc.dry){f*=.4;why.push('水量不足，間歇射水')}
+ return[Math.round(base*f*10)/10,why.length?why:['正常']]}
 // 實際供水量（L/s）：模擬與面板共用同一個算式
 function inflowOf(inc){
  if(!inc.hooked)return 0;
  if(tenderOn(inc))return Math.round(tenderRate(inc)); // 循環送水：依水庫車數量與往返時間
  let tend=0;for(const u of onScene(inc))if(u.st==='work'&&u.code==='61')tend++;
- const share=inc.tender?1:hydShare(inc),loss=inc.tender?1:Math.max(.55,1-(inc.hd||0)*.018);
+ const share=inc.tender?1:hydShare(inc),loss=srcLoss(inc);
  return Math.round((inc.hin||INFLOW)*share*loss+Math.min(300,tend*150))}
 function waterOK(inc){
  if(!KIND[inc.k].w)return true;

@@ -51,7 +51,7 @@ function tacHints(inc,B){
  if(inside.length&&!B.sq.some(q=>q.task==='rit'||q.task==='ritgo'))add(1,'已有小組入室，但尚未編成 RIT。');
  if(!tacAcc(B))add(2,'尚未設置人員管制板，建議指派安全官。');
  for(const x of B.cells)if(x.ty==='room'&&x.o2<13&&x.h>.35&&!x.v&&!x.wet){add(1,tacNm(B,x.f,x.c)+'缺氧悶燒：勿直接破窗，先射水降溫再開口。');break}
- if(B.hyd&&!tacHydOK(inc,B))add(2,'消防栓在'+TAC_SDN[B.hyd.side]+'側尚未佔水，建議移一輛幫浦車佔水。');
+ if(B.hyd&&!tacHydOK(inc,B))add(2,tacHydN(B)+'在'+TAC_SDN[B.hyd.side]+'側尚未'+(B.hyd.draft?'架設吸水':'佔水')+'，建議移一輛幫浦車過去。');
  if(B.sp&&!B.sp.on&&B.of-B.bf>=2)add(2,'高樓起火，建議送水口加壓，改由各樓層出水口接線。');
  if(B.F-B.bf>=5&&B.of-B.bf>=3&&!B.st.fwd)add(3,'建議於'+tacFlr(B,Math.max(B.bf+1,B.of-2))+'設置前進指揮所，就近換瓶休息。');
  if(B.elev&&!B.elOn&&!(B.elT>0)&&(B.of-B.bf>=3||B.of<B.bf))add(3,'可啟用消防專用升降機，運送人員到'+tacFlr(B,tacElevTop(B))+'。');

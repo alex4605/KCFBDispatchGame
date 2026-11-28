@@ -36,6 +36,14 @@ function spawn(){
  {const li=lmkSpawn(k);if(li)return li}
  return makeInc(k,c,a,z,bigOK,probe)}
 // 建立一件案件並加入進線列表（spawn 與消防學校訓練共用）；c 為災點格、a 為臨路進場格
+// 水源常數：中繼車上限、吸水供水量（L/s，受幫浦吸水能力限制，比消防栓少）
+const WATER_RELAY_MAX=2,DRAFT_IN=380;
+// 附近的水域（河道、湖泊、海、魚塭，或湖泊地標）：回傳最近一格與名稱、到現場的路徑
+function nearWater(x,y,r){let b=null;
+ for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++){const d=Math.abs(dx)+Math.abs(dy);if(d>r||(b&&d>=b.d))continue;const xx=x+dx,yy=y+dy;if(xx<0||yy<0||xx>=N||yy>=N)continue;
+  const k=K(xx,yy),lm=typeof lmkAt==='function'&&lmkAt(xx,yy);
+  const nm=TR[k]===6?'魚塭':TR[k]===1?(xx<12||yy>N-12?'海岸':'河道'):lm&&lm.m.k==='lake'?lm.m.n:null;if(nm)b={x:xx,y:yy,d,nm}}
+ if(!b)return null;const p=[];let cx=b.x,cy=b.y;while(cx!==x||cy!==y){if(cx!==x)cx+=Math.sign(x-cx);else cy+=Math.sign(y-cy);p.push([cx,cy])}b.p=p;return b}
 function makeInc(k,c,a,z,bigOK,probe){
  const d=KIND[k];
  const o=d.hoax?{need:d.base.map(g=>({c:g.c.slice(),n:g.n,l:g.l,als:g.als,k:g.k})),pm:{mal:Math.random()<.35},dur:d.dur,pay:d.pay,pen:d.pen}:
@@ -57,8 +65,13 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
  if(d.w){
   const hy=nearHyd(inc);inc.hy=hy.h;inc.hd=hy.d;inc.hp=hy.p;
   inc.hin=hy.cl===3?600:hy.cl===2?480:hy.cl?340:0;
-  if(hy.h&&hy.d<=HOSE*5){
-   inc.relay=Math.min(4,Math.max(0,Math.ceil(hy.d/HOSE)-1));
+  // 水源選擇：消防栓夠近直接佔水 → 附近有河道、湖泊、魚塭就吸水（幫浦車吸水管或移動式抽水機）→
+  // 長距離中繼（最多 2 輛中繼車，不能從深山一路拉到市區）→ 再遠才用水庫車循環送水（大車進不去時幫浦車往返運水）
+  const relayN=hy.h?Math.max(0,Math.ceil(hy.d/HOSE)-1):99,wt=nearWater(inc.x,inc.y,3);
+  if(relayN>0&&wt&&(relayN>WATER_RELAY_MAX||wt.d<=2)){
+   inc.draft=1;inc.drN=wt.nm;inc.hy=[wt.x,wt.y];inc.hd=wt.d;inc.hp=wt.p;inc.hin=DRAFT_IN;inc.relay=0}
+  else if(hy.h&&relayN<=WATER_RELAY_MAX){
+   inc.relay=relayN;
    const g=need.find(g=>g.c.indexOf('11')>=0);if(g)g.n+=inc.relay}
   else{inc.tender=1;
    // 大型車進不去（山區產業道路）時，水庫車無法到場：改由幫浦車輪流往返補水，多派一輛

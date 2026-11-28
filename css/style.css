@@ -318,3 +318,23 @@ button.hand:hover{background:#2d5a4a}
 .icsr.av:hover{background:rgba(233,161,59,.12)}
 .icsr.no{opacity:.55;cursor:not-allowed;border-left-color:#4a4842}
 .icsr.top{padding:7px 8px}.icsr.top b{font-size:13px}
+
+/* 水線影響原因：每條線下方一行 */
+.lnw{font-family:var(--sans);font-size:11px;color:var(--fg2)}.lnw b{color:var(--blu);font-family:var(--mono)}
+.tline .tlr{grid-column:1/-1;font-size:11px;color:var(--fg2);padding:0 0 2px 2px;line-height:1.35}.tline .tlr b{font-family:var(--mono);color:var(--blu)}.tline .tlr i{font-style:normal;color:var(--amb)}
+/* 寬螢幕（1900 以上，例如 2560×1440）：戰術畫面側欄加寬、字級與按鈕放大（平面圖由畫布等比例放大） */
+@media (min-width:1900px){
+ #tacTop{padding:9px 16px;gap:12px;font-size:15px}#tacTop .tt{font-size:18px}#tacTop .strat,#tacTop .tmsg{font-size:14px}#tacTop button{font-size:14px;padding:5px 10px}
+ #tacSide{width:400px;padding:14px;font-size:15px}
+ #tacSide .row,#tacSide .sub,.twater .row,#tacSide .tlog div,.thint,.tline{font-size:14px}
+ .tch{font-size:14px;padding:4px 9px}.tch i{font-size:12px}.hd{font-size:12px}
+ .tline .tlr,.lnw{font-size:13px}
+ .ttabs button{font-size:14px;padding:7px 4px}
+ #tacBot{padding:8px 14px;gap:7px}
+ .tinfo{font-size:14px;min-height:54px;padding:7px 10px}
+ .tgrps{gap:7px}.tgrp{gap:5px;padding:4px 6px}.tgrp .tgl{font-size:13px}
+ .tgrps button{padding:6px 11px;font-size:14px}.tgrps button .key{font-size:11px}
+ .mtag{font-size:13px}.mtag .mh b{font-size:14px}.mtag .mh span,.mtag .mb .sub,.mtag .mg{font-size:12px}
+ .icsr{padding:7px 10px}.icsr b{font-size:14px}.icsr i{font-size:12px}.icsgh{font-size:13px}
+}
+@media (min-width:2300px){#tacSide{width:480px}.tboard{gap:10px}}

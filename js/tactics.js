@@ -484,7 +484,7 @@ function tacInit(inc){
  else radio(inc,'受理','指揮中心接管現場戰術指揮：地上 '+Fa+' 層'+(bf?'、地下 1 層':'')+'建物、每層 '+R+' 室，起火點 '+tacNm(B,of,oc)+
   (trap&&B.hint>=0?'，報案人表示 '+tacFlr(B,B.hint)+' 有人受困':'')+(B.roofV?'，有民眾逃往屋頂':'')+(bf?'；本建物有地下室（B1），地下室沒有對外窗，只能經樓梯排煙':'')+'。');
  radio(inc,'受理','周邊：'+TAC_SIDES.map(x=>TAC_SDN[x]+'側'+B.sd[x].nm+(B.sd[x].road&&!B.sd[x].big?'（大型車禁入）':'')).join('、')+
-  (B.hyd?'；消防栓在'+TAC_SDN[B.hyd.side]+'側約 '+B.hyd.d+' m':'；附近無消防栓，需水庫車供水')+(B.sp?'；送水口在'+TAC_SDN[B.sp.side]+'側':'')+'。')}
+  (B.hyd?'；'+tacHydN(B)+'在'+TAC_SDN[B.hyd.side]+'側約 '+B.hyd.d+' m':inc.tender?'；附近無消防栓，水庫車循環送水':'；附近無消防栓')+(B.sp?'；送水口在'+TAC_SDN[B.sp.side]+'側':'')+'。')}
 // 在場作業的車輛 → 戰術小組（新到場加入，離場移除）
 function tacSync(inc){
  const B=inc.tac;
@@ -600,7 +600,7 @@ function tacCan(B,q,k,f,c){
  if(k==='truck')return(q.ty==='pump'||lad)?'':'只有幫浦車與雲梯車需要移車';
  if(k==='stand')return q.ty!=='pump'?'只有幫浦組能做送水口加壓':!B.sp?'本建物沒有連結送水管（七層以上，或五層以上的大型場所才有）':B.sp.on&&B.sp.u!==q.u?'送水口已由其他車接妥':tacIn(q)?'人員在室內':tacCanSide(B,q,B.sp.side);
  if(k==='ppv')return q.ty==='vent'||(q.ty==='pump'&&q.code==='11')?'':'需要排煙組或 11 幫浦車的正壓排煙機';
- if(k==='hyd')return q.ty!=='pump'?'只有幫浦車能佔水':!B.hyd?'附近沒有消防栓，需水庫車供水':tacIn(q)?'人員在室內':q.tside===B.hyd.side&&!q.tmv?'已在消防栓那一側':tacCanSide(B,q,B.hyd.side);
+ if(k==='hyd')return q.ty!=='pump'?'只有幫浦車能佔水':!B.hyd?'附近沒有消防栓或可吸水的水域（水庫車循環送水）':tacIn(q)?'人員在室內':q.tside===B.hyd.side&&!q.tmv?'已在'+tacHydN(B)+'那一側':tacCanSide(B,q,B.hyd.side);
  if(k==='rit')return(lad||q.ty==='robot')?'此組無法編為 RIT':'';
  if(k==='cover')return q.ty!=='pump'?'只有幫浦組能做周界防護':Object.keys(B.exp).length?'':'四周沒有鄰棟';
  if(q.air<.3&&!lad&&q.ty!=='robot'&&k!=='exit'&&k!=='force'&&k!=='dctrl')return'空氣瓶不足，需先撤出換瓶';
@@ -652,7 +652,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
  let rOpen=0;if(k==='vent'&&f===B.F-1&&tacStair(B,c)){k='roof';rOpen=1} // 破窗排煙點頂樓樓梯間＝開啟屋頂出入口
  if(k==='truck')return tacTruck(inc,B,q,side,quiet);
  if(k==='hyd'){const why=tacCan(B,q,'hyd');if(why){if(!quiet)msg=q.cs+'：'+why;return false}
-  if(tacTruck(inc,B,q,B.hyd.side,1)){radio(inc,q.cs,'收到，移車至'+TAC_SDN[B.hyd.side]+'側消防栓佔水。');return true}return false}
+  if(tacTruck(inc,B,q,B.hyd.side,1)){radio(inc,q.cs,'收到，移車至'+TAC_SDN[B.hyd.side]+'側'+tacHydN(B)+(B.hyd.draft?'架設吸水管取水。':'佔水。'));return true}return false}
  if(k==='guard'&&side){k='cover'}
  if(k==='cover'){
   const why=q.ty!=='pump'?'只有幫浦組能做周界防護':!side||B.exp[side]===undefined?'請點選鄰棟那一側':tacIn(q)?'人員在室內':'';
@@ -1192,31 +1192,32 @@ function tacCapAll(inc,B){
 function tacLines(inc,B,dt){
  const L=tacCapAll(inc,B);
  if(B.hyd&&!tacHydOK(inc,B)&&!B.hydW&&B.sq.some(q=>q.ty==='pump')){B.hydW=1;
-  radio(inc,'受理','消防栓在'+TAC_SDN[B.hyd.side]+'側，該側沒有幫浦車佔水，目前只能用車上水箱，請移車佔水。')}
+  radio(inc,'受理',tacHydN(B)+'在'+TAC_SDN[B.hyd.side]+'側，該側沒有幫浦車'+(B.hyd.draft?'吸水':'佔水')+'，目前只能用車上水箱，請移車過去。')}
  if(tacHydOK(inc,B))B.hydW=0;
  const want=B.sq.filter(q=>(TAC_WET[q.task]||(q.task==='overhaul'&&q.tf>=0&&q.ty!=='robot'&&!q.vol&&tacOvhWet(B,tacCel(B,q.tf,q.tc))))&&!q.down).sort((a,b)=>a.lt-b.lt);
  for(const q of B.sq){q.line=0;if(q.burst>0)q.burst-=dt}
  let n=0,spN=0;
  for(const q of want){
   if(n>=L||(TAC_WET2[q.task]&&n+2>L))break;
-  if(q.task==='sky'){if(q.tmv||q.tside!==q.ws)continue;q.src='pump';q.len=0;q.pf=1;q.lu=q.u;q.lent=null;q.line=1;n+=2;continue}
-  if(q.task==='trans'){if(q.side!==q.ws)continue;q.src='pump';q.len=tacOutLen(q.tside,q.ws)+1;q.pf=.95;q.lu=q.u;q.lent=null;q.line=1;n++;continue}
-  if(q.task==='cover'){if(q.tmv)continue;q.src='pump';q.len=4;q.pf=.9;q.lu=q.u;q.lent=null;q.line=1;n++;continue}
+  if(q.task==='sky'){if(q.tmv||q.tside!==q.ws)continue;q.src='pump';q.len=0;q.pf=1;q.lu=q.u;q.lent=null;q.line=1;n+=2;q.pfR=[['車頂砲塔直接由車上幫浦出水',0]];continue}
+  if(q.task==='trans'){if(q.side!==q.ws)continue;q.src='pump';q.len=tacOutLen(q.tside,q.ws)+1;q.pf=.95;q.lu=q.u;q.lent=null;q.line=1;n++;q.pfR=[['2.5 吋線 '+q.len+' 條 −5%',-.05]];continue}
+  if(q.task==='cover'){if(q.tmv)continue;q.src='pump';q.len=4;q.pf=.9;q.lu=q.u;q.lent=null;q.line=1;n++;q.pfR=[['2.5 吋線 4 條 −10%',-.1]];continue}
   if(q.ty==='ladder'){ // 雲梯射水由同側幫浦車供水，沒有則壓力不足
    if(q.lside===undefined)continue;
-   q.src='pump';q.len=3;q.pf=B.sq.some(x=>x.ty==='pump'&&x.tside===q.tside&&!x.tmv)?.9:.5;q.line=1;n++;continue}
+   const pp=B.sq.some(x=>x.ty==='pump'&&x.tside===q.tside&&!x.tmv);q.src='pump';q.len=3;q.pf=pp?.9:.5;q.line=1;n++;q.pfR=pp?[['雲梯立管與高度 −10%',-.1]]:[['同側沒有幫浦車送水，只靠雲梯車自身 −50%',-.5]];continue}
   // 水線跟著小組：以目前位置計算；還在屋外時以目標計算
   const f=q.f>=0?q.f:q.tf,c=q.f>=0?q.c:q.tc;if(f<0)continue;
   const ln=tacLineTo(B,q,f,c);
   if(!ln||(ln.src==='sp'&&spN>=TAC_SPMAX)){q.pf=0;q.src=null;continue}
   if(ln.src==='sp')spN++;
   q.line=1;n+=TAC_WET2[q.task]?2:1;q.src=ln.src;q.len=ln.len;q.pf=ln.pf;q.lent=ln.ent;q.lu=ln.u;
+  q.pfR=tacPfWhy(B,ln,f);
   // 經過高溫空間的水帶可能燒破
   if(ln.src==='pump'&&q.f>=0&&!q.burst){
    const path=tacPath(B,tacEF(B,ln.ent),ln.ent.c,q.f,q.c);
    if(path.some(p=>tacCel(B,p[0],p[1]).h>.7)&&Math.random()<dt*.025){q.burst=8;
     radio(inc,q.cs,'水帶遭高溫燒破，出水中斷，更換水帶中。')}}
-  if(q.burst>0)q.pf=0}
+  if(q.burst>0){q.pf=0;q.pfR=[['水帶燒破，更換中',-1]]}}
  tacFlowShare(inc,B);
  inc.lines=Math.max(1,n); // 用水量依實際出水線數計算
  return L}
@@ -1234,13 +1235,18 @@ function tacFlowShare(inc,B){
  const dem=q=>TAC_FLOWD[q.ty==='ladder'?'master':q.task]||1;
  // 消防栓那一側佔水的車共用消防栓水量
  const hydP=B.hyd?B.sq.filter(x=>x.ty==='pump'&&x.tside===B.hyd.side&&!x.tmv):[],hydD=hydP.reduce((a,p)=>a+(by[p.u]||[]).reduce((b,q)=>b+dem(q),0),0)+(by.sp&&B.sp&&hydP.some(p=>p.u===B.sp.u)?by.sp.reduce((b,q)=>b+dem(q),0):0);
- const hf=hydD>TAC_HYDCAP?Math.pow(TAC_HYDCAP/hydD,.7):1;B.fshH={D:hydD,f:hf};
- if(hf<.85&&!(B.fshHW>S.t)){B.fshHW=S.t+120;radio(inc,'水源組','消防栓同時供 '+hydD.toFixed(1)+' 線的水量，超過消防栓能力，各線水壓下降！請水庫車補水或另找水源。')}
+ const hcap=B.hyd&&B.hyd.cap||TAC_HYDCAP,hf=hydD>hcap?Math.pow(hcap/hydD,.7):1;B.fshH={D:hydD,f:hf,cap:hcap};
+ if(hf<.85&&!(B.fshHW>S.t)){B.fshHW=S.t+120;radio(inc,'水源組',tacHydN(B)+'同時供 '+hydD.toFixed(1)+' 線的水量，超過'+(B.hyd.draft?'吸水':'消防栓')+'能力，各線水壓下降！請減少線數或另找水源。')}
  for(const k in by){const qs=by[k],D=qs.reduce((a,q)=>a+dem(q),0);
   const p=B.sq.find(x=>String(x.u)===k),onH=k==='sp'?(B.sp&&hydP.some(x=>x.u===B.sp.u)):p&&hydP.includes(p);
   const cap=(k==='sp'?2.4:(TAC_PCAP[p&&p.code]||2.2)*(onH||!B.hyd&&inc.tender?1:.85))+(tacRelayOK(B,k==='sp'?'sp':p&&p.u)?.8:0),f=(D>cap?Math.pow(cap/D,.7):1)*(onH?hf:1);
   B.fsh[k]={D,cap,f,n:qs.length};
-  for(const q of qs){q.pf*=f;q.fs=f}
+  const fp=D>cap?Math.pow(cap/D,.7):1;
+  for(const q of qs){q.pf*=f;q.fs=f;if(!q.pfR)q.pfR=[];
+   if(fp<.99)q.pfR.push([(k==='sp'?'連結送水管':p?p.cs:'本車')+'同時供 '+qs.length+' 線（需求 '+D.toFixed(1)+'／能力 '+cap.toFixed(1)+'）−'+Math.round((1-fp)*100)+'%',fp-1]);
+   if(onH&&hf<.99)q.pfR.push([tacHydN(B)+'過載（同時供 '+hydD.toFixed(1)+' 線）−'+Math.round((1-hf)*100)+'%',hf-1]);
+   if(k!=='sp'&&!onH&&B.hyd&&p)q.pfR.push(['未接'+tacHydN(B)+'，用車上水箱（幫浦能力打 85 折）',0]);
+   if(k!=='sp'&&tacRelayOK(B,p&&p.u))q.pfR.push(['中繼車加壓',0])}
   if(D>cap&&f<.85&&p&&!(B.fshW&&B.fshW[k]>S.t)){(B.fshW=B.fshW||{})[k]=S.t+90;radio(inc,p.cs,'本車同時供 '+qs.length+' 線（需求 '+D.toFixed(1)+'、能力 '+cap.toFixed(1)+'），超過幫浦能力，各線水壓下降！')}}
  for(const q of B.sq)if(!q.line)q.fs=1}
 // 戰術 AI：分成可個別啟用的模組。AI 指揮時全部啟用；玩家指揮時只啟用已指派職務對應的模組
@@ -1307,7 +1313,7 @@ function tacAI(inc,B,dt,M){
  if(M.water){
   if(!tacHydOK(inc,B)&&!B.sq.some(q=>q.tmv&&q.tgt===B.hyd.side)){
    const p=free.find(q=>q.ty==='pump'&&!tacIn(q)&&!tacCanSide(B,q,B.hyd.side));
-   if(p&&tacTruck(inc,B,p,B.hyd.side)){take(p);radio(inc,p.cs,'前往'+TAC_SDN[B.hyd.side]+'側消防栓佔水。')}}
+   if(p&&tacTruck(inc,B,p,B.hyd.side)){take(p);radio(inc,p.cs,'前往'+TAC_SDN[B.hyd.side]+'側'+tacHydN(B)+(B.hyd.draft?'吸水。':'佔水。'))}}
   if(B.sp&&!B.sp.on&&B.of-B.bf>=2&&!B.sq.some(q=>q.task==='stand')){
    const p=free.find(q=>q.ty==='pump'&&!tacIn(q)&&!tacCan(B,q,'stand',-1,0));
    if(p&&tacOrder(inc,p,'stand',-1,0,1)){take(p);radio(inc,p.cs,'前往'+TAC_SDN[B.sp.side]+'側送水口加壓。')}}

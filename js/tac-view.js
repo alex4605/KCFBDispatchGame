@@ -59,12 +59,16 @@ function tacFlameGlow(g,fx,fy,rad,alpha){
  else g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2)}
 // 需要再點選目標的指令
 const TAC_NEEDT={dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+let TAC_UIS=1; // 戰術畫面的縮放倍率（寬螢幕放大）
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
  const col=getComputedStyle(mid).flexDirection==='column';
- tW=Math.max(300,Math.floor(r.width-(col?12:sd.offsetWidth+18)));tH=Math.max(240,Math.floor(r.height-(col?sd.offsetHeight+18:12)));
- tcv.style.width=tW+'px';tcv.style.height=tH+'px';
- tcv.width=Math.round(tW*dpr);tcv.height=Math.round(tH*dpr);tctx.setTransform(dpr,0,0,dpr,0,0)}
+ const cw=Math.max(300,Math.floor(r.width-(col?12:sd.offsetWidth+18))),ch=Math.max(240,Math.floor(r.height-(col?sd.offsetHeight+18:12)));
+ // 寬螢幕（1900 以上，例如 2560×1440）：整個戰術畫面（平面、樓層列、文字）等比例放大，最多 1.5 倍
+ TAC_UIS=innerWidth>=1900&&!col?Math.min(1.5,Math.max(1,Math.min(innerWidth/1700,innerHeight/950))):1;
+ tW=Math.floor(cw/TAC_UIS);tH=Math.floor(ch/TAC_UIS);
+ tcv.style.width=cw+'px';tcv.style.height=ch+'px';
+ tcv.width=Math.round(cw*dpr);tcv.height=Math.round(ch*dpr);tctx.setTransform(dpr*TAC_UIS,0,0,dpr*TAC_UIS,0,0)}
 function tacOpen(inc){
  if(!tacHas(inc)){msg='此案類沒有戰術指揮';return}
  if(!inc.rev){msg='首車到場回報後才能進入戰術指揮';return}
@@ -319,7 +323,7 @@ function drawTac(){
   const sup=B.sq.find(q=>q.ty==='pump'&&q.tside===s&&!q.tmv);
   if(sup&&TP[sup.u]){g.strokeStyle='rgba(125,179,232,.85)';g.lineWidth=4;g.beginPath();g.moveTo(hp[0],hp[1]);g.lineTo(TP[sup.u][0],TP[sup.u][1]);g.stroke()}
   g.fillStyle='#c8332c';g.beginPath();g.arc(hp[0],hp[1],8,0,TAU);g.fill();g.fillStyle='#fff';g.font='600 9px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('栓',hp[0],hp[1]);
-  g.fillStyle=sup?'#7db3e8':'#e2564f';g.font='10px '+FONT;g.fillText('消防栓 '+B.hyd.d+'m'+(sup?'':'（未佔水）'),hp[0],hp[1]+(s==='n'||s==='s'?16:-16))}
+  g.fillStyle=sup?'#7db3e8':'#e2564f';g.font='10px '+FONT;g.fillText(tacHydN(B)+' '+B.hyd.d+'m'+(sup?'':B.hyd.draft?'（未吸水）':'（未佔水）'),hp[0],hp[1]+(s==='n'||s==='s'?16:-16))}
  if(vf>=B.F){ // 屋頂俯視：樓梯間出入口、屋頂排煙口、避難民眾
   g.fillStyle='#3a3833';g.fillRect(G.bx-5,G.by-5,G.bw+10,G.bh+10);
   g.strokeStyle='rgba(255,255,255,.06)';g.lineWidth=1;for(let k=10;k<G.bw;k+=16){g.beginPath();g.moveTo(G.bx+k,G.by);g.lineTo(G.bx+k,G.by+G.bh);g.stroke()}
@@ -854,7 +858,7 @@ function tacSideHTML(inc){
  const use=flowing.length*LPS,hydU=B.hyd&&B.sq.find(q=>q.ty==='pump'&&q.tside===B.hyd.side&&!q.tmv);
  const bar=(v,c)=>'<span class="tbar"><i style="width:'+Math.round(Math.max(0,Math.min(1,v))*100)+'%;background:'+c+'"></i></span>';
  h+='<div class="hd mt">水源與水線</div><div class="twater">';
- h+='<div class="row"><span>水源</span><span>'+(B.hyd?'消防栓 '+TAC_SDN[B.hyd.side]+'側 '+B.hyd.d+' m · '+(hydU?'<b style="color:var(--grn)">'+hydU.cs+' 佔水</b>':'<b style="color:var(--red)">未佔水，只能用水箱</b>')
+ h+='<div class="row"><span>水源</span><span>'+(B.hyd?tacHydN(B)+' '+TAC_SDN[B.hyd.side]+'側 '+B.hyd.d+' m · '+(hydU?'<b style="color:var(--grn)">'+hydU.cs+(B.hyd.draft?' 吸水':' 佔水')+'</b>':'<b style="color:var(--red)">未佔水，只能用水箱</b>')
   :inc.shuttle?'無消防栓，幫浦車輪流補水':inc.tender?'無消防栓，水庫車循環送水':'—')+'</span></div>';
  h+=tenderHTML(inc);
  h+='<div class="row"><span>供水／用水</span><span>'+inflow+' / '+use+' L/s '+bar(inflow?use/inflow:use?1:0,use>inflow?'var(--red)':'var(--blu)')+'</span></div>';
@@ -864,7 +868,7 @@ function tacSideHTML(inc){
  const ls=B.sq.filter(q=>q.ty!=='ladder'&&(q.line||TAC_WET[q.task]));
  for(const q of ls){const st=q.burst>0?['燒破','var(--red)']:!q.line?['扁帶・未分到水','var(--fg3)']:q.pf<=0?['扁帶・無壓','var(--fg3)']:[Math.round(q.pf*100)+'%',q.pf>=.7?'var(--blu)':q.pf>=.4?'var(--amb)':'var(--red)'];
   h+='<div class="tline"><b class="mono">'+q.cs+'</b><span class="sub">'+(q.src==='sp'&&q.line?'連結送水管':(q.task==='cover'?'鄰棟周界防護':'自 '+((B.sq.find(x=>x.u===q.lu)||q).cs)+((q.lent||q.inEnt)?' · '+TAC_SDN[(q.lent||q.inEnt).side]+'側入口':'')))+(q.line?' · '+q.len+' 條':'')+(q.line&&q.fs<.97?' · <b style="color:var(--amb)">分流 '+Math.round(q.fs*100)+'%</b>':'')+'</span>'+
-   '<span>'+bar(q.line?q.pf:0,st[1])+' <b style="color:'+st[1]+'">'+st[0]+'</b></span></div>'}
+   '<span>'+bar(q.line?q.pf:0,st[1])+' <b style="color:'+st[1]+'">'+st[0]+'</b></span>'+tacLineWhy(inc,B,q,L)+'</div>'}
  h+='</div>';
  // ===== 分頁：ICS（救護與編組） =====
  h+='\u0001ics';
@@ -970,6 +974,14 @@ function tacOrdWhy(B,q,k){
  const t=TAC_NEEDT[k],pr=(B.L.N.find(n=>n.ty==='room'&&n.wins&&n.wins.some(w=>B.sd[w].road))||B.L.N.find(n=>n.ty==='room')).c;
  const why=k==='truck'?tacCan(B,q,'truck'):k==='roofres'||k==='roof'?tacCan(B,q,k,B.F-1,0):tacCan(B,q,k,t?B.bf:-1,t?pr:0);
  return why&&!(t&&/高度|道路|窗|地下|樓梯|搜索|頂樓|房間|請點/.test(why))?why:tacRefuse(B,q,k)}
+// 水線下方一行：供水車 出水 N kg/cm²（影響原因）
+function tacLineWhy(inc,B,q,L){
+ const sup=q.src==='sp'?'連結送水管':(B.sq.find(x=>x.u===q.lu)||q).cs;
+ if(!q.line)return'<div class="tlr"><i>未分到水：可用 '+L+' 線已用完（增加幫浦車或接水源）</i></div>';
+ const base=q.task==='trans'||q.task==='cover'||q.task==='guard'?5:7,wo=waterOK(inc);
+ const kg=wo?Math.round(base*Math.max(0,q.pf)*10)/10:0;
+ const why=(q.pfR||[]).map(r=>r[0]);if(!wo)why.unshift('水源見底，射水中斷');
+ return'<div class="tlr">'+esc(sup)+' 出水 <b>'+kg+'</b> kg/cm²（'+(why.length?why.map(w=>/−|見底|燒破|沒有|未接/.test(w)?'<i>'+esc(w)+'</i>':esc(w)).join('、'):'正常')+'）</div>'}
 // 指令說明拆成欄位：可執行／目標／效果／注意
 function tacDescF(d){const p=d.split('｜');return p.length<3?{fx:d}:{who:p[0],tgt:p[1],fx:p[2],note:p[3]||''}}
 // 指令面板：上方說明列（選取的小組、滑過或選定的指令說明與不可執行原因），下方依類別分組的按鈕
@@ -1055,7 +1067,7 @@ tcv.addEventListener('contextmenu',e=>e.preventDefault());
 {const tb=document.getElementById('tacBot'),hv=k=>{if(k!==TAC.hord){TAC.hord=k;tBotH='';tacUI()}};
  tb.addEventListener('mouseover',e=>{const b=e.target.closest('[data-tord]');hv(b?b.dataset.tord:null)});
  tb.addEventListener('mouseleave',()=>hv(null))}
-tcv.addEventListener('pointermove',e=>{const r=tcv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+tcv.addEventListener('pointermove',e=>{const r=tcv.getBoundingClientRect(),x=(e.clientX-r.left)/TAC_UIS,y=(e.clientY-r.top)/TAC_UIS;
  if(TAC.drag){TAC.drag.x1=x;TAC.drag.y1=y}
  if(e.pointerType!=='touch')TAC.hov={x,y}});
 tcv.addEventListener('pointerleave',e=>{if(e.pointerType!=='touch')TAC.hov=null});
@@ -1064,7 +1076,7 @@ tcv.addEventListener('wheel',e=>{if(TAC.open)e.preventDefault()},{passive:false}
 // 畫面點擊：按下時選小組或開始框選；沒拖曳就在放開時下令
 tcv.addEventListener('pointerdown',e=>{
  const inc=S.inc.find(i=>i.id===TAC.id);if(!inc||!inc.tac)return;
- const B=inc.tac,r=tcv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ const B=inc.tac,r=tcv.getBoundingClientRect(),x=(e.clientX-r.left)/TAC_UIS,y=(e.clientY-r.top)/TAC_UIS;
  const hit=TAC.hits.find(h=>x>=h.x&&x<=h.x+h.w&&y>=h.y&&y<=h.y+h.h);
  if(e.pointerType==='touch'){TAC.hov={x,y,pin:1}}
  if(hit&&hit.t==='flr'){TAC.vf=hit.f;return}

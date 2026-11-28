@@ -186,7 +186,7 @@ function tacYardPost(inc,B,T){
   B.sd={};B.sd[rs]={road:2,big:true,nm:'道路'};B.sd[fs]={road:0,big:false,nm:'林地'};
   for(const s of TAC_SIDES)if(!B.sd[s])B.sd[s]={road:5,big:false,nm:'產業道路'};
   B.arr=rs;B.exp={};B.ents=TAC_SIDES.filter(s=>B.sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s]}));B.fside=fs;
-  if(!inc.hy||inc.tender)B.hyd=null;else B.hyd={side:rs,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)};
+  if(!inc.hy||inc.tender)B.hyd=null;else B.hyd=tacHydMk(inc,rs);
   return}
  if(!T.river)return;
  const rv=B.L.N.filter(n=>n.riv);if(!rv.length)return;

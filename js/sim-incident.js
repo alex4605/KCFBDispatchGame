@@ -61,12 +61,12 @@ function stepWater(inc,dt,first){
     if(CODE[u.code].cap&&u.code!=='61')pmp++}
    const ready=inc.shuttle?false:inc.tender?(tend>=1&&pmp>=1):(pmp>=1+inc.relay);
    if(!inc.hooked&&ready&&first){
-    if(!inc.hook){inc.hook=HOOKT;
-     radio(inc,first.cs,inc.tender?'水庫車就位，開始接管供水，約需 '+HOOKT+' 秒。':
+    if(!inc.hook){inc.hook=inc.draft?HOOKT*2.5:HOOKT;
+     radio(inc,first.cs,inc.tender?'水庫車就位，開始接管供水，約需 '+HOOKT+' 秒。':inc.draft?'附近'+inc.drN+'可以取水：幫浦車架設吸水管、放入濾水器並引水，約需 '+Math.round(HOOKT*2.5)+' 秒。':
       '幫浦車開始佔水並接妥 4 吋硬管，約需 '+HOOKT+' 秒可以出水。')}
     else{inc.hook-=dt;
      if(inc.hook<=0){inc.hooked=1;inc.hook=0;
-      radio(inc,first.cs,'已完成佔水，水線加壓完成，正常出水。')}}}
+      radio(inc,first.cs,inc.draft?'吸水完成（'+inc.drN+'），水線加壓完成，持續出水。':'已完成佔水，水線加壓完成，正常出水。')}}}
    if(!ready&&!inc.hooked)inc.hook=0;
    const share=inc.tender?1:hydShare(inc);
    const inflow=inflowOf(inc);
@@ -82,7 +82,7 @@ function stepWater(inc,dt,first){
     const tp0=tankPool(inc),lowW=tp0[1]&&tp0[0]/tp0[1]<.25&&inflow<inc.lines*LPS;
     if(inc.tac){}
     else if(!inc.lines){inc.lines=want;
-     radio(inc,boss.cs,'現場評估後佈設 '+inc.lines+' 線攻擊，水源由'+(inc.shuttle?'幫浦車輪流往返補水':inc.tender?'水庫車供應':'消防栓佔水')+'。')}
+     radio(inc,boss.cs,'現場評估後佈設 '+inc.lines+' 線攻擊，水源由'+(inc.shuttle?'幫浦車輪流往返補水':inc.tender?'水庫車循環送水':inc.draft?inc.drN+'吸水':'消防栓佔水'+(inc.relay?'、'+inc.relay+' 輛中繼':''))+'。')}
     else{inc.lineT=(inc.lineT||10)-dt;
      if(inc.lineT<=0){inc.lineT=12;
       if((inc.dry||lowW)&&inc.lines>1){inc.lines--;
