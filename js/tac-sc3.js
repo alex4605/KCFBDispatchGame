@@ -130,7 +130,8 @@ function tacSc3Init(inc,B,T,put,seed){
    put(0,n.c,k,bus?.75+R()*.2:.55+R()*.35,1);tot+=k;
    const p=bus?tacRint(1,2):R()<(inc.k==='hiway'?.6:.45)?Math.min(k,tacRint(1,2)):0;if(p){x.pin=p;pin+=p}}
   const v0=pk(vs);B.of=0;B.oc=v0.c;
-  if(R()<.4){B.chem=Object.assign({},TAC_FUEL);B.chemK=1;B.leak={f:0,c:pk(vs).c,on:1};cel(0,B.leak.c).fuel=1;if(R()<.25){const x=cel(0,B.leak.c);x.h=.4;x.s=.6}}
+  const sm=tacSmall(B); // 小案件：漏油約 15%、一開始就起火約 5%（國道、連環車禍：40%、25%）
+  if(R()<(sm?.15:.4)){B.chem=Object.assign({},TAC_FUEL);B.chemK=1;B.leak={f:0,c:pk(vs).c,on:1};cel(0,B.leak.c).fuel=1;if(R()<(sm?.05:.25)){const x=cel(0,B.leak.c);x.h=.4;x.s=.6}}
   B.sc.brief=(inc.k==='buscrash'?'遊覽車車禍':inc.k==='pileup'?'連環車禍':'國道事故')+'：'+vs.length+' 輛車'+(inc.k==='pileup'?'追撞':'碰撞')+'，傷患約 '+tot+' 名，其中 '+pin+' 名被車體夾住要破壞救援。'+
    '先在上游設置警戒（大型車阻擋後方來車），車輛穩固後再破壞救援（救助組、特搜最快）；開設檢傷站、醫療站分類後送'+(B.chem?'；有車輛油料外洩，禁止火源，先止漏、圍堵並泡沫覆蓋':'')+'。';
   return true}

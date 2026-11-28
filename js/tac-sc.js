@@ -177,6 +177,8 @@ function tacScAir(B){
  for(const x of B.cells){const n=B.L.N[x.c];if(!n.pipe&&!n.hole)continue;
   x.o2=Math.min(x.o2,20.9-(n.hole?1.5:6)*Math.min(1,(x.cz||0)*1.3))}}
 // 每幀：氣體引燃與氣爆、油池泡沫覆蓋與引燃、侷限空間送風與偵測
+// 小案件：案類等級 0（車禍受困、兒童受困車內等），漏油、起火機率與引燃速度都較低
+const tacSmall=B=>!!(B.T&&B.T.small)||(KIND[B.k]&&(KIND[B.k].lv||0)===0);
 function tacScStep(inc,B,dt){
  if(!B.sc)return;const sc=B.sc.k;
  tacSc4Step(inc,B,dt);tacRescStep(inc,B,dt);tacSc5Step(inc,B,dt);
@@ -205,7 +207,8 @@ function tacScStep(inc,B,dt){
   for(const q of B.sq)if(q.task==='guard'&&q.line&&q.pf>0&&tacIn(q)&&q.f===q.tf&&q.c===q.tc&&(q.code==='57'||q.code==='01'||q.cafs)){
    for(const c of[q.c].concat(B.L.N[q.c].nb)){const y=tacCel(B,0,c);if((y.pool||y.fuel)&&!(y.foam>S.t)){y.foam=S.t+150;if(!B.foamM){B.foamM=1;radio(inc,q.cs,'泡沫覆蓋油池完成，隔絕油氣。')}}}}
   const fire=B.cells.some(x=>x.h>.05);
-  for(const x of B.cells)if((x.pool||x.fuel)&&x.fu>0&&x.h<.02&&!(x.foam>S.t)&&!fire&&Math.random()<.0015){x.h=.3;x.s=.5;
+  const ig=tacSmall(B)?.004:.03; // 每秒引燃機率：小案件（車禍受困等）低很多
+  for(const x of B.cells)if((x.pool||x.fuel)&&x.fu>0&&x.h<.02&&!(x.foam>S.t)&&!fire&&Math.random()<dt*ig){x.h=.3;x.s=.5;
    radio(inc,'安全官',tacNm(B,0,x.c)+'油池被引燃！應先以泡沫覆蓋油池。');tacEvt(inc,B,'danger','油池引燃（'+tacNm(B,0,x.c)+'）',1);tacDecPool(inc,B,x);break}}
  // 氣爆後，瓦斯持續外洩的地方一直有火（止漏才會熄）
  if(B.blasted&&B.leak&&B.leak.on){const x=tacCel(B,B.leak.f,B.leak.c);if(x.fu>0)x.h=Math.max(x.h,.35)}}

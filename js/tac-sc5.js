@@ -21,7 +21,7 @@ function tacSc5Post(inc,B,T){
   B.sc.brief='車禍受困：市區道路 '+vs.length+' 輛車碰撞，'+p+' 名駕駛或乘客被變形的車體夾住。先在來車方向設置警戒，車輛穩固（墊木、拔鑰匙斷電，避免未爆氣囊爆開）後破壞救援；受困較久的先醫療處置，救出後上長背板送醫'+(B.chem?'；有車輛漏油，禁止火源':'')+'。';
   B.sc.done='受困者都已救出送醫';return d}
  if(k==='kidcar'){noLeak();for(const x of B.cells)if(x.vic||x.pin)clr(x);
-  const c=pk(rooms.filter(n=>n.kind==='car')||rooms),x=cel(c.c);add(x,1,.78);x.pin=1;x.stab=1;x.kidc=1;B.of=0;B.oc=c.c;
+  const cs=rooms.filter(n=>n.kind==='car'),c=pk(cs.length?cs:rooms.filter(n=>/^(cab|bus)$/.test(n.kind))),x=cel(c.c);add(x,1,.78);x.pin=1;x.stab=1;x.kidc=1;B.of=0;B.oc=c.c;
   B.sc.brief='兒童受困車內：家長下車時鑰匙鎖在車內，'+tacNm(B,0,c.c)+'裡有一名幼童，烈日下車內溫度快速上升（每分鐘惡化）。不必等開鎖：選離孩子最遠的車窗「破壞救援」破窗開鎖，抱出後交救護降溫。';
   B.sc.done='幼童已救出、交救護送醫';return d}
  if(k==='machine'){B.mach=1;B.pwScn=1;

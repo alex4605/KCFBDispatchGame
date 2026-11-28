@@ -1050,7 +1050,7 @@ function tacIncident0(inc,dt,first,flow){
    if(half&&!inc.train){S.rep-=5;if(S.rep<=0){S.rep=0;S.over=true}}
    if(B.hoax)radio(inc,first?first.cs:'現場',tacFlr(B,B.hint)+' 各戶查證完畢，查無火煙與傷患，'+(inc.pm.mal?'研判為惡作劇謊報，建議轉報 110 究辦。':'研判為善意誤報。'));
    else radio(inc,first?first.cs:'現場',(half?'建物大部分燒毀，火勢因燃料耗盡熄滅（評鑑 -5）':B.sc&&(!B.peak||B.out)?tacScDone(B):'火勢完全撲滅、殘火處理完成')+'，救出 '+B.resc+' 名、送醫 '+B.tx+' 名'+(B.lost?'、罹難 '+B.lost+' 名':'')+(B.burnt?'，燒毀 '+B.burnt+' 室':'')+'。');
-   if(B.st.media)repGain(2);
+   if(B.st.media)repGain(B.st.media.auto?1:2);
    // 親自指揮的戰術案件：依結案報告等級累積評鑑
    // 親自指揮的獎勵（略高於交給 AI）：等級評鑑、依案件等級加成的指揮獎金、每名送醫多 100 元
    // 依親自下令的程度給獎勵（tacPlayF）；只開著畫面、全交給 SOP 不算親自指揮

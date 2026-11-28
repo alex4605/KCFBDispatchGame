@@ -97,8 +97,11 @@ function tacStnStep(inc,B,dt){
   if(s.staff){if(!B.st.icp)tacStnClose(inc,B,k,'指揮站撤除，幕僚撤離');continue}
   if(s.u!==null&&!B.sq.some(q=>(q.epa||q.vol||q.sdb)&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
- // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，每 90 秒扣評鑑（最多 4 次）
- if(B.vtot&&!B.st.media&&!B.done){B.mediaT=(B.mediaT||60)-dt;
+ // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，第 90 秒起每 90 秒扣評鑑（最多 4 次）
+ // 警方到場：由警方協助自動開設聯訪處（不必先開設指揮站；結案評鑑只 +1，自己開設的 +2）
+ if(inc.pol===2&&!B.st.media&&!B.done&&B.vtot){B.st.media={u:null,side:B.arr,t:S.t,staff:0,auto:1};tacEvt(inc,B,'milestone','警方協助開設聯訪處');
+  radio(inc,'110','警方協助於'+TAC_SDN[B.arr]+'側封鎖線外開設聯訪處，統一對媒體與家屬發布。')}
+ if(B.vtot&&!B.st.media&&!B.done){B.mediaT=(B.mediaT||90)-dt;
   if(B.mediaT<=0){B.mediaT=90;if((B.mediaN||0)<4){B.mediaN=(B.mediaN||0)+1;S.rep-=1;
    radio(inc,'受理','媒體與家屬在封鎖線外聚集詢問，現場沒有聯訪處統一發布（評鑑 -1）。')}}}
  // 集結區：沒有屋外待命的幫浦組又還有火點，請求增派一輛幫浦車
