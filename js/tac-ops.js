@@ -140,7 +140,10 @@ function tacEMS(inc,B,dt){
   if(!B.pts.length)continue;
   // 有檢傷站才依傷勢排序，否則照救出先後
   const q=(B.st.triage?B.pts.slice().sort((a,b)=>TAC_SEVP[a.sev]-TAC_SEVP[b.sev]||a.t-b.t):B.pts.slice()).filter(p=>!(p.cont>0));
-  if(!q.length){if(B.pts.some(p=>p.cont>0)&&!B.st.decon&&S.t-(B.contW||-99)>60){B.contW=S.t;radio(inc,u.cs,'傷患集結處有受污染的傷患，要先除污才能上救護車：請開設除污站（化災車、幫浦車）。')}continue}
+  // 沒有除污站：受污染傷患等 60 秒後由救護組就地粗除污（脫除外衣、清水沖洗）再後送
+  if(!B.st.decon){let g=0;for(const p of B.pts)if(p.cont>0){p.ct=p.ct||S.t;if(S.t-p.ct>60){p.cont=0;g++}}
+   if(g)radio(inc,u.cs,'沒有除污站，就地為 '+g+' 名受污染傷患粗除污（脫除外衣、清水沖洗）後後送。')}
+  if(!q.length){if(B.pts.some(p=>p.cont>0)&&!B.st.decon&&S.t-(B.contW||-99)>60){B.contW=S.t;radio(inc,u.cs,'傷患集結處有受污染的傷患，要先除污才能上救護車：請開設除污站（化災車），否則約 1 分鐘後就地粗除污再後送。')}continue}
   const take=[q[0]];
   if(q[0].sev!=='red'&&q[1]&&q[1].sev!=='red')take.push(q[1]);
   for(const p of take)B.pts.splice(B.pts.indexOf(p),1);
