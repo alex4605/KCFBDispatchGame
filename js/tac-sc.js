@@ -25,6 +25,7 @@ const TAC_SCCHEM={
 const TAC_SCOK={search:1,search2:1,plug:1,gas:1,vent:1,npv:1,hydro:1,dctrl:1,exit:1,rit:1,ident:1};
 // 版面：場區節點之間的門牆規則（同一輛車的車頭與貨斗相通；人孔只通道路與地下管道）
 function tacScAdj(a,b,door,wall,L){
+ if(a.court||b.court){wall(a,b);return true} // 天井、露天作業區：四面是牆
  if((a.xp&&b.ty==='hall')||(b.xp&&a.ty==='hall')){door(a,b);return true}
  if(a.vid&&a.vid===b.vid&&a.kind!=='tankr'&&b.kind!=='tankr'){door(a,b);L.op.add(Math.min(a.c,b.c)*1000+Math.max(a.c,b.c));return true}
  if(a.pipe||b.pipe||a.hole||b.hole){const ab=[a,b];
@@ -85,7 +86,7 @@ function tacScLay(T,K,L,add,room,cuts,R){
  shops(y4,L.GH)}
 // 初始化（tacInit 最後）：起火點、氣源、受困者、周邊道路
 function tacScInit(inc,B,T){
- const sc=T.sc,t=tacTxt(inc),R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room');
+ const sc=T.sc,t=tacTxt(inc),R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room'&&!n.court);
  const cel=(f,c)=>tacCel(B,f,c),pk=a=>a[Math.floor(R()*a.length)];
  B.sc={k:sc};
  for(const x of B.cells){x.vic=0;x.hid=0}
@@ -290,21 +291,27 @@ function tacCarDraw(g,x,y,len,wid,col,vert,dark,moto){
  g.restore()}
 // 一格內的一排汽車：格子寬就橫停（沿車道），格子高就直停（停車格）
 function tacCarRow(g,r,dark,rnd){
- const vert=r[3]>r[2]*1.15,L2=vert?r[3]:r[2],W2=vert?r[2]:r[3],wid=Math.min(W2*.52,L2*.86/2.5),len=wid*2.5,n2=Math.max(1,Math.floor(L2/(len*1.15)));
+ const VS=TAC.vs||8,vert=r[3]>r[2]*1.15,L2=vert?r[3]:r[2],W2=vert?r[2]:r[3],wid=Math.min(W2*.8,1.8*VS),len=Math.min(L2*.92,4.5*VS),n2=Math.max(1,Math.floor(L2/(len*1.25)));
  for(let i=0;i<n2;i++){const c=['#6a7a8a','#8a6a5a','#5a5a5a','#7a7a6a','#3a4a6a'][Math.floor(rnd()*5)],o=(i+.5)*L2/n2;
   tacCarDraw(g,vert?r[0]+r[2]/2:r[0]+o,vert?r[1]+o:r[1]+r[3]/2,len,wid,c,vert,dark)}}
+// 長車（貨車車頭、貨斗、遊覽車、槽車）：依比例尺畫，貼齊同一輛車的另一節（vid）
+function tacLongVeh(g,B,n,r,realL,col,dark,draw){
+ const VS=TAC.vs||8,len=Math.min(r[2]-4,realL*VS),wid=Math.min(r[3]*.85,2.5*VS),pt=n.vid?B.L.N.find(m=>m!==n&&m.vid===n.vid):null;
+ const x0=pt?(pt.gx>n.gx?r[0]+r[2]-len:r[0]):r[0]+(r[2]-len)/2,y0=r[1]+(r[3]-wid)/2;
+ g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x0+2,y0+2,len,wid);g.fillStyle=dark?'#1e1c19':col;g.fillRect(x0,y0,len,wid);
+ if(!dark&&draw)draw(x0,y0,len,wid,pt&&pt.gx>n.gx)}
 // 繪製：場區的車輛、騎樓店面、人孔、地下管道、邊坡
 function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
  const t=G.t,col=c=>dark?'#1e1c19':c;
  tacSc2Draw(g,G,B,n,x,r,k,dark,rnd);
  if(k==='car')tacCarRow(g,r,dark,rnd);
- else if(k==='scoot'){const wid=Math.max(3,Math.min(r[2]*.08,t*.07)),len=Math.min(r[3]*.7,wid*2.6),n2=Math.max(2,Math.floor((r[2]-6)/(wid*1.7)));for(let i=0;i<n2;i++)tacCarDraw(g,r[0]+3+wid+i*(r[2]-6-wid*2)/Math.max(1,n2-1),r[1]+r[3]/2,len,wid,['#8a8a8a','#6a7a9a','#9a6a5a','#4a4a4a'][i%4],1,dark,1)}
+ else if(k==='scoot'){const VS=TAC.vs||8,wid=Math.min(r[2]*.12,.8*VS),len=Math.min(r[3]*.85,2*VS),n2=Math.max(2,Math.floor((r[2]-6)/(wid*1.6)));for(let i=0;i<n2;i++)tacCarDraw(g,r[0]+3+wid+i*(r[2]-6-wid*2)/Math.max(1,n2-1),r[1]+r[3]/2,len,wid,['#8a8a8a','#6a7a9a','#9a6a5a','#4a4a4a'][i%4],1,dark,1)}
  else if(k==='shopf'){g.fillStyle=col('#3a3630');g.fillRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6);g.strokeStyle=dark?'#2a221c':'#8a857a';g.lineWidth=2;g.strokeRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6);
   g.strokeStyle='rgba(200,200,190,.25)';g.lineWidth=1;for(let yy=r[1]+8;yy<r[1]+r[3]-4;yy+=4){g.beginPath();g.moveTo(r[0]+6,yy);g.lineTo(r[0]+r[2]-6,yy);g.stroke()}}
- else if(k==='cab'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r[0]+3,y0+2,r[2]-4,hh);g.fillStyle=col('#3a5a8a');g.fillRect(r[0]+2,y0,r[2]-4,hh);g.fillStyle=dark?'#141210':'rgba(20,24,30,.7)';g.fillRect(r[0]+r[2]*.68,y0+hh*.12,r[2]*.14,hh*.76);g.fillStyle='rgba(255,255,255,.12)';g.fillRect(r[0]+r[2]*.12,y0+hh*.15,r[2]*.45,hh*.7)}
- else if(k==='cargo'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r[0]+1,y0+2,r[2]-2,hh);g.fillStyle=col('#7a7468');g.fillRect(r[0],y0,r[2]-2,hh);g.strokeStyle='rgba(30,28,25,.5)';g.lineWidth=1;for(let i=1;i<8;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/8,y0);g.lineTo(r[0]+r[2]*i/8,y0+hh);g.stroke()}}
- else if(k==='tankr'){const hh=r[3]*.6,y0=r[1]+(r[3]-hh)/2;g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(.06);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(-r[2]/2+3,-hh/2+3,r[2]-4,hh);g.fillStyle=col('#b8b4aa');g.fillRect(-r[2]/2+2,-hh/2,r[2]-4,hh);g.fillStyle=dark?'#1e1c19':'#8a8680';g.fillRect(-r[2]/2+2,-hh*.08,r[2]-4,hh*.16);g.restore();g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(Math.PI/4);
-  g.fillStyle=dark?'#1e1c19':'#e9a13b';g.fillRect(-t*.12,-t*.12,t*.24,t*.24);g.restore();
+ else if(k==='cab')tacLongVeh(g,B,n,r,2.6,'#3a5a8a',dark,(x,y,l,w,toR)=>{g.fillStyle='rgba(20,24,30,.7)';g.fillRect(toR?x+2:x+l-l*.22,y+w*.1,l*.2,w*.8)});
+ else if(k==='cargo')tacLongVeh(g,B,n,r,10,'#7a7468',dark,(x,y,l,w)=>{g.strokeStyle='rgba(30,28,25,.5)';g.lineWidth=1;for(let i=1;i<8;i++){g.beginPath();g.moveTo(x+l*i/8,y);g.lineTo(x+l*i/8,y+w);g.stroke()}});
+ else if(k==='tankr'){tacLongVeh(g,B,n,r,10,'#b8b4aa',dark,(x,y,l,w)=>{g.fillStyle='#8a8680';g.fillRect(x,y+w*.42,l,w*.16);g.save();g.translate(x+l/2,y+w/2);g.rotate(Math.PI/4);g.fillStyle='#e9a13b';g.fillRect(-w*.18,-w*.18,w*.36,w*.36);g.restore()});
+
   g.fillStyle='rgba(236,234,227,.6)';g.font='10px '+FONT;g.textAlign='center';g.textBaseline='bottom';g.fillText('翻覆',r[0]+r[2]/2,r[1]+r[3]-2)}
  else if(k==='verge'){g.fillStyle=dark?'#161412':'#2e3a24';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle='rgba(200,200,190,.5)';g.lineWidth=2;g.beginPath();g.moveTo(r[0],r[1]+2);g.lineTo(r[0]+r[2],r[1]+2);g.stroke()}
  else if(k==='site'){for(let i=0;i<3;i++){g.fillStyle=col(['#c8a03a','#5a5650','#8a6a3a'][i]);g.fillRect(r[0]+r[2]*(.15+i*.27),r[1]+r[3]*(.3+.2*rnd()),r[2]*.16,r[3]*.25)}

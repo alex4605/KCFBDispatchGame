@@ -9,7 +9,7 @@ Object.assign(TACK,{
  odor:{f:[3,7],lay:'corridor',k:[3,3],b:0,unit:1,nofire:1,sc:'odor'},
  lift:{f:[5,9],lay:'corridor',k:[3,3],b:0,unit:1,nofire:1,sc:'lift',cv:'center'}});
 Object.assign(TAC_CVW,{forced:TAC_RES,odor:TAC_RES});
-Object.assign(TAC_RK,{bus:{n:'遊覽車',fk:1.3,sr:1.2},cfs:{n:'集散倉庫',fk:1.5,sr:1.4},cont:{n:'貨櫃',fk:1.3,sr:.8},xp:{n:'避難連絡通道',fk:.1,sr:.5},engine:{n:'機艙',fk:1.4,sr:1.3},lift:{n:'電梯車廂',fk:.2,sr:.6}});
+Object.assign(TAC_RK,{court:{n:'天井',fk:0,sr:.1},bus:{n:'遊覽車',fk:1.3,sr:1.2},cfs:{n:'集散倉庫',fk:1.5,sr:1.4},cont:{n:'貨櫃',fk:1.3,sr:.8},xp:{n:'避難連絡通道',fk:.1,sr:.5},engine:{n:'機艙',fk:1.4,sr:1.3},lift:{n:'電梯車廂',fk:.2,sr:.6}});
 Object.assign(TAC_YFU,{bus:1.2,cfs:1.5,cont:1.3,xp:0});
 const TAC_SCY={road:1,pit:1,tunnel:1,cargo:1};
 Object.assign(TAC_TASK,{shore:'架設支撐'});
@@ -22,7 +22,7 @@ function tacSc2Lay(T,K,L,add,room,cuts,R){
   const twin=R()<.5,veh=/遊覽車|巴士|客運/.test(T.txt||'')?'bus':pk(['truck','truck','bus','car']);L.var=veh+(twin?'2':'');
   L.varN=(twin?'雙孔隧道':'設有避難坑道')+'・'+{truck:'貨車',bus:'遊覽車',car:'小客車'}[veh]+'起火';
   lanes(0,L.GW,0,.6,{safe:1,twin:twin?1:0});
-  for(const fx of R()<.5?[.27,.73]:[.18,.5,.82]){const x=L.GW*fx;room(x,.6,.45,.4,'xp').xp=1}
+  for(const fx of R()<.5?[.27,.73]:[.18,.5,.82]){const x=L.GW*fx-.4;room(x,.6,.8,.4,'xp').xp=1}
   const x0=L.GW*(.4+R()*.12),y1=1,y2=2,cw=1.1;
   lanes(0,x0-cw-.9,y1,y2,{tube:1});room(x0-cw-.9,y1,cw,y2-y1,'car').tube=1;lanes(x0-.9,x0,y1,y2,{tube:1});
   let xe=x0;
@@ -43,7 +43,7 @@ function tacSc2Lay(T,K,L,add,room,cuts,R){
  return false}
 // 初始化：回傳 true 表示已處理
 function tacSc2Init(inc,B,T,put,seed){
- const sc=T.sc,t=tacTxt(inc),R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room'),cel=(f,c)=>tacCel(B,f,c),pk=a=>a[Math.floor(R()*a.length)];
+ const sc=T.sc,t=tacTxt(inc),R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room'&&!n.court),cel=(f,c)=>tacCel(B,f,c),pk=a=>a[Math.floor(R()*a.length)];
  const sides=(m)=>{const sd={};for(const s of TAC_SIDES)sd[s]=m[s];B.sd=sd;B.exp={};B.sp=null;
   B.ents=TAC_SIDES.filter(s=>sd[s].road&&B.L.ent[s]!==undefined).map(s=>({side:s,c:B.L.ent[s],lock:0}));
   if(!sd[B.arr]||!sd[B.arr].road)B.arr=B.ents[0].side;if(B.hyd&&!sd[B.hyd.side].road)B.hyd.side=B.arr};
@@ -54,7 +54,8 @@ function tacSc2Init(inc,B,T,put,seed){
   sides({e:{road:4,big:true,nm:up==='e'?'隧道口（上游）':'隧道口（下游）'},w:{road:4,big:true,nm:up==='w'?'隧道口（上游）':'隧道口（下游）'},n:{road:0,big:false,nm:'山體'},s:{road:0,big:false,nm:'山體'}});
   B.arr=up;if(B.hyd)B.hyd.side=up;
   for(const n of N){const x=cel(0,n.c);if(n.tube||n.xp)x.v=0;if(n.ty==='hall'){x.v=0;n.portal=n.gx<.05?'w':n.gx+n.gw>B.L.GW-.05?'e':null;if(n.portal)x.v=1}if(n.xp)x.v=0}
-  for(const n of rooms)if(n.xp)for(const o of n.nb)B.cd.add(tacDK(B,0,n.c,o));
+  // 逃生通道是防火區劃：兩端是自動關閉的防火門（人員通過後自動關回，水帶通過時會被卡住）
+  for(const n of rooms)if(n.xp)for(const o of n.nb){const key=tacDK(B,0,n.c,o);B.cd.add(key);B.fd.set(key,{t:'auto',f:0,s:n.c,o})}
   const veh=rooms.filter(n=>n.kind==='cab'||n.kind==='bus'||(n.kind==='car'&&!n.xp));const o=rooms.find(n=>n.kind==='cab')||rooms.find(n=>n.kind==='bus')||pk(rooms.filter(n=>n.kind==='car'));
   const x=cel(0,o.c);x.h=.55;x.s=.8;B.of=0;B.oc=o.c;
   const dn=veh.filter(n=>n!==o&&n.vid!==o.vid&&(up==='w'?n.gx>N[o.c].gx:n.gx<N[o.c].gx));
@@ -145,9 +146,15 @@ function tacSc2Draw(g,G,B,n,x,r,k,dark,rnd){
  if(k==='cont'){const col=dark?'#1e1c19':['#9a4a3a','#3a6a9a','#4a7a4a','#a08a3a'][n.c%4];g.fillStyle=col;g.fillRect(r[0]+3,r[1]+4,r[2]-6,r[3]-8);
   g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1;for(let i=1;i<6;i++){g.beginPath();g.moveTo(r[0]+3+(r[2]-6)*i/6,r[1]+4);g.lineTo(r[0]+3+(r[2]-6)*i/6,r[1]+r[3]-4);g.stroke()}
   if(B.dg&&B.dg.c===n.c){g.save();g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(Math.PI/4);g.fillStyle='#e9a13b';g.fillRect(-t*.07,-t*.07,t*.14,t*.14);g.restore()}}
- else if(k==='bus'){const hh=r[3]*.62,y0=r[1]+(r[3]-hh)/2;g.fillStyle='rgba(0,0,0,.35)';g.fillRect(r[0]+4,y0+2,r[2]-6,hh);g.fillStyle=dark?'#1e1c19':'#d8a83a';g.fillRect(r[0]+3,y0,r[2]-6,hh);
-  if(!dark){g.fillStyle='rgba(20,24,30,.6)';g.fillRect(r[0]+r[2]-12,y0+hh*.1,5,hh*.8);g.fillStyle='rgba(255,255,255,.18)';g.fillRect(r[0]+8,y0+hh*.15,r[2]-26,hh*.7)}}
+ else if(k==='bus')tacLongVeh(g,B,n,r,12,'#d8a83a',dark,(x,y,l,w)=>{g.fillStyle='rgba(20,24,30,.6)';g.fillRect(x+l-8,y+w*.1,5,w*.8);g.fillStyle='rgba(255,255,255,.18)';g.fillRect(x+6,y+w*.15,l-18,w*.7)});
+
  else if(k==='cfs'){g.fillStyle=dark?'#1e1c19':'#3a3e44';g.fillRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6);g.strokeStyle='rgba(255,255,255,.08)';g.lineWidth=1;for(let q=r[0]+6;q<r[0]+r[2]-4;q+=5){g.beginPath();g.moveTo(q,r[1]+4);g.lineTo(q,r[1]+r[3]-4);g.stroke()}g.strokeStyle='#8a857a';g.lineWidth=2;g.strokeRect(r[0]+3,r[1]+3,r[2]-6,r[3]-6)}
- else if(k==='xp'){g.fillStyle='#2a3a2a';g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='#5dcaa5';g.font='600 9px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('連絡通道',r[0]+r[2]/2,r[1]+r[3]/2)}
+ else if(k==='xp'){g.fillStyle='#22332a';g.fillRect(r[0],r[1],r[2],r[3]);g.strokeStyle='rgba(226,86,79,.8)';g.lineWidth=3;g.setLineDash([7,4]);g.strokeRect(r[0]+2,r[1]+2,r[2]-4,r[3]-4);g.setLineDash([]);
+  g.fillStyle='#5dcaa5';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('逃生通道',r[0]+r[2]/2,r[1]+r[3]*.42);g.fillStyle='#ff8a7a';g.font='9px '+FONT;g.fillText('防火區劃',r[0]+r[2]/2,r[1]+r[3]*.72)}
  if(n.ty==='hall'&&n.safe){g.fillStyle='rgba(93,202,165,.08)';g.fillRect(r[0],r[1],r[2],r[3]);g.fillStyle='rgba(93,202,165,.6)';g.font='10px '+FONT;g.textAlign='left';g.textBaseline='top';g.fillText(n.twin?'對向隧道（避難）':'避難坑道',r[0]+4,r[1]+3)}
  if(n.ty==='hall'&&n.tube&&!n.portal){g.fillStyle='rgba(0,0,0,.18)';g.fillRect(r[0],r[1],r[2],r[3])}}
+
+// 格局後處理（所有建物）：天井、露天作業區不燃、不需搜索、露天；透天一樓有時是店面
+function tacLayPost(inc,B){
+ for(const x of B.cells)if(B.L.N[x.c].court){x.fu=0;x.v=1;x.srch=1;x.sl=2;x.fk=0}
+ if(inc.k==='mfire'&&Math.random()<.35){const lv=B.L.N.find(n=>n.kind==='living'&&n.edge.length);if(lv){const x=tacCel(B,B.bf,lv.c);x.k='shop';x.fk=TAC_RK.shop.fk;B.L.shopF=1}}}

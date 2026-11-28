@@ -151,6 +151,8 @@ function tacExtraEnts(B){const L=B.L;
 const TAC_VLEN={'11':8.5,'16':6.5,'21':11,'31':10.5,'41':5.5,'51':9,'57':8.5,'61':9.5,'71':8.5,'75':7.5,'91':6,'01':9.5,'搜':9,'99':6,'警':5.5,'43':5.3,'機':12.5,'履':4,'艇':7};
 const TAC_VPRI={'21':0,'31':0,'11':1,'16':1,'57':1,'71':2,'搜':2,'51':2,'01':2,'75':3,'履':3,'61':4,'41':5,'91':6,'99':6,'警':7,'43':6,'機':1,'艇':8};
 const TAC_VGAP=2;
+// 車寬（公尺）：繪製用，消防車約 2.5 公尺
+const TAC_VWID={'91':2.1,'99':2.1,'41':2,'警':1.9,'43':1.9,'履':1.6,'16':2.3,'機':3};
 function tacMPU(inc,B){const d=KIND[inc.k];return d.fac||/warehouse|chemfire|wastefire/.test(inc.k)?10:(B.F>=7||/dept|hosp/.test(inc.k))?8:4.5}
 function tacParkModel(inc,B){
  const L=B.L,mpu=tacMPU(inc,B),out={front:{},slots:{},mpu};

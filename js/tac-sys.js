@@ -7,9 +7,10 @@ const TAC_SYSD={
  pex:{n:'地下停車場排風',fx:'持續抽出地下室的煙與廢氣'},
  pvent:{n:'泳池與機房排風',fx:'機房、泳池區持續換氣，降低氣體濃度'},
  jet:{n:'隧道射流風機',fx:'沿車流方向縱向推煙：上游清出攻擊路線，但煙會往下游（下游還有人時要先疏散）'},
+ xpp:{n:'逃生通道加壓送風',fx:'逃生通道（防火區劃）與避難坑道保持正壓，煙進不來'},
  co2:{n:'機艙 CO₂ 全區放射',fx:'機艙灌入二氧化碳窒息滅火；放射前機艙內人員必須全部撤出'}};
 // 各案類有哪些設備（出現機率）；約兩成故障或被關閉，啟動時才知道
-const TAC_SYSK={skyscraper:{smx:1,stp:1,pex:.9},deptfire:{smx:1,pex:.8},hospfire:{smx:.8,stp:.6},hifire:{smx:.4,stp:.5},nursing:{smx:.4},smoke:{pex:.9},poolgas:{pvent:1},tunnel:{jet:1},ship:{co2:1}};
+const TAC_SYSK={skyscraper:{smx:1,stp:1,pex:.9},deptfire:{smx:1,pex:.8},hospfire:{smx:.8,stp:.6},hifire:{smx:.4,stp:.5},nursing:{smx:.4},smoke:{pex:.9},poolgas:{pvent:1},tunnel:{jet:1,xpp:1},ship:{co2:1}};
 function tacSysInit(inc,B){
  // 資源回收場的鋼瓶區：受熱會 BLEVE（取代原本的單純瓦斯桶爆炸）
  if(inc.k==='wastefire'){const cy=B.L.N.find(n=>n.kind==='cylz');if(cy){B.bv={c:cy.c,f:0,p:0,k:1.5,n:'鋼瓶區',r:1.4};if(B.gas===cy.c)B.gas=undefined}}
@@ -42,6 +43,7 @@ function tacSysStep(inc,B,dt){
   else if(k==='pex')for(const x of B.cells){if(x.f<B.bf&&x.s>.03)x.s=Math.max(0,x.s-dt*.03)}
   else if(k==='pvent'&&B.chem)for(const x of B.cells){if(x.cz>0)x.cz=Math.max(0,x.cz-dt*.005)}
   else if(k==='jet')tacJetStep(B,dt,s.dir);
+  else if(k==='xpp')for(const x of B.cells){const n=B.L.N[x.c];if((n.xp||n.safe)&&x.s>.02)x.s=Math.max(0,x.s-dt*.15)}
   else if(k==='co2'){for(const x of B.cells)if(x.f<B.bf){x.o2=Math.min(x.o2,10.5);if(x.h>0)x.h=Math.max(0,x.h-dt*.012)}
    if(!s.done&&!B.cells.some(x=>x.f<B.bf&&x.h>.04)){s.done=1;radio(inc,'受理','機艙溫度下降，CO₂ 放射後火勢已窒熄；開艙前先量測含氧，進入要防復燃。')}}}}
 // 射流風機：主隧道內的煙依風向往下游推，隧道口排出
