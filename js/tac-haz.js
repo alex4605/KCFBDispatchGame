@@ -73,7 +73,7 @@ function tacHazStep(inc,B,q,dt){
   if(q.hp<.3)tacDown(inc,B,q,'防護衣受熱損壞')}
  // C 級沒有空氣呼吸器：不耗氣，但不能進濃煙、缺氧或高濃度區
  if(lv==='C'){q.air=1;
-  if(x.s>.3||x.o2<19.5||hz>1||(B.chem&&B.chem.noC&&hz>0)){q.hp-=dt*.02;if(!q.cW){q.cW=1;radio(inc,q.cs,'C 級濾毒罐無法應付'+(hz>1?'高濃度化學品':x.o2<19.5?'缺氧環境':'濃煙')+'，撤出！')}
+  if(x.s>.3||x.o2<19.5||hz>1||(B.chem&&B.chem.noC&&hz>0)){q.hp-=dt*.02;if(!q.cW){q.cW=1;radio(inc,q.cs,(q.sdb?'沒有空氣呼吸器，遇到':'C 級濾毒罐無法應付')+(hz>1?'高濃度化學品':x.o2<19.5?'缺氧環境':'濃煙')+'，撤出！')}
    if(q.task!=='exit'){q.prev=null;q.task='exit';q.tf=-1;q.tc=0}}}
  // A、B 級：較耗氣、較易疲勞
  if(lv==='A'||lv==='B'){q.air-=dt/TAC_AIR*(lv==='A'?.25:.15);q.fat=Math.min(1.2,q.fat+dt/220*(lv==='A'?.8:.4))}

@@ -93,7 +93,7 @@ function tacStnStep(inc,B,dt){
  if(!B.st.air&&!B.airOff&&onScene(inc).some(u=>u.code==='71'&&u.st==='work'))tacStnOpen(inc,B,'air',1);
  for(const k of Object.keys(B.st)){const s=B.st[k];if(!s)continue;
   if(s.staff){if(!B.st.icp)tacStnClose(inc,B,k,'指揮站撤除，幕僚撤離');continue}
-  if(s.u!==null&&!B.sq.some(q=>(q.epa||q.vol)&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
+  if(s.u!==null&&!B.sq.some(q=>(q.epa||q.vol||q.sdb)&&q.u===s.u)){const u=S.units.find(x=>x.id===s.u);if(!u||u.inc!==inc.id||u.st!=='work')tacStnClose(inc,B,k,'人員離場，站點關閉')}
   else if(k==='media'&&inc.pol!==2)tacStnClose(inc,B,k,'警方離場，關閉')}
  // 沒有聯訪處：有受困者的案件，媒體與家屬聚集，每 90 秒扣評鑑（最多 4 次）
  if(B.vtot&&!B.st.media&&!B.done){B.mediaT=(B.mediaT||60)-dt;
@@ -155,7 +155,7 @@ const TAC_ASK=[
  {k:'lock',q:'門有沒有鎖？有鑰匙嗎？'},{k:'layout',q:'樓上住幾戶？樓梯在哪？'}];
 function tacCivInit(inc,B){B.civ={n:1+(Math.random()<.5?1:0),asked:{},until:S.t+240,log:null}}
 // 現場民眾的身分（依建物用途）
-function tacCivWho(inc){const k=inc.k;
+function tacCivWho(inc){const k=inc.k;if(inc.tac&&inc.tac.sdb)return'自衛消防隊';
  return /nursing|hospfire/.test(k)?'護理人員':/fact|warehouse|chemfire|tinfire|wastefire|majorind|gasstn/.test(k)?'員工':/dept|market/.test(k)?'店員':/dorm/.test(k)?'移工':/hifire|skyscraper/.test(k)?'管理員':'住戶'}
 // 進入戰術畫面時，民眾先主動描述火場基本狀況（像 119 報案通話）；之後的詢問也接在同一段對話
 function tacCivOpen(inc,B){
@@ -163,6 +163,7 @@ function tacCivOpen(inc,B){
  const L=B.civ.log=[],who=tacCivWho(inc),say=s=>{L.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},
   me=s=>{L.push({w:'場',s});inc.log.push({w:'場',s:'（現場指揮官）'+s,t:S.t-inc.t0})};
  me('我是消防隊現場指揮官，裡面的狀況可以跟我說嗎？');
+ if(B.sdb&&!B.sc){for(const s of tacSdbOpen(B))say(s);me('收到，請自衛消防編組到指揮站待命，協助引導。');B.civ.next=S.t+5;return}
  if(B.sc){for(const s of tacScCiv(inc,B,'open'))say(s);me('收到，請先退到安全的地方，有其他狀況再告訴我們。');B.civ.next=S.t+5;return}
  if(B.hoax){say('我只是聞到燒焦味，有人說'+tacFlr(B,B.hint>=0?B.hint:B.of)+'在冒煙，我自己沒看到火。');me('收到，我們會逐層查證，請先在外面等。');return}
  const f=Math.random()<.85?B.of:Math.max(B.bf,Math.min(B.F-1,B.of+(Math.random()<.5?-1:1)));
@@ -187,6 +188,7 @@ function tacAsk(inc,B,k){
  const who=tacCivWho(inc),say=s=>{B.civ.log.push({w:'民',s});inc.log.push({w:'民',s:'（現場'+who+'）'+s,t:S.t-inc.t0})},Q=TAC_ASK.find(x=>x.k===k).q;
  B.civ.log.push({w:'場',s:Q});inc.log.push({w:'場',s:'（現場指揮官）'+Q,t:S.t-inc.t0});
  if(B.sc){const a=tacScCiv(inc,B,k);if(a)say(a);return}
+ if(B.sdb){const a=tacSdbAsk(inc,B,k);if(a){say(a);return}}
  if(k==='who'){
   const rs=B.cells.filter(x=>x.ty==='room'&&x.vic+x.hid>0),told=[];
   for(const x of rs)if(Math.random()<.75){x.rep=1;told.push(tacNm(B,x.f,x.c))}

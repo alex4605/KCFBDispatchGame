@@ -462,6 +462,7 @@ function tacInit(inc){
  B.elev=Fa>=6&&T.lay==='corridor'; // 六層以上走廊式建物有消防專用升降機
  B.fwdF=Math.max(bf+1,of>=bf+3?of-2:bf+Math.floor((F-bf)/2)); // 火在低樓層時設在建物中段，方便上方樓層搜索
  tacLayPost(inc,B);
+ tacSdbInit(inc,B);
  if(T.sc)tacScInit(inc,B,T);
  tacSysInit(inc,B);
  inc.tac=B;tacSync(inc);
@@ -482,10 +483,11 @@ function tacSync(inc){
    task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
    tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:2})}
  tacEpaSync(inc,B);
+ tacSdbSync(inc,B);
  // 集結區開設後，新到小組直接在集結區那側整裝待命
  if(B.st&&B.st.stage)for(const q of B.sq)if(!q.seen){q.seen=1;if(q.ty!=='ladder')q.side=B.st.stage.side}
  tacVolSync(inc,B);
- B.sq=B.sq.filter(q=>{if(q.epa||q.vol)return true;const u=S.units.find(x=>x.id===q.u);
+ B.sq=B.sq.filter(q=>{if(q.epa||q.vol||q.sdb)return true;const u=S.units.find(x=>x.id===q.u);
   if(u&&u.inc===inc.id&&u.st==='work')return true;
   if(q.down)B.mayday=Math.max(0,B.mayday-1);
   if(B.sp&&B.sp.u===q.u){B.sp.on=0;B.sp.u=null}
@@ -532,7 +534,7 @@ function tacStepTime(B,q,ns){
  return t*(1+(q.fat||0)*.6)}
 // 耐熱上限（無水線掩護）：超過就拒絕進入；所在空間再熱一點（+.05）就自動撤退。機器人不受限
 // h .55 約 460°C（正職、特搜）；菜鳥與義消經驗不足，.45 約 370°C 就不進入
-const tacHotLim=q=>q.ty==='robot'?9:q.rookie||q.sk==='rookie'||q.sk==='vol'||q.sk==='volp'?.45:.55;
+const tacHotLim=q=>q.ty==='robot'?9:q.sdb?.3:q.rookie||q.sk==='rookie'||q.sk==='vol'||q.sk==='volp'?.45:.55;
 // 帶著有水、壓力足夠的水線：可以邊射水邊推進，不受耐熱上限限制
 const tacCovered=(q,eff)=>!!(TAC_WET[q.task]&&q.line&&eff>0&&q.pf>.15&&!(q.burst>0));
 const tacTmp=(B,x)=>tacParam(B,x).temp;
@@ -555,6 +557,7 @@ function tacMaskNeed(B,q,ns){
 function tacRefuse(B,q,k,f,c){
  if(q.ty==='robot'||q.ty==='ladder'||q.down)return'';
  if(k==='exit'||k==='rit'||k==='truck'||k==='ppv'||k==='stand'||k==='hyd'||k==='cover'||k==='sky'||k==='trans'||k==='relay'||/^ppe/.test(k))return'';
+ {const w=tacSdbRefuse(B,q,k,f,c);if(w)return w}
  if(q.fat>=.85&&(f===undefined||f>=0||k==='roof'||k==='roofres'))return'拒絕：隊員體力透支（疲勞 '+Math.round(q.fat*100)+'%），需先撤出休息';
  if(f===undefined||f<0)return'';
  {const w=tacScRefuse(B,q,k,f,c);if(w)return w}
@@ -567,7 +570,7 @@ function tacRefuse(B,q,k,f,c){
 // 能力：回傳 '' 表示可以，否則為不可執行的原因
 function tacCan(B,q,k,f,c){
  if(q.down)return'該組已倒地，等待 RIT 救援';
- {const w=tacHazCan(B,q,k)||tacScCan(B,q,k,f,c);if(w)return w}
+ {const w=tacHazCan(B,q,k)||tacScCan(B,q,k,f,c)||tacSdbCan(q,k);if(w)return w}
  if(q.sk==='vol'&&(TAC_VOLNO[k]||(k==='move'&&f>=0&&(tacCel(B,f,c).h>.05||tacCel(B,f,c).s>.4))||(k==='dctrl'&&f>=0)))return'拒絕：義消（一般）不執行入室攻擊、搜索等深入火場的任務（可改派義消+或正職）';
  if(q.vol&&(k==='attack'||k==='sky'||k==='confine'||k==='trans'||k==='cover'||k==='hydro'))return'義消徒步到場、沒有車輛水線';
  if(q.ty==='med'&&k!=='move'&&k!=='exit')return'特搜醫療組在屋外支援傷患處置，不進入建物';
@@ -1413,7 +1416,7 @@ function tacIncident(inc,dt,first,flow){
  tacFire(inc,B,dt);
  tacChemStep(inc,B,dt);
  tacScStep(inc,B,dt);
- tacSysStep(inc,B,dt);tacBvStep(inc,B,dt);tacTrafStep(inc,B,dt);tacVicMove(inc,B,dt);tacRelayStep(inc,B);
+ tacSysStep(inc,B,dt);tacBvStep(inc,B,dt);tacTrafStep(inc,B,dt);tacVicMove(inc,B,dt);tacRelayStep(inc,B);tacSdbStep(inc,B);
  tacStaff(inc,B,dt);
  tacYardStep(inc,B,dt);
  tacExpo(inc,B,dt);
