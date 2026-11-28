@@ -22,9 +22,7 @@ Object.assign(TAC_YFU,{rcar:1,loco:.8,sink:0,edge:0,slope:.2,nose:1,fuse:1.2,win
 Object.assign(TAC_TASK,{cush:'救生氣墊',rope:'繩索救援',extg:'滅火器',clear:'人潮疏導'});
 // ===== 版面 =====
 function tacSc4Lay(T,K,L,add,room,cuts,R){
- const lane=(gx,gy,gw,gh,o)=>add(Object.assign({ty:'hall',gx,gy,gw,gh,lane:1},o||{}));
- const lanes=(x0,x1,y0,y1,o)=>{if(x1-x0<.05)return;const hs=cuts(x0,x1,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],y0,hs[i+1]-hs[i],y1-y0,o)};
- const row=(y0,y1,mk,a,b)=>{const xs=cuts(0,L.GW,a||.75,b||1.2);for(let i=0;i<xs.length-1;i++){const n=room(xs[i],y0,xs[i+1]-xs[i],y1-y0,mk(i,xs.length-1));if(/home|shopf|lobby|fuse|nose|tail/.test(n.kind))n.walled=1}};
+ const{lanes,row}=tacLayKit(L,add,room,cuts,/home|shopf|lobby|fuse|nose|tail/);
  // 一列裡依序放置指定寬度的節點，其餘補成車道
  const seq=(y0,y1,x0,parts,o)=>{let x=x0;lanes(0,x0,y0,y1,o);const id=Math.random();for(const p of parts){const n=room(x,y0,p[1],y1-y0,p[0]);n.vid=id;if(/fuse|nose|tail/.test(p[0]))n.walled=1;x+=p[1]}lanes(x,L.GW,y0,y1,o);return x};
  if(T.yard==='rail'){ // 鐵道：上方邊坡（捷運為車站）、列車軌道、另一股軌道、平交道道路（捷運為月台）、邊坡或車站

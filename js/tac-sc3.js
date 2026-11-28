@@ -19,10 +19,20 @@ Object.assign(TAC_YFU,{tankc:.3,rackp:.2,proc:1,crane:.3,debris:.3,scaf:.2});
 Object.assign(TAC_TASK,{stab:'車輛穩固',extr:'破壞救援'});
 EPA_KS.push('majorind');
 // ===== 版面 =====
-function tacSc3Lay(T,K,L,add,room,cuts,R){
+// 場區版面共用工具（tac-sc3、tac-sc4）：lane 一段車道、lanes 依長度切成多段車道、row 一整列空間（walled 為有牆的用途）
+function tacLayKit(L,add,room,cuts,walled){
  const lane=(gx,gy,gw,gh,o)=>add(Object.assign({ty:'hall',gx,gy,gw,gh,lane:1},o||{}));
  const lanes=(x0,x1,y0,y1,o)=>{if(x1-x0<.05)return;const hs=cuts(x0,x1,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],y0,hs[i+1]-hs[i],y1-y0,o)};
- const row=(y0,y1,mk,a,b)=>{const xs=cuts(0,L.GW,a||.75,b||1.2);for(let i=0;i<xs.length-1;i++){const n=room(xs[i],y0,xs[i+1]-xs[i],y1-y0,mk(i,xs.length-1));if(/home|proc|yoff/.test(n.kind))n.walled=1}};
+ const row=(y0,y1,mk,a,b)=>{const xs=cuts(0,L.GW,a||.75,b||1.2);for(let i=0;i<xs.length-1;i++){const n=room(xs[i],y0,xs[i+1]-xs[i],y1-y0,mk(i,xs.length-1));if(walled.test(n.kind))n.walled=1}};
+ return{lane,lanes,row}}
+// 大量傷病患：依待後送人數加派救護車（每 10 秒最多 n 輛；現場加途中最多 max 輛）
+function tacMciAmb(inc,B,max,n,minP){
+ B.ambX=(B.ambX||0)-1.5;if(B.ambX>0)return;B.ambX=10;
+ let left=B.pts.length;for(const x of B.cells)left+=x.vic;if(left<(minP||1))return;
+ const amb=onScene(inc).concat(S.units.filter(u=>u.inc===inc.id&&u.st==='go')).filter(u=>u.code==='91'&&!u.load).length;
+ for(let i=0;i<n&&amb+i<Math.min(max,Math.ceil(left/2));i++)tacReinf(inc,B,'amb')}
+function tacSc3Lay(T,K,L,add,room,cuts,R){
+ const{lanes,row}=tacLayKit(L,add,room,cuts,/home|proc|yoff/);
  const sh=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
  if(T.yard==='plant'){ // 化工廠區：上排廠外民宅、廠內車道、儲槽與管架、車道、裝卸區與辦公室、製程廠房
   L.GW=3.8+K*.4;const y1=.7,y2=y1+.5,y3=y2+1.1,y4=y3+.5;L.GH=y4+1.05;L.var=R()<.5?'tank':'drum';L.varN=L.var==='tank'?'儲槽區外洩':'桶裝倉儲外洩';
@@ -158,13 +168,8 @@ function tacSc3AI(inc,B,free,take){
    if(!x.rub&&!x.stab){const r=free.find(q=>q.ty!=='robot'&&q.ty!=='ladder'&&!q.vol&&!q.line);if(r&&tacOrder(inc,r,'stab',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'車輛穩固。')}continue}
    const r=free.find(q=>q.usar)||free.find(q=>q.ty==='resc')||free.find(q=>q.ty==='pump'&&!q.line);if(r&&tacOrder(inc,r,'extr',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'破壞救援。')}}
   if(B.pts.length>=3&&!B.st.triage&&tacAmbFree(inc,B)>=2)tacStnOpen(inc,B,'triage',1);
-  // 大量傷病患：依待後送人數加派救護車（每 10 秒最多 2 輛，現場加途中最多 8 輛）
-  B.ambX=(B.ambX||0)-1.5;if(B.ambX<=0){B.ambX=10;let left=B.pts.length;for(const x of B.cells)left+=x.vic;
-   const amb=onScene(inc).concat(S.units.filter(u=>u.inc===inc.id&&u.st==='go')).filter(u=>u.code==='91'&&!u.load).length;
-   for(let i=0;i<2&&amb+i<Math.min(8,Math.ceil(left/2));i++)tacReinf(inc,B,'amb')}}
- if(sc==='lab'||sc==='chem'){if(EPA_K(inc.k)&&!inc.epa)epaCall(inc,1);
-  B.ambX=(B.ambX||0)-1.5;if(B.ambX<=0&&B.pts.length>=3){B.ambX=10;const amb=onScene(inc).concat(S.units.filter(u=>u.inc===inc.id&&u.st==='go')).filter(u=>u.code==='91'&&!u.load).length;
-   if(amb<Math.min(6,Math.ceil(B.pts.length/2)))tacReinf(inc,B,'amb')}}}
+  tacMciAmb(inc,B,8,2)}
+ if(sc==='lab'||sc==='chem'){if(EPA_K(inc.k)&&!inc.epa)epaCall(inc,1);tacMciAmb(inc,B,6,1,3)}}
 // ===== 現場民眾 =====
 function tacSc3Civ(inc,B,k){
  const sc=B.sc&&B.sc.k;if(!/chem|lab|mvc|crane/.test(sc||''))return undefined;

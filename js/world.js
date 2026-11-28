@@ -320,7 +320,6 @@ function reindex(){
  S.ix={m,bySt,idle}}
 const onScene=inc=>(S.ix&&S.ix.m.get(inc.id))||[];
 const onDuty=u=>u.st==='work'||u.st==='tx'||u.st==='give'||u.st==='clean';
-const FLEET=['11','11','11','16','21','41','61','91','91','71','75','57','51','31','艇','履','警','43'];
 function reset(){
  build();
  S={day:1,t:0,money:15000,rep:100,score:0,solved:0,units:[],inc:[],duties:[],
