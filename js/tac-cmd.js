@@ -55,7 +55,6 @@ function tacHints(inc,B){
  if(B.sp&&!B.sp.on&&B.of-B.bf>=2)add(2,'高樓起火，建議送水口加壓，改由各樓層出水口接線。');
  if(B.F-B.bf>=5&&B.of-B.bf>=3&&!B.st.fwd)add(3,'建議於'+tacFlr(B,Math.max(B.bf+1,B.of-2))+'設置前進指揮所，就近換瓶休息。');
  if(B.elev&&!B.elOn&&!(B.elT>0)&&(B.of-B.bf>=3||B.of<B.bf))add(3,'可啟用消防專用升降機，運送人員到'+tacFlr(B,tacElevTop(B))+'。');
- if(B.flow)add(3,'入口沒有門控，形成進氣路徑，建議派員門控進入。');
  if(tacCivOn(B))add(2,'現場有民眾可詢問屋內資訊。');
  const rep=B.cells.find(x=>x.rep&&x.srch<1);if(rep)add(2,tacNm(B,rep.f,rep.c)+'民眾指稱有人，尚未搜索。');
  for(const s of Object.keys(B.exp))if(B.exp[s]>.35&&!B.expL[s]&&!B.sq.some(q=>q.task==='cover'&&q.cside===s))add(2,TAC_SDN[s]+'側鄰棟受熱 '+Math.round(B.exp[s]*100)+'%，建議周界防護。');
@@ -63,7 +62,7 @@ function tacHints(inc,B){
  const em=B.cells.filter(x=>x.emb).length;if(em&&!B.cells.some(x=>x.h>.05))add(3,'火勢已滅，仍有 '+em+' 間房有餘燼，建議殘火處理。');
  const lowB=B.sq.filter(q=>tacIn(q)&&q.air<.4&&q.task!=='exit').length;if(lowB&&tacAcc(B))add(2,'管制板顯示 '+lowB+' 組氣量偏低，注意撤出時機。');
  {const gl=B.cells.filter(x=>x.gm&&x.gm.lel>=10&&S.t-x.gm.t<180).sort((a,b)=>b.gm.lel-a.gm.lel)[0];
-  if(gl)add(0,tacNm(B,gl.f,gl.c)+'量到 LEL '+gl.gm.lel+'%：禁止破窗、開門與火源，先在外射水降溫或等待通風。')}
+  if(gl)add(0,tacNm(B,gl.f,gl.c)+'量到 LEL '+gl.gm.lel+'%：禁止任何火源與會產生火花的器材；悶燒空間開口前先射水冷卻、門控控制進氣，瓦斯外洩則先關斷氣源再通風排除。')}
  if(B.gasL&&B.gasL.t>0)add(1,'瓦斯管線持續供氣：起火點撲滅後仍會再燒，先防護周邊與搜救瓦礫，待欣高關閥後再撲滅。');
  if(B.cells.some(x=>x.rub&&x.vic))add(1,'1F 瓦礫堆中有受困者：派救助組搜救，瓦礫搜索很慢，注意結構。');
  if(B.rf&&B.rf.h>0)add(1,'屋頂光電板起火'+(inc.pow>=2?'，台電已斷電，可派雲梯射水撲滅。':'，仍帶電：只能以雲梯水霧遠距射水，等待台電斷電。'));

@@ -287,3 +287,13 @@ button.hand:hover{background:#2d5a4a}
 #shop .shophd{padding:0;display:flex;justify-content:space-between;align-items:center}
 #shop .buy button:disabled{opacity:.4}
 #shop .newst{width:100%;margin-top:10px;text-align:left;padding:8px 10px}
+
+/* 義消名卡：右側藍條（義消淺藍、義消+深藍），一眼看出能力 */
+.mtag.vol{box-shadow:inset -6px 0 0 #6fb3f0}.mtag.volp{box-shadow:inset -6px 0 0 #2f6fd0}
+
+/* 戰略層：待回覆的請求閃爍提醒 */
+.call.pend{background:rgba(233,161,59,.14);animation:pendA 1.4s ease-in-out infinite}
+@keyframes pendA{50%{background:rgba(233,161,59,.3)}}
+.pendb{color:#ffb84a;font-weight:700}
+.req{animation:pendA 1.4s ease-in-out infinite}
+.mtag.vol.sel{box-shadow:inset -6px 0 0 #6fb3f0,0 0 0 2px rgba(233,161,59,.4)}.mtag.volp.sel{box-shadow:inset -6px 0 0 #2f6fd0,0 0 0 2px rgba(233,161,59,.4)}

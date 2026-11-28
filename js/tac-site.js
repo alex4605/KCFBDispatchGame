@@ -34,8 +34,9 @@ function tacSite(inc,B){
   let s=tacDirOf(inc.hy[0]-inc.x,inc.hy[1]-inc.y);
   if(!sd[s].road)s=roads.includes(arr)?arr:roads[0];
   B.hyd={side:s,d:Math.max(10,Math.round((inc.hd||1)*35/5)*5)}}
- // 五層以上設連結送水管，送水口在最寬的道路一側
- B.sp=B.F-B.bf>=5?{side:roads.slice().sort((a,b)=>sd[b].road-sd[a].road)[0],on:0,u:null}:null}
+ // 送水口在最寬的道路一側
+ // 連結送水管：七層以上，或五、六層的大型場所（百貨、醫院、機構、超高層）
+ B.sp=(B.F-B.bf>=7||(B.F-B.bf>=5&&/dept|hosp|sky|nursing/.test(B.k||'')))?{side:roads.slice().sort((a,b)=>sd[b].road-sd[a].road)[0],on:0,u:null}:null}
 // 大型車（雲梯、幫浦等）能否停在某側
 function tacCanSide(B,q,s){
  const d=B.sd[s];

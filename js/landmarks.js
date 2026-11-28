@@ -21,7 +21,10 @@ const LMK_DEF=[
  {k:'edu',n:'國小',sub:'',w:1,h:1,near:['岡山',2,3],col:'#5a6a3a',ic:'🏫'},
  {k:'edu',n:'大學',sub:'',w:2,h:2,near:['楠梓',5,-4],col:'#5a6a3a',ic:'🎓'},
  // 市區與山區交界（山坡郊區）：澄清湖、遊樂園、燕巢的大學
- {k:'lake',n:'澄清湖',sub:'風景區',w:3,h:3,near:['高雄長庚',5,-2],nearH:1,col:'#2a5a6a',ic:'🌊'},
+ {k:'lake',n:'澄清湖',sub:'風景區',w:3,h:3,near:['高雄長庚',5,-2],nearH:1,col:'#2a5a6a',ic:'🌊',br:1},
+ // 市區湖泊：金獅湖（三民，一格）、蓮池潭（左營，兩格，湖上有龍虎塔）
+ {k:'lake',n:'金獅湖',sub:'湖泊公園',w:1,h:1,near:['高醫附設醫院',2,-4],nearH:1,col:'#2a5a6a',ic:'🌊'},
+ {k:'lake',n:'蓮池潭',sub:'風景區',w:2,h:1,near:['左營',-1,-3],col:'#2a5a6a',ic:'🌊',pag:1},
  {k:'amuse',n:'遊樂園',sub:'主題樂園',w:2,h:2,near:['高雄長庚',7,-8],nearH:1,col:'#7a4a8a',ic:'🎡'},
  {k:'edu',n:'大學',sub:'燕巢校區',w:2,h:1,near:['燕巢',3,-3],col:'#5a6a3a',ic:'🎓'},
  {k:'edu',n:'國中',sub:'',w:1,h:1,near:['大寮',2,2],col:'#5a6a3a',ic:'🏫'},
@@ -71,11 +74,13 @@ function placeLandmarks(){
 function lmkDetail(L,px,py,c){
  const m=L.m,i=L.i,j=L.j,hz=m.w>=m.h,first=hz?i===0:j===0,last=hz?i===m.w-1:j===m.h-1;
  ctx.fillStyle='#3a3833';ctx.fillRect(px,py,c+.6,c+.6);
-if(m.k==='lake'){ // 澄清湖：湖面、湖岸步道，中間一列是九曲橋
+if(m.k==='lake'){ // 湖泊（澄清湖、金獅湖、蓮池潭）：湖面、湖岸步道，中間一列是九曲橋
   ctx.fillStyle='#24402c';ctx.fillRect(px,py,c+.6,c+.6);
   const e=c*.12,l=i===0?e:0,r=i===m.w-1?e:0,t=j===0?e:0,b=j===m.h-1?e:0;ctx.fillStyle='#16384e';ctx.fillRect(px+l,py+t,c-l-r+.6,c-t-b+.6);
   ctx.fillStyle='rgba(125,179,232,.16)';ctx.fillRect(px+c*.2,py+c*.3,c*.3,Math.max(1,c*.04));
-  if(j===(m.h>>1)){ctx.strokeStyle='#c8b48a';ctx.lineWidth=Math.max(1.5,c*.05);ctx.beginPath();for(let q=0;q<=4;q++){const xx=px+c*q/4,yy=py+c*(q%2?.38:.62);q?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.stroke()}
+  if(m.pag&&i===0&&j===0){ctx.fillStyle='#c8b48a';ctx.fillRect(px+c*.6,py+c*.5,c*.4,Math.max(1,c*.05)); // 龍虎塔：湖面上兩座塔與九曲橋
+   for(const[q,cl]of[[.62,'#c84a3a'],[.82,'#e9a13b']]){ctx.fillStyle=cl;ctx.fillRect(px+c*q,py+c*.32,c*.12,c*.2);ctx.fillStyle='#4a3a2a';ctx.fillRect(px+c*(q-.02),py+c*.3,c*.16,c*.04)}}
+  if(m.br&&j===(m.h>>1)){ctx.strokeStyle='#c8b48a';ctx.lineWidth=Math.max(1.5,c*.05);ctx.beginPath();for(let q=0;q<=4;q++){const xx=px+c*q/4,yy=py+c*(q%2?.38:.62);q?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy)}ctx.stroke()}
   return}
  if(m.k==='amuse'){ // 遊樂園：摩天輪、雲霄飛車軌道、彩色遊樂設施
   ctx.fillStyle='#2e2a34';ctx.fillRect(px,py,c+.6,c+.6);

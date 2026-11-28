@@ -537,6 +537,8 @@ function tacStepTime(B,q,ns){
 // 耐熱上限（無水線掩護）：超過就拒絕進入；所在空間再熱一點（+.05）就自動撤退。機器人不受限
 // h .55 約 460°C（正職、特搜）；菜鳥與義消經驗不足，.45 約 370°C 就不進入
 const tacHotLim=q=>q.ty==='robot'?9:q.sdb?.3:q.rookie||q.sk==='rookie'||q.sk==='vol'||q.sk==='volp'?.45:.55;
+// 殘火處理需要水線的空間：深層悶燒（堆積物）、鋰電池、油品、可燃物多的倉儲與賣場
+const tacOvhWet=(B,x)=>!!(x&&(x.deep||x.li||x.fuel||(x.ty==='room'&&(TAC_RK[tacK(B,x.f,x.c)]||{fk:1}).fk>=1.4)));
 // 帶著有水、壓力足夠的水線：可以邊射水邊推進，不受耐熱上限限制
 const tacCovered=(q,eff)=>!!(TAC_WET[q.task]&&q.line&&eff>0&&q.pf>.15&&!(q.burst>0));
 const tacTmp=(B,x)=>tacParam(B,x).temp;
@@ -584,7 +586,7 @@ function tacCan(B,q,k,f,c){
  if(k==='exit')return lad?'雲梯組在建物外作業':'';
  if(k==='relay')return tacRelayCan(B,q);
  if(k==='truck')return(q.ty==='pump'||lad)?'':'只有幫浦車與雲梯車需要移車';
- if(k==='stand')return q.ty!=='pump'?'只有幫浦組能做送水口加壓':!B.sp?'本建物沒有連結送水管（五層以上才有）':B.sp.on&&B.sp.u!==q.u?'送水口已由其他車接妥':tacIn(q)?'人員在室內':tacCanSide(B,q,B.sp.side);
+ if(k==='stand')return q.ty!=='pump'?'只有幫浦組能做送水口加壓':!B.sp?'本建物沒有連結送水管（七層以上，或五層以上的大型場所才有）':B.sp.on&&B.sp.u!==q.u?'送水口已由其他車接妥':tacIn(q)?'人員在室內':tacCanSide(B,q,B.sp.side);
  if(k==='ppv')return q.ty==='vent'||(q.ty==='pump'&&q.code==='11')?'':'需要排煙組或 11 幫浦車的正壓排煙機';
  if(k==='hyd')return q.ty!=='pump'?'只有幫浦車能佔水':!B.hyd?'附近沒有消防栓，需水庫車供水':tacIn(q)?'人員在室內':q.tside===B.hyd.side&&!q.tmv?'已在消防栓那一側':tacCanSide(B,q,B.hyd.side);
  if(k==='rit')return(lad||q.ty==='robot')?'此組無法編為 RIT':'';
@@ -614,7 +616,7 @@ function tacCan(B,q,k,f,c){
  if(k==='npv')return q.ty!=='vent'?'負壓排煙需要排煙組的排風機':f<B.bf?'地下室沒有對外窗':!B.L.N[c].wins?'此處沒有對外窗':'';
  if(k==='vvent')return q.ty==='robot'?'機器人無法上屋頂':f!==B.F-1||B.L.N[c].ty!=='room'?'垂直排煙請點頂樓的房間（在其正上方屋頂開孔）':'';
  if(k==='hydro')return q.ty!=='pump'?'水霧排煙需要幫浦組的水線':f<B.bf?'地下室沒有對外窗':!B.L.N[c].wins?'此處沒有對外窗':'';
- if(k==='trans'){if(q.ty!=='pump')return'過渡射水需要幫浦組';if(f<B.bf||f-B.bf>1)return'過渡射水只能從地面打 1F、2F 的窗口';
+ if(k==='trans'){if(q.ty!=='pump')return'過渡射水需要幫浦組';if(tacIn(q))return'過渡射水只能由室外經窗口往室內打，人員要先在屋外';if(f<B.bf||f-B.bf>1)return'過渡射水只能從地面打 1F、2F 的窗口';
   const n=B.L.N[c];if(!n.wins||!n.wins.some(w=>B.sd[w].road))return'此室的窗戶不面向可站位的道路';return''}
  if(k==='search2')return q.ty==='robot'?'機器人無法搜索搬運':B.L.N[c].ty!=='room'?'只有房間需要搜索':'';
  if(k==='search')return q.ty==='robot'?'機器人無法搜索搬運':B.L.N[c].ty!=='room'&&!(f>=0&&tacCel(B,f,c).vic)?'只有房間需要搜索':'';
@@ -635,7 +637,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
  const B=inc.tac;q.wd=0;
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
  if(k==='relay')return tacRelayOrder(inc,B,q,quiet);
- if(k==='vent'&&f===B.F-1&&tacStair(B,c))k='roof';
+ let rOpen=0;if(k==='vent'&&f===B.F-1&&tacStair(B,c)){k='roof';rOpen=1} // 破窗排煙點頂樓樓梯間＝開啟屋頂出入口
  if(k==='truck')return tacTruck(inc,B,q,side,quiet);
  if(k==='hyd'){const why=tacCan(B,q,'hyd');if(why){if(!quiet)msg=q.cs+'：'+why;return false}
   if(tacTruck(inc,B,q,B.hyd.side,1)){radio(inc,q.cs,'收到，移車至'+TAC_SDN[B.hyd.side]+'側消防栓佔水。');return true}return false}
@@ -692,7 +694,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
  else if(k==='ppv'){
   if(B.ppv&&q.task==='ppv'){B.ppv=0;q.task='idle';if(!quiet)radio(inc,q.cs,'正壓排煙停止，送風機關閉。');return true}
   q.task='ppv';q.tf=-1;q.tc=0;q.ws=side&&B.ents.some(e=>e.side===side)?side:(B.ents.find(e=>e.side===q.side)||B.ents[0]).side}
- else if(k==='roof'){q.task='roof';q.tf=q.ty==='ladder'?-1:B.F-1;q.tc=0;q.lf=B.F-1;q.lc=0}
+ else if(k==='roof'){q.task='roof';q.roofOp=B.roof&&!rOpen?'close':'open';q.tf=q.ty==='ladder'?-1:B.F-1;q.tc=0;q.lf=B.F-1;q.lc=0}
  else if(k==='roofres'){q.task='roofres';q.tf=q.ty==='ladder'?-1:B.F-1;q.tc=0;q.lf=B.F;q.lc=0}
  else if(k==='vvent'){q.task='vvent';q.tf=-1;q.tc=0;q.lf=B.F;q.lc=0;q.vc=c}
  else if(q.ty==='ladder'){q.task=k;q.tf=-1;q.tc=0;q.lf=f;q.lc=c}
@@ -876,7 +878,7 @@ function tacSquad(inc,B,q,dt,eff){
     if(B.roofV>0){q.wk+=dt;if(q.wk>=8){q.wk=0;B.roofV--;tacPatient(inc,B,B.roofH,q.cs+' 以雲梯自屋頂');}return}
     q.task='idle';return}
    const lc=tacCel(B,q.lf,q.lc);
-   if(k==='roof'){if(!B.roof){B.roof=1;radio(inc,q.cs,'雲梯就位，已開啟頂樓樓梯間屋頂排煙口。')}q.task='idle';return}
+   if(k==='roof'){const op=q.roofOp!=='close';if(!!B.roof!==op){B.roof=op?1:0;radio(inc,q.cs,'雲梯就位，頂樓樓梯間屋頂出入口已'+(op?'開啟，樓梯間的煙往上排出。':'關閉。'))}q.task='idle';return}
    if(k==='vvent'){q.wk+=dt;if(q.wk>=10){q.wk=0;const x=tacCel(B,B.F-1,q.vc);x.vv=1;tacEarlyVent(inc,B,x);q.task='idle';
     radio(inc,q.cs,'雲梯就位，於'+tacNm(B,B.F-1,q.vc)+'正上方屋頂開孔，垂直排煙建立。')}return}
    if(k==='vent'){if(!lc.v){tacOpenWin(inc,B,lc,q.cs);radio(inc,q.cs,'雲梯破窗，'+tacNm(B,q.lf,q.lc)+'開口完成。')}q.task='idle';return}
@@ -956,8 +958,11 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='overhaul'){ // 殘火處理：翻開夾層、家具與天花板，徹底澆熄餘燼
   if(!cl.emb){const nx=tacNear(B,q.f,q.c,x=>x.emb&&x.h<.05&&!B.sq.some(y=>y!==q&&y.task==='overhaul'&&y.tf===q.f&&y.tc===x.c));
    if(nx!==null){q.tc=nx;return}q.task='idle';radio(inc,q.cs,tacFlr(B,q.f)+' 殘火處理完成。');return}
-  q.wk+=dt*(q.ty==='pump'?1:.6)*(q.n/3)*cmd;
-  if(q.wk>=8){q.wk=0;cl.emb=0;cl.ovh=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'殘火處理完成，確認無餘燼。')}
+  // 深層悶燒（堆積物、鋰電池、油品、倉儲）要邊翻邊灑水：沒有水線很慢
+  const ow=tacOvhWet(B,cl),hasW=q.line&&q.pf>0;if(ow&&!hasW&&!q.ovW){q.ovW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'是深層悶燒，需要水線邊翻邊灑水，沒有水線很慢。')}
+  if(hasW)cl.wet=1;
+  q.wk+=dt*(q.ty==='pump'?1:.6)*(q.n/3)*cmd*(ow&&!hasW?.35:1);
+  if(q.wk>=8){q.wk=0;q.ovW=0;cl.emb=0;cl.ovh=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'殘火處理完成，確認無餘燼。')}
   return}
  if(k==='npv'){ // 負壓排煙：在窗口架排風機把煙抽出（不像正壓會把空氣灌進火場）
   if(!cl.v){q.wk+=dt;if(q.wk>=3){q.wk=0;tacOpenWin(inc,B,cl,q.cs);radio(inc,q.cs,tacNm(B,q.f,q.c)+'開窗架設排風機，負壓排煙開始。')}}
@@ -1017,7 +1022,7 @@ function tacSquad(inc,B,q,dt,eff){
    radio(inc,q.cs,'自屋頂帶領民眾 '+take+' 名經樓梯下樓。')}
   else q.task='idle';
   return}
- if(k==='roof'){q.wk+=dt;if(q.wk>=4){q.wk=0;B.roof=1;q.task='idle';radio(inc,q.cs,'頂樓屋頂排煙口已開啟。')}return}
+ if(k==='roof'){q.wk+=dt;if(q.wk>=4){q.wk=0;const op=q.roofOp!=='close';B.roof=op?1:0;q.task='idle';radio(inc,q.cs,'頂樓屋頂出入口已'+(op?'開啟，樓梯間的煙往上排出。':'關閉。'))}return}
  if(k==='ritgo'){
   const dn=B.sq.find(x=>x.u===q.resc);
   if(!dn||!dn.down||dn.gone){q.task='rit';q.tf=-1;q.tc=0;return}
@@ -1166,7 +1171,7 @@ function tacLines(inc,B,dt){
  if(B.hyd&&!tacHydOK(inc,B)&&!B.hydW&&B.sq.some(q=>q.ty==='pump')){B.hydW=1;
   radio(inc,'受理','消防栓在'+TAC_SDN[B.hyd.side]+'側，該側沒有幫浦車佔水，目前只能用車上水箱，請移車佔水。')}
  if(tacHydOK(inc,B))B.hydW=0;
- const want=B.sq.filter(q=>TAC_WET[q.task]&&!q.down).sort((a,b)=>a.lt-b.lt);
+ const want=B.sq.filter(q=>(TAC_WET[q.task]||(q.task==='overhaul'&&q.tf>=0&&q.ty!=='robot'&&!q.vol&&tacOvhWet(B,tacCel(B,q.tf,q.tc))))&&!q.down).sort((a,b)=>a.lt-b.lt);
  for(const q of B.sq){q.line=0;if(q.burst>0)q.burst-=dt}
  let n=0,spN=0;
  for(const q of want){
@@ -1196,7 +1201,7 @@ function tacLines(inc,B,dt){
 // 需求：車頂砲塔 2、雲梯射水 1.6、2.5 吋線（過渡射水、周界防護）1.3
 // 幫浦能力：小型幫浦車 1.4、一般幫浦車 2.4、泡沫車 3、特殊化學車 2.6、機場消防車 4；只用車上水箱時 ×0.85；連結送水管 2.4
 // 消防栓：同一支消防栓約可供 4 線，佔水的幾輛車共用（超過就一起掉壓）
-const TAC_FLOWD={sky:2,master:1.6,trans:1.3,cover:1.3,guard:1.3},TAC_PCAP={'16':1.4,'11':2.4,'57':3,'01':2.6,'機':4},TAC_HYDCAP=4;
+const TAC_FLOWD={overhaul:.5,sky:2,master:1.6,trans:1.3,cover:1.3,guard:1.3},TAC_PCAP={'16':1.4,'11':2.4,'57':3,'01':2.6,'機':4},TAC_HYDCAP=4;
 function tacFlowShare(inc,B){
  const by={};B.fsh={};
  for(const q of B.sq){if(!q.line||q.down)continue;
@@ -1311,9 +1316,7 @@ function tacAI(inc,B,dt,M){
    const r=free.find(q=>q.ty==='resc'&&!tacIn(q))||free.find(q=>q.ty!=='ladder'&&q.ty!=='robot'&&!tacIn(q)&&!q.line);
    const e=r&&B.ents.slice().sort((a,b)=>tacWalk(r.side,a.side)-tacWalk(r.side,b.side))[0];
    if(r&&e&&tacOrder(inc,r,'force',-1,0,1,e.side))take(r)}
-  if(B.sq.length>=6&&!B.sq.some(y=>y.task==='dctrl')&&burning.length){
-   const e=B.ents.find(x=>x.side===B.arr)||B.ents[0],r=free.find(q=>(q.ty==='resc'||q.ty==='vent')&&!tacIn(q));
-   if(r&&e&&tacOrder(inc,r,'dctrl',-1,0,1,e.side)){take(r);radio(inc,r.cs,'於'+TAC_SDN[e.side]+'側入口門控，控制進氣。')}}}
+ }
  // 進入建物前先編成 RIT（2 進 2 出）；人手不足時最多等 45 秒，已知有受困者時立即進入
  const entryOK=B.sq.some(q=>q.task==='rit'||q.task==='ritgo')||S.t-B.t0>45||B.cells.some(x=>x.vic>0&&(x.rep||x.rub||x.srch>=1))||!M.safety;
  // 兩座樓梯（AI）：離火點較遠的一座為避難梯，派員關上起火層與上一層避難梯的防火門

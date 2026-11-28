@@ -38,17 +38,17 @@ function callsHTML(){
  for(const i of list){
   const d=KIND[i.k],f=fill(i,0),got=f.reduce((a,b)=>a+b,0),tot=i.need.reduce((a,g)=>a+g.n,0);
   const urg=i.left/i.max<.35,col=i.rev?d.col:'#6b6960';
-  out.push('<div class="call'+(sel===i.id?' sel':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
+  out.push('<div class="call'+(sel===i.id?' sel':'')+(i.req?' pend':'')+'" data-sel="'+i.id+'" style="border-left-color:'+col+'">'+
    '<div class="row" style="padding:0"><span class="tag" style="background:'+col+';color:'+(i.rev?'#111110':'#eceae3')+'">'+
    (i.rev?(i.nm||d.n)+(i.pm.lvl>1?' '+['','一級','二級','三級','四級'][i.pm.lvl]+'火警':'')+(i.pm.trap?' 困'+i.pm.trap:''):d.cls+'類 · 待確認')+'</span>'+
    '<span class="mono" style="color:'+(urg?'var(--red)':'var(--fg2)')+'">'+(tacFrozen(i)?'⏸ ':'')+fmt(i.left)+'</span></div>'+
    '<div class="sub" style="margin-top:3px">'+esc(i.addr)+' · 同時 '+(i.calls||1)+' 通 · 編組 '+got+'/'+(i.rev?tot:'?')+
-   (i.rev&&i.ph>=0?' · '+i.phs[i.ph]:'')+(i.req?' · 待回覆':'')+(KIND[i.k].pol&&i.pol<2?' · 待警方':'')+(KIND[i.k].pow&&i.pow<2?' · 待斷電':'')+
+   (i.rev&&i.ph>=0?' · '+i.phs[i.ph]:'')+(i.req?' · <b class="pendb">⚑ 待回覆 '+Math.ceil(i.reqT)+' 秒</b>':'')+(KIND[i.k].pol&&i.pol<2?' · 待警方':'')+(KIND[i.k].pow&&i.pow<2?' · 待斷電':'')+
    (i.note?' · '+esc(i.note):'')+'</div></div>')}
  for(const r of S.mr||[])
-  out.push('<div class="call'+(sel===r.id?' sel':'')+'" data-sel="'+r.id+'" style="border-left-color:#7f77dd">'+
+  out.push('<div class="call'+(sel===r.id?' sel':'')+(r.sent?'':' pend')+'" data-sel="'+r.id+'" style="border-left-color:#7f77dd">'+
    '<div class="row" style="padding:0"><span class="tag" style="background:#7f77dd">跨縣市支援請求 · '+r.from+'</span>'+
-   '<span class="mono" style="color:var(--fg2)">'+(r.sent?'支援中':fmt(r.left))+'</span></div>'+
+   '<span class="mono" style="color:var(--fg2)">'+(r.sent?'支援中':'<b class="pendb">⚑ 待回覆</b> '+fmt(r.left))+'</span></div>'+
    '<div class="sub" style="margin-top:3px">'+r.n+' · 請求 '+r.need.map(g=>(g.c==='usar'?'USAR':LB[g.c]||g.c)+'×'+g.n).join('、')+' · 評鑑 +'+r.rep+'</div></div>');
  for(const d of S.duties)
   out.push('<div class="call'+(sel===d.id?' sel':'')+'" data-sel="'+d.id+'" style="border-left-color:var(--pur)">'+
