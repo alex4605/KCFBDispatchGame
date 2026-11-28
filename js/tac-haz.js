@@ -99,10 +99,10 @@ function tacPlug(inc,B,q,dt){
 // 化災應變隊到場：加入一組（自備 A／B／C 級，不受化災車套數限制）
 function tacEpaSync(inc,B){
  if(inc.epa!==3||B.sq.some(q=>q.epa))return;
- B.sq.push({u:'epa',epa:1,cs:'化災應變隊',code:'環',ty:'epa',n:4,f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+ B.sq.push({u:'epa',epa:1,cs:inc.epaTr?'實習化災應變隊':'化災應變隊',sk:inc.epaTr?'rookie':undefined,code:'環',ty:'epa',n:4,f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
   task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,ppe:'B',
   tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:3});
- tacEvt(inc,B,'milestone','環保署化災應變隊到場')}
+ tacEvt(inc,B,'milestone',inc.epaTr?'實習毒化災應變隊在場':'環保署化災應變隊到場')}
 // 指令限制：受污染需先除污；化災應變隊、化災組能做的事
 function tacHazCan(B,q,k){
  if(q.cont&&!tacIn(q)&&k!=='exit'&&k!=='move'&&!/^ppe/.test(k))return'人員受化學污染，需先到除污站除污';

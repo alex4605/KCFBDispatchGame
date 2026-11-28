@@ -7,9 +7,11 @@ const TAC_SDBK={fact:[.2,.4],warehouse:[.2,.4],farmfire:[.1,.35],tinfire:[.1,.35
 const TAC_SDBN={good:'訓練良好',avg:'訓練普通',poor:'訓練不足'};
 TAC_SKL.sdb={n:'自衛消防',t:1.45,w:.5,fat:1.5};
 function tacSdbInit(inc,B){
- const p=TAC_SDBK[inc.k];if(!p||B.sc||inc.train)return;
+ // 消防學校第三關：實習自衛消防編組（訓練普通）
+ const tr=inc.train&&TRAIN_LV[inc.train-1]&&TRAIN_LV[inc.train-1].sdb;
+ const p=tr?[0,1]:TAC_SDBK[inc.k];if(!p||B.sc||(inc.train&&!tr))return;
  const r=Math.random(),lv=r<p[0]?'good':r<p[0]+p[1]?'avg':'poor';
- const S2=B.sdb={lv,n:lv==='good'?tacRint(4,6):lv==='avg'?tacRint(3,4):tacRint(2,3),acc:lv==='good'?1:lv==='avg'?.5:0,act:[]};
+const S2=B.sdb={tr:tr?1:0,lv,n:lv==='good'?tacRint(4,6):lv==='avg'?tacRint(3,4):tacRint(2,3),acc:lv==='good'?1:lv==='avg'?.5:0,act:[]};
  const W=B.W,burn=B.cells.filter(x=>x.h>.05&&x.ty==='room');
  const doors=x=>B.L.N[x.c].nb.filter(o=>!tacOpn(B,x.c,o)).map(o=>tacDK(B,x.f,x.c,o));
  if(lv==='good'){
@@ -24,7 +26,7 @@ function tacSdbInit(inc,B){
 // 消防隊到場：自衛消防編組向指揮站報到，加入一組（沒有空氣呼吸器，以 C 級處理：不耗氣、不能進煙熱缺氧區）
 function tacSdbSync(inc,B){
  const S2=B.sdb;if(!S2||S2.on)return;S2.on=1;S2.t0=S.t;S2.gap=S2.lv==='good'?90:S2.lv==='avg'?50:25;S2.nx=S.t+S2.gap;
- B.sq.push({u:'sdb',sdb:1,sk:'sdb',ppe:'C',cs:'自衛消防隊',code:'自',ty:'crew',n:S2.n,f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
+ B.sq.push({u:'sdb',sdb:1,sk:'sdb',ppe:'C',cs:S2.tr?'實習自衛消防隊':'自衛消防隊',code:'自',ty:'crew',n:S2.n,f:-1,c:0,nf:-1,nc:0,mt:0,tf:-1,tc:0,
   task:'idle',air:1,hp:1,down:0,carry:0,line:0,lt:0,prev:null,resc:null,low:0,ext:0,wk:0,
   tside:B.arr,side:B.arr,tmv:0,pf:0,len:0,src:null,burst:0,ent:null,ws:null,fat:0,cyl:0});
  radio(inc,'自衛消防隊',S2.lv==='good'?'自衛消防編組 '+S2.n+' 人向指揮站報到：'+S2.act.join('、')+'。可協助引導與關門侷限。':

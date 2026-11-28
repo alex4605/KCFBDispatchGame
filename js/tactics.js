@@ -404,7 +404,7 @@ function tacInit(inc){
  if(T.wui&&inc.wf){const W=inc.wf;B.wui=1;B.wk=wfWuiTodo(W)[0];(W.prot||(W.prot=new Set())).add(B.wk);B.doneT=0}
  if(T.out)tacYardInit(inc,B,T);
  // 化工廠：約三分之二有化學品洩漏（起火層的廠區或倉庫）
- if(inc.k==='chemfire'&&Math.random()<.65){B.chem=pick(TAC_CHEM);const ks=rooms.filter(c=>/machine|store/.test(L.N[c].kind));B.leak={f:of,c:ks.length?pick(ks):oc,on:1}}
+ if(inc.k==='chemfire'&&(inc.train===4||Math.random()<.65)){B.chem=pick(TAC_CHEM);const ks=rooms.filter(c=>/machine|store/.test(L.N[c].kind));B.leak={f:of,c:ks.length?pick(ks):oc,on:1}}
  const prog=Math.min(.8,inc.work/inc.dur);
  const nIgn=T.hoax||T.nofire?0:T.cook||T.ext||T.roofF?1:T.blast||T.wui?2:Math.max(1,Math.min(R,Math.round((inc.pm.area||60)/100)));
  const cand=[];
