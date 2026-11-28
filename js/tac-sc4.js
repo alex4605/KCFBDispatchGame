@@ -15,10 +15,11 @@ Object.assign(TACK,{
  mci:{f:[1,1],lay:'yard',yard:'plaza',k:[3,3],b:0,out:1,nofire:1,sc:'crowd',mci:1}});
 Object.assign(TAC_CVW,{balcony:TAC_RES});
 Object.assign(TAC_SCY,{rail:1,sink:1,apron:1,plaza:1});
-Object.assign(TAC_RK,{rcar:{n:'車廂',fk:1,sr:1.2},loco:{n:'機車頭',fk:.8,sr:.8},sink:{n:'坍陷坑',fk:0,sr:1.4},edge:{n:'坍陷邊緣',fk:0,sr:.6},slope:{n:'崩塌土石',fk:.2,sr:1.5},
+Object.assign(TAC_RK,{rcar:{n:'車廂',fk:1,sr:1.2},loco:{n:'車頭',fk:.8,sr:.8},sink:{n:'坍陷坑',fk:0,sr:1.4},edge:{n:'坍陷邊緣',fk:0,sr:.6},slope:{n:'崩塌土石',fk:.2,sr:1.5},
  nose:{n:'駕駛艙',fk:1,sr:.8},fuse:{n:'客艙',fk:1.2,sr:1.3},wing:{n:'機翼油箱',fk:1.6,sr:.4},tail:{n:'機尾',fk:1,sr:.6},
  crowd:{n:'人群',fk:0,sr:1},stage:{n:'舞台',fk:.8,sr:.8},venue:{n:'活動區',fk:0,sr:.8},ebox:{n:'變電箱',fk:.6,sr:.3}});
-Object.assign(TAC_YFU,{rcar:1,loco:.8,sink:0,edge:0,slope:.2,nose:1,fuse:1.2,wing:1.5,tail:1,crowd:0,stage:.8,venue:0,ebox:.6});
+Object.assign(TAC_RK,{gate:{n:'出口閘門',fk:0,sr:.8}});
+Object.assign(TAC_YFU,{gate:0,rcar:1,loco:.8,sink:0,edge:0,slope:.2,nose:1,fuse:1.2,wing:1.5,tail:1,crowd:0,stage:.8,venue:0,ebox:.6});
 Object.assign(TAC_TASK,{cush:'救生氣墊',rope:'繩索救援',extg:'滅火器',clear:'人潮疏導'});
 // ===== 版面 =====
 function tacSc4Lay(T,K,L,add,room,cuts,R){
@@ -30,7 +31,7 @@ function tacSc4Lay(T,K,L,add,room,cuts,R){
   const y1=.55,y2=y1+.7,y3=y2+.7,y4=y3+(mrt?.65:.6);L.GH=y4+.55;
   row(0,y1,()=>mrt?'lobby':'verge',.9,1.4);
   const nc=mrt?2:3,x0=.3+R()*.4;seq(y1,y2,x0,[['loco',.8]].concat(Array(nc).fill(0).map(()=>['rcar',1.15])),{trk:1});
-  if(L.var==='derail'){const xd=x0+.8+1.15*(nc-1)-.3;seq(y2,y3,Math.max(.2,xd),[['rcar',1.15]],{trk:1})}else lanes(0,L.GW,y2,y3,{trk:1});
+  if(L.var==='derail'){const xd=x0+.8+1.15*(nc-1)-.3;seq(y2,y3,Math.max(.2,xd),[['rcar',1.15]],{trk:1});for(const n of L.N)if(n.kind==='rcar'&&Math.abs(n.gy-y2)<.01)n.drl=1}else lanes(0,L.GW,y2,y3,{trk:1});
   if(mrt)lanes(0,L.GW,y3,y4,{plat:1});else if(L.var==='cross'){const xc=x0+.8+R()*1.2;seq(y3,y4,xc,[['car',.9]])}else lanes(0,L.GW,y3,y4);
   row(y4,L.GH,()=>mrt?'lobby':'verge',.9,1.4);
   return true}
@@ -42,12 +43,17 @@ function tacSc4Lay(T,K,L,add,room,cuts,R){
  if(T.yard==='apron'){ // 機場：滑行道、機翼、機身（駕駛艙、客艙、機尾）、機翼、滑行道、旅客集合的草坪
   L.GW=4.8+K*.4;const big=T.big,y1=.55,y2=y1+.5,y3=y2+.7,y4=y3+.5,y5=y4+.55;L.GH=y5+.6;L.var=big?'jet':'small';L.varN=big?'客機':'小型航空器';
   const nf=big?3:1,x0=.5+R()*.5,wx=x0+.5+(nf>1?.6:.1);
+  const ov=big&&R()<.45;if(ov){L.var='over';L.varN='客機衝出跑道'}
   lanes(0,L.GW,0,y1);seq(y1,y2,wx,[['wing',big?1.6:1]]);
   seq(y2,y3,x0,[['nose',.5]].concat(Array(nf).fill(['fuse',1])).concat([['tail',.6]]));
-  seq(y3,y4,wx,[['wing',big?1.6:1]]);lanes(0,L.GW,y4,y5);row(y5,L.GH,()=>'grass',1,1.5);
+  seq(y3,y4,wx,[['wing',big?1.6:1]]);if(ov)row(y4,y5,()=>'reed',.9,1.4);else lanes(0,L.GW,y4,y5);row(y5,L.GH,()=>ov?'reed':'grass',1,1.5);
   return true}
  if(T.yard==='plaza'){ // 活動廣場：道路、舞台與人群區、疏散通道、人群區與攤位、道路
-  L.GW=4.2+K*.4;const y1=.6,y2=y1+.9,y3=y2+.45,y4=y3+.85;L.GH=y4+.6;L.var=T.mci?'mci':'crowd';L.varN=T.mci?'活動會場':'跨年晚會廣場';
+  L.GW=4.2+K*.4;const y1=.6,y2=y1+.9,y3=y2+.45,y4=y3+.85;L.GH=y4+.6;L.var=T.mci?'mci':R()<.45?'stadium':'crowd';L.varN={mci:'活動會場',crowd:'跨年晚會廣場',stadium:'體育場散場出口'}[L.var];
+  if(L.var==='stadium'){ // 體育場：看台區、狹窄的出口閘門（瓶頸）、場外廣場、道路
+   lanes(0,L.GW,0,y1);row(y1,y2,()=>'crowd',.9,1.3);
+   {const n=3,gw=.45,sp=(L.GW-n*gw)/(n+1);let x=0;for(let i=0;i<n;i++){lanes(x,x+sp,y2,y3);room(x+sp,y2,gw,y3-y2,'gate');x+=sp+gw}lanes(x,L.GW,y2,y3)}
+   row(y3,y4,(i,n)=>i===n-1?'stall':'venue',.9,1.3);lanes(0,L.GW,y4,L.GH);return true}
   lanes(0,L.GW,0,y1);row(y1,y2,(i,n)=>i===0?'stage':T.mci?'venue':'crowd',.9,1.3);lanes(0,L.GW,y2,y3);row(y3,y4,(i,n)=>i===n-1?'stall':T.mci?'venue':'crowd',.9,1.3);lanes(0,L.GW,y4,L.GH);
   return true}
  return false}
@@ -86,14 +92,15 @@ function tacSc4Init(inc,B,T,put,seed){
   return true}
  if(sc==='air'){B.lk.clear();B.cd.clear();const big=B.L.var==='jet';
   sides({e:{road:4,big:true,nm:'滑行道'},w:{road:4,big:true,nm:'滑行道'},n:{road:4,big:true,nm:'跑道'},s:{road:0,big:false,nm:'草坪'}});B.hyd=null;
-  const wg=rooms.filter(n=>n.kind==='wing'),fs=rooms.filter(n=>/fuse|nose/.test(n.kind)),gr=rooms.filter(n=>n.kind==='grass');let tot=0,pin=0;
+  const wg=rooms.filter(n=>n.kind==='wing'),fs=rooms.filter(n=>/fuse|nose/.test(n.kind)),gr=rooms.filter(n=>n.kind==='grass'||n.kind==='reed');let tot=0,pin=0;
   for(const n of wg)cel(0,n.c).fuel=1;
   const fire=R()<(big?.35:.6);if(fire){const w=pk(wg),x=cel(0,w.c);x.h=.55;x.s=.7}
   if(R()<.7){B.chem=Object.assign({},TAC_FUEL,{n:'航空燃油（Jet A-1）'});B.chemK=1;B.leak={f:0,c:pk(wg).c,on:1}}
   for(const n of fs){const k=n.kind==='nose'?tacRint(1,2):tacRint(big?2:1,big?5:3),x=cel(0,n.c);put(0,n.c,k,.55+R()*.35,1);tot+=k;if(R()<.35){x.pin=1;pin++}}
   if(big)for(const n of gr){const k=tacRint(3,7);put(0,n.c,k,.82+R()*.15,1);tot+=k}
+  if(B.L.var==='over')for(const n of rooms)if(n.kind==='reed'){const x=cel(0,n.c);x.gr=1}
   B.of=0;B.oc=(fire?wg[0]:fs[0]).c;
-  B.sc.brief=(big?'客機迫降：客機迫降後衝出跑道，乘客經逃生滑梯撤到草坪':'航空器事故：小型航空器落地失事')+'，傷患約 '+tot+' 名，機艙內還有 '+pin+' 名受困。'+(fire?'機翼油箱起火，火焰燒向機身：機場消防車與泡沫車以泡沫壓制、保護逃生路線；':'')+(B.leak?'燃油外洩，禁止火源、泡沫覆蓋；':'')+'進入機艙搜救、破壞救援，大量傷病患開設檢傷站分類後送。';
+  B.sc.brief=(B.L.var==='over'?'客機衝出跑道：客機降落時衝出跑道停在芒草地，乘客經滑梯撤到草地（油火會延燒芒草）':big?'客機迫降：客機迫降後衝出跑道，乘客經逃生滑梯撤到草坪':'航空器事故：小型航空器落地失事')+'，傷患約 '+tot+' 名，機艙內還有 '+pin+' 名受困。'+(fire?'機翼油箱起火，火焰燒向機身：機場消防車與泡沫車以泡沫壓制、保護逃生路線；':'')+(B.leak?'燃油外洩，禁止火源、泡沫覆蓋；':'')+'進入機艙搜救、破壞救援，大量傷病患開設檢傷站分類後送。';
   return true}
  if(sc==='elec'){B.lk.clear();
   sides({e:{road:2,big:true,nm:'道路'},w:{road:2,big:true,nm:'道路'},n:{road:0,big:false,nm:'騎樓店面'},s:{road:0,big:false,nm:'騎樓店面'}});
@@ -105,9 +112,9 @@ function tacSc4Init(inc,B,T,put,seed){
  if(sc==='crowd'){B.lk.clear();const mci=B.L.var==='mci';
   sides({e:{road:2,big:true,nm:'道路'},w:{road:2,big:true,nm:'道路'},n:{road:2,big:true,nm:'道路'},s:{road:2,big:true,nm:'道路'}});
   let tot=0;
-  for(const n of rooms.filter(n=>n.kind==='crowd'||n.kind==='venue')){const x=cel(0,n.c);if(n.kind==='crowd')x.crowd=.7+R()*.25;const k=tacRint(mci?2:1,mci?5:4);put(0,n.c,k,mci?.65+R()*.3:.55+R()*.4,1);tot+=k}
+  for(const n of rooms.filter(n=>/crowd|venue|gate/.test(n.kind))){const x=cel(0,n.c);if(n.kind==='crowd'||n.kind==='gate')x.crowd=n.kind==='gate'?.9:.7+R()*.25;const k=tacRint(mci?2:1,mci?5:4);put(0,n.c,k,mci?.65+R()*.3:.55+R()*.4,1);tot+=k}
   B.of=0;B.oc=rooms[0].c;
-  B.sc.brief=mci?'大量傷病患：活動會場多人同時不適（疑似食物中毒或熱傷害），傷患約 '+tot+' 名散在會場各區。開設檢傷站、醫療站，依紅黃綠分類後送，加派救護車；必要時請求鄰近分隊支援。':
+  B.sc.brief=B.L.var==='stadium'?'體育場散場推擠：比賽結束散場，人潮擠在出口閘門前推擠倒地，約 '+tot+' 名受傷，閘門與看台下方有人被壓在人群底下。先會同警方在閘門「人潮疏導」打開動線，再搜救、檢傷分類後送。':mci?'大量傷病患：活動會場多人同時不適（疑似食物中毒或熱傷害），傷患約 '+tot+' 名散在會場各區。開設檢傷站、醫療站，依紅黃綠分類後送，加派救護車；必要時請求鄰近分隊支援。':
    '人潮推擠：跨年晚會散場時人潮推擠倒地，約 '+tot+' 名受傷、有人被壓在人群底下。人群太擠進不去：先會同警方「人潮疏導」打開空間，再搜救、檢傷分類後送，大量傷病患要加派救護車。';
   return true}
  return false}
@@ -198,7 +205,7 @@ function tacSc4Draw(g,G,B,n,x,r,k,dark){
   g.strokeStyle='rgba(138,133,122,.5)';g.lineWidth=2;for(let xx=r[0]+4;xx<r[0]+r[2];xx+=9){g.beginPath();g.moveTo(xx,r[1]+r[3]*.28);g.lineTo(xx,r[1]+r[3]*.72);g.stroke()}
   if(B.pwOn){g.strokeStyle='rgba(233,193,59,.55)';g.setLineDash([3,5]);g.beginPath();g.moveTo(r[0],r[1]+r[3]*.15);g.lineTo(r[0]+r[2],r[1]+r[3]*.15);g.stroke();g.setLineDash([])}}
  if(n.plat){g.fillStyle='rgba(233,193,59,.7)';g.fillRect(r[0],r[1]+2,r[2],3)}
- if(k==='rcar'||k==='loco'){g.fillStyle=dark?'#1e1c19':k==='loco'?'#c8732c':'#6a8aa8';g.fillRect(r[0]+2,r[1]+r[3]*.2,r[2]-4,r[3]*.6);g.fillStyle='rgba(220,235,250,.6)';for(let xx=r[0]+8;xx<r[0]+r[2]-8;xx+=12)g.fillRect(xx,r[1]+r[3]*.3,7,r[3]*.15);return true}
+ if(k==='rcar'||k==='loco'){tacTrainDraw(g,B,n,r,k,dark);return true}
  if(k==='sink'){g.fillStyle='#0d0b09';g.beginPath();g.ellipse(r[0]+r[2]/2,r[1]+r[3]/2,r[2]*.45,r[3]*.42,0,0,TAU);g.fill();g.strokeStyle='#5a4a3a';g.lineWidth=2;g.stroke();
   if(x.vic>0)tacCarDraw(g,r[0]+r[2]*.3,r[1]+r[3]*.35,r[2]*.4,r[3]*.3,'#6a7a8a',false,dark);return true}
  if(k==='edge'){g.strokeStyle='rgba(160,130,90,.7)';g.lineWidth=1.2;for(let i=0;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*(.1+.2*i),r[1]+4);g.lineTo(r[0]+r[2]*(.2+.18*i),r[1]+r[3]*.5);g.lineTo(r[0]+r[2]*(.12+.2*i),r[1]+r[3]-4);g.stroke()}return true}
@@ -207,7 +214,7 @@ function tacSc4Draw(g,G,B,n,x,r,k,dark){
   if(k!=='tail'){g.fillStyle='rgba(60,90,130,.7)';for(let xx=rr[0]+6;xx<rr[0]+rr[2]-4;xx+=8)g.fillRect(xx,rr[1]+3,4,4)}
   if(k==='tail'){g.fillStyle=dark?'#1a1816':'#c8332c';g.fillRect(r[0]+r[2]*.5,r[1],r[2]*.3,r[3])}return true}
  if(k==='wing'){g.fillStyle=dark?'#1a1816':'#b8bcc4';g.beginPath();g.moveTo(r[0],r[1]+r[3]*.8);g.lineTo(r[0]+r[2],r[1]+r[3]*.35);g.lineTo(r[0]+r[2],r[1]+r[3]*.6);g.lineTo(r[0],r[1]+r[3]);g.closePath();g.fill();return true}
- if(k==='crowd'||k==='venue'){const d=x.crowd||0,nn=Math.round(6+d*40);for(let i=0;i<nn;i++){const a=(n.c*31+i*17)%101/101,b=(n.c*13+i*29)%97/97;g.fillStyle=['#c8b48a','#8aa0c8','#c88a8a','#9ac88a'][i%4];g.beginPath();g.arc(r[0]+r[2]*(.05+.9*a),r[1]+r[3]*(.08+.84*b),2.2,0,TAU);g.fill()}
+ if(k==='crowd'||k==='venue'||k==='gate'){if(k==='gate'){g.fillStyle='#3a3833';g.fillRect(r[0],r[1],3,r[3]);g.fillRect(r[0]+r[2]-3,r[1],3,r[3])}const d=x.crowd||0,nn=Math.round(6+d*40);for(let i=0;i<nn;i++){const a=(n.c*31+i*17)%101/101,b=(n.c*13+i*29)%97/97;g.fillStyle=['#c8b48a','#8aa0c8','#c88a8a','#9ac88a'][i%4];g.beginPath();g.arc(r[0]+r[2]*(.05+.9*a),r[1]+r[3]*(.08+.84*b),2.2,0,TAU);g.fill()}
   if(d>.3){g.fillStyle=d>.5?'rgba(226,86,79,.9)':'rgba(233,161,59,.9)';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText('人群 '+Math.round(d*100)+'%',r[0]+r[2]/2,r[1]+14)}return true}
  if(k==='stage'){g.fillStyle=dark?'#1a1816':'#3a2a4a';g.fillRect(r[0]+4,r[1]+4,r[2]-8,r[3]-8);g.fillStyle='rgba(233,193,59,.6)';for(let i=0;i<4;i++)g.fillRect(r[0]+r[2]*(.15+i*.2),r[1]+6,4,4);return true}
  if(k==='ebox'){g.fillStyle=dark?'#1a1816':'#6a6e74';g.fillRect(r[0]+r[2]*.3,r[1]+r[3]*.25,r[2]*.4,r[3]*.5);g.fillStyle=B.pwOn?'#e9c13b':'#5a5e64';g.font='700 '+Math.round(t*.2)+'px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText('⚡',r[0]+r[2]/2,r[1]+r[3]/2);return true}
@@ -220,3 +227,31 @@ function tacSc4LedgeDraw(g,G,B,vf,T){
   if(x.ledge===2){g.strokeStyle='#9a958a';g.lineWidth=1.5;g.strokeRect(px-9+dv[1]*4,py-6+dv[0]*4,18,12)}
   tacMan(g,px+sw*dv[1],py+sw*dv[0],5,'#ff8a6a',Math.atan2(-dv[1],-dv[0]),{});
   g.fillStyle='#ff8a6a';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillText(x.ledge===2?'外牆受困':'陽台外',px+dv[0]*26,py+dv[1]*18+(dv[1]?0:-12))}}
+// 俯視火車：車頂（集電弓、冷氣機、車頂走道）、兩側色帶、車廂間連結通道；車頭在列車外側那端（斜削的車鼻與擋風玻璃）；
+// 捷運沒有機車頭，第一節是同色系的駕駛車廂；出軌車廂歪斜
+function tacTrainDraw(g,B,n,r,k,dark){
+ const VS=TAC.vs||8,mates=B.L.N.filter(m=>m.vid&&m.vid===n.vid&&!!m.drl===!!n.drl).sort((a,b)=>a.gx-b.gx),i=mates.indexOf(n),first=i===0,last=i===mates.length-1;
+ const mrt=B.L.var==='mrt',cab=k==='loco'&&(first||last),nL=cab&&first,nR=cab&&last&&!first;
+ const wid=Math.min(r[3]*.62,3.2*VS),x0=r[0]+(first?4:1),len=r[2]-(first?4:1)-(last?4:1),y0=r[1]+(r[3]-wid)/2,nose=len*.16;
+ g.save();
+ if(n.drl){g.translate(r[0]+r[2]/2,r[1]+r[3]/2);g.rotate(-.22);g.translate(-(r[0]+r[2]/2),-(r[1]+r[3]/2))}
+ const shape=()=>{g.beginPath();g.moveTo(x0+(nL?nose:0),y0);g.lineTo(x0+len-(nR?nose:0),y0);if(nR){g.lineTo(x0+len,y0+wid*.28);g.lineTo(x0+len,y0+wid*.72)}g.lineTo(x0+len-(nR?nose:0),y0+wid);g.lineTo(x0+(nL?nose:0),y0+wid);if(nL){g.lineTo(x0,y0+wid*.72);g.lineTo(x0,y0+wid*.28)}g.closePath()};
+ g.save();g.translate(2,2);shape();g.fillStyle='rgba(0,0,0,.35)';g.fill();g.restore();
+ shape();g.fillStyle=dark?'#1e1c19':k==='loco'&&!mrt?'#c8732c':mrt?'#b8c0c8':'#a8adb4';g.fill();
+ if(dark){g.restore();return}
+ // 兩側色帶（台鐵電聯車藍色、捷運綠色、機車頭白色）
+ const sx=x0+(nL?nose:0),sl=len-(nL||nR?nose:0),sw=Math.max(1.5,wid*.09);
+ g.fillStyle=k==='loco'&&!mrt?'#f0ece4':mrt?'#3a9a6a':'#2f5fb0';g.fillRect(sx,y0,sl,sw);g.fillRect(sx,y0+wid-sw,sl,sw);
+ // 車頂中央走道與分段線
+ g.strokeStyle='rgba(40,40,44,.35)';g.lineWidth=1;g.beginPath();g.moveTo(x0+6,y0+wid/2);g.lineTo(x0+len-6,y0+wid/2);g.stroke();
+ for(let s=1;s<4;s++){g.beginPath();g.moveTo(x0+len*s/4,y0+wid*.15);g.lineTo(x0+len*s/4,y0+wid*.85);g.stroke()}
+ // 冷氣機（車廂兩具；捷運駕駛車廂也有）
+ if(k==='rcar'||mrt){g.fillStyle='#d8dce2';for(const u of[.3,.7])g.fillRect(x0+len*u-len*.08,y0+wid*.28,len*.16,wid*.44)}
+ // 擋風玻璃
+ g.fillStyle='rgba(30,40,55,.85)';if(nL)g.fillRect(x0+len*.08,y0+wid*.22,len*.07,wid*.56);if(nR)g.fillRect(x0+len*.85,y0+wid*.22,len*.07,wid*.56);
+ // 集電弓（台鐵機車頭與第二節；捷運走第三軌沒有）
+ if(!mrt&&(k==='loco'||i===1||i===mates.length-2)){const px=x0+len*(nL?.6:nR?.4:.5),py=y0+wid/2,pw=wid*.34;g.strokeStyle=B.pwOn?'#e9c13b':'#4a4a4a';g.lineWidth=1.5;
+  g.beginPath();g.moveTo(px-pw,py);g.lineTo(px,py-pw*.8);g.lineTo(px+pw,py);g.lineTo(px,py+pw*.8);g.closePath();g.stroke();g.beginPath();g.moveTo(px-pw*1.2,py);g.lineTo(px+pw*1.2,py);g.stroke()}
+ // 連結通道
+ g.fillStyle='#3a3a3e';if(!last)g.fillRect(x0+len-1,y0+wid*.3,3,wid*.4);if(!first)g.fillRect(x0-2,y0+wid*.3,3,wid*.4);
+ g.restore()}

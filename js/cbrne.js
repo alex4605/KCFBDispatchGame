@@ -54,8 +54,8 @@ function tacCbStep(inc,B,dt){
    if(P.hw&&!x.hwW&&x.cz>.3){x.hwW=1;for(const q of B.sq)if(q.f===x.f&&q.c===x.c&&!q.down&&q.ty!=='robot')q.hp-=.12;
     radio(inc,'安全官',tacNm(B,x.f,x.c)+'直接灌水，'+B.chem.n+'放熱噴濺！改用中和劑，水只能大量稀釋。')}
    // 含化學品的廢水：沒有圍堵就流進排水溝
-   if(!x.dike&&x.cz>.08&&!B.chem.util){B.runoff=(B.runoff||0)+dt*x.cz*12;
-    if(B.runoff>120&&!(B.viol||{}).env){(B.viol||(B.viol={})).env=1;radio(inc,'環保局','含化學品的廢水流入排水溝，造成環境污染！請先圍堵（沙包、吸附棉、導水板）再射水。');tacEvt(inc,B,'warn','化學廢水流入排水溝')}}}
+   if(!x.dike&&x.cz>.08&&!B.chem.util){B.runoff=(B.runoff||0)+dt*x.cz*(B.sea?24:12);
+    if(B.runoff>120&&!(B.viol||{}).env){(B.viol||(B.viol={})).env=1;radio(inc,'環保局','含化學品的廢水流入'+(B.sea?'港區海域':'排水溝')+'，造成環境污染！請先圍堵（沙包、吸附棉、導水板）再射水。');tacEvt(inc,B,'warn','化學廢水流入排水溝')}}}
   // 圍堵、覆蓋、中和：減少本區往外擴散與蒸發
   if(x.foam||x.cover)x.cz=Math.max(0,x.cz-dt*.004);
   if(x.neu&&!(B.leak&&B.leak.on&&B.leak.f===x.f&&B.leak.c===x.c))x.cz=Math.max(0,x.cz-dt*.02);
