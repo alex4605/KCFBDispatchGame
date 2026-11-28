@@ -646,7 +646,7 @@ function tacLadSide(B,q,wins){
  const ok=(wins||TAC_SIDES).filter(s=>!tacCanSide(B,q,s));
  return ok.includes(q.tside)?q.tside:ok[0]||null}
 function tacOrder(inc,q,k,f,c,quiet,side,door){
- const B=inc.tac;q.wd=0;
+ const B=inc.tac;q.wd=0;if(!tacAIRun){q.pc=1;q.pcI=0} // 玩家下的命令：該組改由玩家指揮
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
  if(k==='relay')return tacRelayOrder(inc,B,q,quiet);
  let rOpen=0;if(k==='vent'&&f===B.F-1&&tacStair(B,c)){k='roof';rOpen=1} // 破窗排煙點頂樓樓梯間＝開啟屋頂出入口
@@ -983,7 +983,7 @@ function tacSquad(inc,B,q,dt,eff){
   q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'破壞進入完成。');return}
  if(k==='overhaul'){ // 殘火處理：翻開夾層、家具與天花板，徹底澆熄餘燼
   if(!cl.emb){const nx=tacNear(B,q.f,q.c,x=>x.emb&&x.h<.05&&!B.sq.some(y=>y!==q&&y.task==='overhaul'&&y.tf===q.f&&y.tc===x.c));
-   if(nx!==null){q.tc=nx;return}q.task='idle';radio(inc,q.cs,tacFlr(B,q.f)+' 殘火處理完成。');return}
+   if(nx!==null){q.tc=nx;return}if(tacNextFloor(inc,B,q,'overhaul'))return;q.task='idle';radio(inc,q.cs,tacFlr(B,q.f)+' 殘火處理完成。');return}
   // 深層悶燒（堆積物、鋰電池、油品、倉儲）要邊翻邊灑水：沒有水線很慢
   const ow=tacOvhWet(B,cl),hasW=q.line&&q.pf>0;if(ow&&!hasW&&!q.ovW){q.ovW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'是深層悶燒，需要水線邊翻邊灑水，沒有水線很慢。')}
   if(hasW)cl.wet=1;
@@ -1022,7 +1022,7 @@ function tacSquad(inc,B,q,dt,eff){
   // 本室無人：往同層下一個還沒做到這一級的房間
   const lv=k==='search'?1:2;
   const best=tacNear(B,q.f,q.c,x=>x.ty==='room'&&x.sl<lv&&x.h<tacHotLim(q)&&!B.sq.some(y=>y!==q&&y.task===k&&y.tf===q.f&&y.tc===x.c));
-  if(best!==null)q.tc=best;else{q.task='idle';radio(inc,q.cs,tacFlr(B,q.f)+(k==='search'?' 初期搜索完成。':' 次級搜索完成，本層確認淨空。'))}
+  if(best!==null)q.tc=best;else if(!tacNextFloor(inc,B,q,k)){q.task='idle';radio(inc,q.cs,tacFlr(B,q.f)+(k==='search'?' 初期搜索完成。':' 次級搜索完成，本層確認淨空。'))}
   return}
  if(k==='guard'){ // 防護射水：守住這個空間不讓火延燒進來
   if(q.line&&eff>0&&q.pf>0){cl.wet=1;cl.h=Math.max(0,cl.h-dt*.03*eff*q.pf);if(cl.h<.02)cl.h=0}
@@ -1253,7 +1253,7 @@ function tacFlowShare(inc,B){
 // M：{safety, water, search, ems, attack, ladder, stn}
 function tacAI(inc,B,dt,M){
  B.aiT-=dt;if(B.aiT>0)return;B.aiT=1.5;
- const free=B.sq.filter(q=>!q.down&&!q.tmv&&!q.wd&&(q.task==='idle'||q.task==='hold')&&!q.prev&&(q.ty==='ladder'||q.ty==='robot'||q.air>(tacIn(q)?.45:.6)));
+ const free=B.sq.filter(q=>!q.down&&!q.tmv&&!q.wd&&(q.task==='idle'||q.task==='hold')&&!q.prev&&(q.ty==='ladder'||q.ty==='robot'||q.air>(tacIn(q)?.45:.6))&&(!M.only||M.only(q)));
  const take=q=>{const i=free.indexOf(q);if(i>=0)free.splice(i,1)};
  const burning=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>a.f-b.f||b.h-a.h);
  // 站點（AI 指揮）：指揮站、氣瓶充填區、後勤照護區、聯訪處、集結區
@@ -1288,6 +1288,10 @@ function tacAI(inc,B,dt,M){
  if(M.safety&&B.dmg>=.8&&!B.evacS){B.evacS=1;
   for(const q of B.sq)if(tacIn(q)&&!q.down&&q.task!=='carry'&&q.task!=='ritgo'&&q.task!=='station'){q.prev=null;q.task='exit';q.tf=-1;q.tc=0}
   radio(inc,'安全官','結構有坍塌危險，入室小組全部撤出，改採外部防禦！')}
+ // SOP（沒有安全官時）：四組以上到場就以一組編成 RIT（2 進 2 出），救人優先時不等
+ if(M.rit&&!M.safety&&B.sq.length>=4&&!B.sq.some(q=>q.task==='rit'||q.task==='ritgo')){
+  const r=free.find(q=>q.ty!=='ladder'&&q.ty!=='robot'&&!q.vol&&!q.sdb&&!tacIn(q)&&q.ty!=='pump')||free.filter(q=>q.ty==='pump'&&!tacIn(q)&&!q.line).pop();
+  if(r&&tacOrder(inc,r,'rit',-1,0,1)){take(r);radio(inc,r.cs,'依標準作業編成 RIT，於入口待命。')}}
  // 安全：RIT、MAYDAY、閃燃前兆撤出
  if(M.safety){
   // 發現悶燒缺氧（門縫冒黑煙、煙往內吸）的空間：ROE 改為門控進入
@@ -1438,7 +1442,8 @@ function tacAI(inc,B,dt,M){
 const tacLeakOn=B=>!!(B.leak&&B.leak.on&&!B.leak.np);
 const tacVapLeft=B=>!!(B.chem&&B.chem.vap&&B.cells.some(x=>(x.cz||0)>.1))||!!(B.chk&&tacCel(B,B.chk.f,B.chk.c).sl<1);
 // 由 stepIncident 呼叫：取代原本的抽象進度
-function tacIncident(inc,dt,first,flow){
+function tacIncident(inc,dt,first,flow){tacAIRun=1;try{tacIncident0(inc,dt,first,flow)}finally{tacAIRun=0}}
+function tacIncident0(inc,dt,first,flow){
  const B=inc.tac;
  if(inc.req){inc.reqT-=dt;if(inc.reqT<=0)answer(inc,false,true)}
  tacSync(inc);
@@ -1469,7 +1474,8 @@ function tacIncident(inc,dt,first,flow){
   B.roofH-=dt*(ts*.004+.0004);
   if(B.roofH<=0){B.lost+=B.roofV;S.rep-=3*B.roofV;radio(inc,'受理','屋頂避難民眾 '+B.roofV+' 名罹難（評鑑 -'+3*B.roofV+'）。');B.roofV=0}}
  const ply=TAC.open&&TAC.id===inc.id;
- tacAI(inc,B,dt,ply?{safety:B.role.safety,water:B.role.water,search:B.role.search,ems:B.role.ems}:
+ if(ply)tacSopStep(inc,B,dt);
+ tacAI(inc,B,dt,ply?tacPlayMods(inc,B):
   {safety:1,water:1,search:1,ems:1,attack:1,stn:1});
  if(B.wui){tacWuiStep(inc,B,dt,first);return}
  // 進度：控火 60%、受困者處置 40%；火全滅、餘燼都處理完、受困者都已處置與後送後 3 秒結案
