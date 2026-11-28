@@ -735,7 +735,10 @@ function tacSquad(inc,B,q,dt,eff){
   if(!q.mk&&!tacSafe(cl)&&!B.wild&&(q.ppe||'F')!=='C'){q.mk=1;q.mkF=q.f;q.mkT=0;q.hp=Math.max(.3,q.hp-.04);radio(inc,q.cs,tacNm(B,q.f,q.c)+'煙進來了，緊急戴上面罩、接上肺力閥。')}
   // 撤回安全區：卸下肺力閥，不再耗氣
   if(q.mk&&q.mkF>=0&&q.f<=q.mkF&&tacSafe(cl)&&(q.task==='exit'||q.task==='fwdref'||q.task==='idle'||q.task==='station')){q.mk=0}
-  if(q.mk)q.air-=dt/TAC_AIR*(hv?1.15:1)*(q.carry?1.3:1)*(1+q.fat*.3);
+  // 動態耗氣：基礎×作業負荷（攻擊、搜索、搬運、破門、爬樓梯）×環境（高溫、濃煙中摸索）×疲勞
+  const brk=q.frc>0||((q.task==='force'||q.task==='dctrl')&&q.wk>0),climb=q.mt>0&&q.nf!==q.f;
+  q.airK=(hv?1.15:1)*(q.carry?1.3:1)*(brk?1.35:1)*(climb?1.3:1)*(1+Math.max(0,cl.h-.15)*.5)*(cl.s>.7?1.08:1)*(1+q.fat*.3);
+  if(q.mk)q.air-=dt/TAC_AIR*q.airK;
   q.fat=Math.min(1.2,q.fat+dt/220*(hv?1.4:1)*tacSk(q).fat);
   // 體力透支：撤出到屋外休息，恢復後回原任務
   if(q.fat>=1&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'){
@@ -1020,6 +1023,18 @@ function tacOutside(inc,B,q){
  if(q.inj&&!q.down){const u=S.units.find(x=>x.id===q.u);
   radio(inc,q.cs,'受傷隊員已撤出送醫，本車人力不足，報停返隊。');tacEvt(inc,B,'warn',q.cs+' 隊員受傷送醫，報停');
   if(u){u.inc=null;crewDown(u);home(u);u.oosAfter=180}q.gone=1}}
+// 煙囪效應強度（0～約 1.2）：地上樓層數、火勢、頂部開口
+function tacStack(B){let mh=0;for(const x of B.cells)if(x.h>mh)mh=x.h;
+ return Math.min(1.2,.25+Math.min(1,(B.F-B.bf)/10)*.5+mh*.3+(B.roof?.25:0))*(mh>.05||B.cells.some(x=>x.ty==='stair'&&x.s>.2)?1:0)}
+// 煙沿樓梯間竄到起火層以上三層以上：安全官提醒（一次）
+function tacStackWarn(inc,B,stk){
+ if(B.stkW||!stk||B.F-B.bf<4)return;
+ const hi=B.cells.find(x=>x.f>=B.of+3&&x.ty!=='stair'&&x.s>.3&&B.L.N[x.c].nb.some(o=>B.L.N[o].ty==='stair'));
+ if(hi){B.stkW=1;radio(inc,'安全官','煙囪效應：樓梯間的煙已竄到 '+tacFlr(B,hi.f)+'，請確認各層樓梯間防火門關閉'+(B.sp?'、上方樓層住戶就地避難':'')+'！');tacEvt(inc,B,'warn','煙囪效應：煙竄至 '+tacFlr(B,hi.f))}}
+// 受困者吸入火災煙氣的惡化速度：CO（煙濃、缺氧時高）與 HCN（合成材質多的空間高）
+function tacToxV(B,x){
+ const sm=Math.max(0,(18-x.o2)/6),co=(x.s*700+x.h*1400)*(1+sm),hf=x.ty==='room'?(TAC_HCNK[tacK(B,x.f,x.c)]||1):1,hcn=(x.s*22+x.h*18)*hf;
+ return x.s*.0012+Math.min(2,co/800)*.002+Math.min(2.5,hcn/25)*.002}
 // 火煙動態：成長、延燒、閃燃、煙層流動、排煙、受困者存活
 function tacFire(inc,B,dt){
  const W=B.W,F=B.F,R=B.R,dh=new Float32Array(B.cells.length);
@@ -1089,9 +1104,15 @@ function tacFire(inc,B,dt){
   x.h=Math.min(1,Math.max(x.h,.02)+dh[i])}
  for(const x of B.cells)if(x.pre>0&&x.h<.02)x.pre=Math.max(0,x.pre-dt*(x.wet?.01:.0005))
  // 煙：同層經門交換（含樓梯間），樓梯間往上竄
+ // 煙囪效應：建物越高、火越大、頂部有開口（屋頂排煙口）時，樓梯間往上竄得越快；
+ // 建物上半部（中性面以上）樓梯間的煙更容易被壓進樓層，防火門關著時大幅減少
+ const stk=B.out?0:tacStack(B),midF=B.bf+(F-B.bf)/2;
  for(let f=0;f<F;f++)for(const n of B.L.N)for(const cc of tacNb(B,f,n.c)){if(cc<n.c)continue;
-  const a=B.cells[f*W+n.c],b=B.cells[f*W+cc],m=(a.s-b.s)*dt*(tacShut(B,f,n.c,cc)?.04:.25);a.s-=m;b.s+=m}
- for(const n of B.L.N)if(n.ty==='stair'||n.atr)for(let f=0;f<F-1;f++){const a=B.cells[f*W+n.c],b=B.cells[(f+1)*W+n.c],m=a.s*dt*(n.atr?.3:.2)*(1-b.s);a.s-=m;b.s+=m}
+  const a=B.cells[f*W+n.c],b=B.cells[f*W+cc];let k=tacShut(B,f,n.c,cc)?.04:.25;
+  if(stk&&f>=midF){const sa=n.ty==='stair',sb=B.L.N[cc].ty==='stair';if((sa&&a.s>b.s)||(sb&&b.s>a.s))k*=1+stk*.8}
+  const m=(a.s-b.s)*dt*k;a.s-=m;b.s+=m}
+ for(const n of B.L.N)if(n.ty==='stair'||n.atr)for(let f=0;f<F-1;f++){const a=B.cells[f*W+n.c],b=B.cells[(f+1)*W+n.c],m=a.s*dt*(n.atr?.3:.2)*(n.atr?1:.6+stk)*(1-b.s);a.s-=m;b.s+=m}
+ tacStackWarn(inc,B,stk);
  B.ppvT=(B.ppvT||0)-dt;if(B.ppvT<=0){B.ppvT=1;B.ppvS=tacPpvSet(B)}
  const pset=B.ppvS||new Set();
  for(const x of B.cells){
@@ -1111,7 +1132,7 @@ function tacFire(inc,B,dt){
    if(x.emb&&x.h<.02&&!B.sq.some(q=>q.f===x.f&&q.c===x.c)&&Math.random()<dt*(x.li?.012:x.deep?.005:.0015)){x.h=x.li?.3:.15;x.emb=0;x.dw=0;
     radio(inc,'安全官',tacNm(B,x.f,x.c)+(x.li?'鋰電池熱失控復燃！需持續大量灌水冷卻。':'殘火復燃！請派員殘火處理。'));B.rkN=(B.rkN||0)+1;tacEvt(inc,B,'warn',tacNm(B,x.f,x.c)+'殘火復燃')}}
   x.s=Math.max(0,Math.min(1,x.s-dt*out*Math.max(.3,x.s)*2));
-  if(x.vic>0){x.vh-=dt*(x.s*.005+Math.max(0,x.h-.35)*.03);
+  if(x.vic>0){x.vh-=dt*(tacToxV(B,x)+Math.max(0,x.h-.35)*.03);
    if(x.vh<=0){B.lost+=x.vic;S.rep-=3*x.vic;radio(inc,'受理',tacNm(B,x.f,x.c)+'受困者 '+x.vic+' 名罹難（評鑑 -'+(3*x.vic)+'）。');
     x.vic=0;if(S.rep<=0){S.rep=0;S.over=true}}}}}
 // 水線分配：依下令先後，最多 effLines 條
@@ -1154,8 +1175,32 @@ function tacLines(inc,B,dt){
    if(path.some(p=>tacCel(B,p[0],p[1]).h>.7)&&Math.random()<dt*.025){q.burst=8;
     radio(inc,q.cs,'水帶遭高溫燒破，出水中斷，更換水帶中。')}}
   if(q.burst>0)q.pf=0}
+ tacFlowShare(inc,B);
  inc.lines=Math.max(1,n); // 用水量依實際出水線數計算
  return L}
+// 流量分享：需求超過供水能力時，同一來源的各線一起掉壓（以一般 1.5 吋攻擊線為 1）
+// 需求：車頂砲塔 2、雲梯射水 1.6、2.5 吋線（過渡射水、周界防護）1.3
+// 幫浦能力：小型幫浦車 1.4、一般幫浦車 2.4、泡沫車 3、特殊化學車 2.6、機場消防車 4；只用車上水箱時 ×0.85；連結送水管 2.4
+// 消防栓：同一支消防栓約可供 4 線，佔水的幾輛車共用（超過就一起掉壓）
+const TAC_FLOWD={sky:2,master:1.6,trans:1.3,cover:1.3,guard:1.3},TAC_PCAP={'16':1.4,'11':2.4,'57':3,'01':2.6,'機':4},TAC_HYDCAP=4;
+function tacFlowShare(inc,B){
+ const by={};B.fsh={};
+ for(const q of B.sq){if(!q.line||q.down)continue;
+  let k=q.src==='sp'?'sp':q.lu;
+  if(q.ty==='ladder'){const p=B.sq.find(x=>x.ty==='pump'&&x.tside===q.tside&&!x.tmv);if(!p)continue;k=p.u}
+  if(k===undefined||k===null)continue;(by[k]=by[k]||[]).push(q)}
+ const dem=q=>TAC_FLOWD[q.ty==='ladder'?'master':q.task]||1;
+ // 消防栓那一側佔水的車共用消防栓水量
+ const hydP=B.hyd?B.sq.filter(x=>x.ty==='pump'&&x.tside===B.hyd.side&&!x.tmv):[],hydD=hydP.reduce((a,p)=>a+(by[p.u]||[]).reduce((b,q)=>b+dem(q),0),0)+(by.sp&&B.sp&&hydP.some(p=>p.u===B.sp.u)?by.sp.reduce((b,q)=>b+dem(q),0):0);
+ const hf=hydD>TAC_HYDCAP?Math.pow(TAC_HYDCAP/hydD,.7):1;B.fshH={D:hydD,f:hf};
+ if(hf<.85&&!(B.fshHW>S.t)){B.fshHW=S.t+120;radio(inc,'水源組','消防栓同時供 '+hydD.toFixed(1)+' 線的水量，超過消防栓能力，各線水壓下降！請水庫車補水或另找水源。')}
+ for(const k in by){const qs=by[k],D=qs.reduce((a,q)=>a+dem(q),0);
+  const p=B.sq.find(x=>String(x.u)===k),onH=k==='sp'?(B.sp&&hydP.some(x=>x.u===B.sp.u)):p&&hydP.includes(p);
+  const cap=k==='sp'?2.4:(TAC_PCAP[p&&p.code]||2.2)*(onH||!B.hyd&&inc.tender?1:.85),f=(D>cap?Math.pow(cap/D,.7):1)*(onH?hf:1);
+  B.fsh[k]={D,cap,f,n:qs.length};
+  for(const q of qs){q.pf*=f;q.fs=f}
+  if(D>cap&&f<.85&&p&&!(B.fshW&&B.fshW[k]>S.t)){(B.fshW=B.fshW||{})[k]=S.t+90;radio(inc,p.cs,'本車同時供 '+qs.length+' 線（需求 '+D.toFixed(1)+'、能力 '+cap.toFixed(1)+'），超過幫浦能力，各線水壓下降！')}}
+ for(const q of B.sq)if(!q.line)q.fs=1}
 // 戰術 AI：分成可個別啟用的模組。AI 指揮時全部啟用；玩家指揮時只啟用已指派職務對應的模組
 // M：{safety, water, search, ems, attack, ladder, stn}
 function tacAI(inc,B,dt,M){

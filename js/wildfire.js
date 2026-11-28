@@ -45,9 +45,18 @@ function wfEdges(W){
 // 是否在地面水線可及範圍：2 格內有車輛可到的道路
 function wfReach(x,y){for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++){const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<N&&b<N&&RD[K(a,b)])return true}return false}
 // 每秒：燃燒、延燒、壓制、防火線、直升機、外部人力、威脅民宅
+// 陣風、飛火開關（測試用）
+const WF_OPT={gust:1,spot:1};
 function wfStep(inc,dt){
  const W=inc.wf;W.acc=(W.acc||0)+dt;if(W.acc<1)return;const s=W.acc;W.acc=0;
  const night=wfNight(),wd=W.wind,wOK=waterOK(inc)||onScene(inc).some(u=>u.code==='61'&&u.st==='work');
+ // 陣風：每 20～60 秒一陣，風速放大 1.1～1.5 倍、風向偏擺最多約 30 度，持續 10～25 秒；陣風之間風稍弱（×0.85），平均風速大致不變
+ const G=W.gust||(W.gust={g:.85,t:20+Math.random()*30,on:0,rot:0});G.t-=s;
+ if(!WF_OPT.gust){G.on=0;G.g=1;G.rot=0;G.t=99}
+ else if(G.t<=0){if(G.on){G.on=0;G.g=.85;G.rot=0;G.t=20+Math.random()*40}
+  else{G.on=1;G.g=1.1+Math.random()*.4;G.rot=(Math.random()-.5)*1.05;G.t=10+Math.random()*15;
+   if(G.g>1.3&&!(W.gwT>S.t)){W.gwT=S.t+60;radio(inc,'現場','陣風增強（約 '+Math.round(wd.ms*G.g)+' m/s），火勢加速往'+wfDirN([wd.d[0]*Math.cos(G.rot)-wd.d[1]*Math.sin(G.rot),wd.d[0]*Math.sin(G.rot)+wd.d[1]*Math.cos(G.rot)])+'延燒，注意飛火！')}}}
+ const gd=[wd.d[0]*Math.cos(G.rot)-wd.d[1]*Math.sin(G.rot),wd.d[0]*Math.sin(G.rot)+wd.d[1]*Math.cos(G.rot)],gv=wd.v*G.g;W.gd=gd;
  // 燃燒與延燒
  const ign=[];
  for(const[k,c]of W.F){
@@ -58,13 +67,20 @@ function wfStep(inc,dt){
   if(c.h<=0){W.F.delete(k);W.B.add(k);continue}
   if(c.h<.35||c.wet>0)continue;
   for(const v of WF_D8){const x=c.x+v[0],y=c.y+v[1],nk=K(x,y);if(W.F.has(nk)||W.B.has(nk)||W.BK.has(nk))continue;const f=wfFu(x,y);if(!f)continue;
-   const l=Math.hypot(v[0],v[1]),dot=(v[0]*wd.d[0]+v[1]*wd.d[1])/l,wf=Math.max(.15,1+1.7*wd.v*dot);
+   const l=Math.hypot(v[0],v[1]),dot=(v[0]*gd[0]+v[1]*gd[1])/l,wf=Math.max(.15,1+1.7*gv*dot);
    const sl=1+Math.max(-.5,Math.min(1.2,(SH[nk]-SH[k])*3)); // 往上坡燒得快
    if(Math.random()<s*.015*c.h*f*wf*sl*(night?.5:1)*(l>1?.7:1))ign.push([x,y])}
   // 民宅威脅
   if(c.h>.4)for(const v of WF_D8){const x=c.x+v[0],y=c.y+v[1],nk=K(x,y);if(wfUrban(x,y)&&!W.thr.has(nk)){W.thr.add(nk);
    if(!(W.thrT>S.t)){W.thrT=S.t+30;radio(inc,'現場','火線逼近（'+x+','+y+'）附近民宅與工寮，請派員周界防護、疏散住戶！')}}}
   if(wfUrban(c.x,c.y)&&c.h>.5&&!W.hit.has(k)){W.hit.add(k);W.lost++;S.rep-=1;radio(inc,'受理','火勢延燒至（'+c.x+','+c.y+'）民宅工寮（評鑑 -1），請加強周界防護。');if(S.rep<=0){S.rep=0;S.over=true}}}
+ // 飛火：猛烈的火線把火星順風送到 2～4 格外，可以跳過道路與防火線。整個火場每秒擲一次（陣風時約 20 秒一處、平時約 70 秒一處），
+ // 不隨火場面積放大，避免飛火連鎖失控
+ if(WF_OPT.spot&&Math.random()<s*(G.on?.05:.014)*gv*(night?.5:1)){const hot=[...W.F.values()].filter(c=>c.h>.7&&!(c.wet>0));
+  if(hot.length){const c=hot[Math.floor(Math.random()*hot.length)],d=2+Math.random()*2,a=(Math.random()-.5)*.6,dx=gd[0]*Math.cos(a)-gd[1]*Math.sin(a),dy=gd[0]*Math.sin(a)+gd[1]*Math.cos(a);
+   const x=Math.round(c.x+dx*d),y=Math.round(c.y+dy*d);
+   if(wfFu(x,y)>.3&&wfIgn(W,x,y,.12)){let jump='';for(let t=1;t<d;t++){const k=K(Math.round(c.x+dx*t),Math.round(c.y+dy*t));if(W.BK.has(k))jump='防火線';else if(RD[k]&&!jump)jump='道路'}
+    W.spotN=(W.spotN||0)+1;if(!(W.spT>S.t)){W.spT=S.t+25;radio(inc,'現場','飛火'+(jump?'跳過'+jump:'')+'，在下風處（'+x+','+y+'）引燃新火點！')}}}}
  for(const p of ign)wfIgn(W,p[0],p[1],.15);
  // 分區與派遣
  const{E}=wfEdges(W);W.E=E;W.peak=Math.max(W.peak,E.length);
@@ -198,7 +214,7 @@ function wfScene(inc,g){
  const ctl=Math.round(Math.max(0,1-(W.E?W.E.length:0)/W.peak)*100);
  g.fillStyle='rgba(12,12,11,.85)';g.fillRect(0,0,scW,34);
  g.fillStyle='#eceae3';g.font='600 13px '+FONT;g.textAlign='left';g.textBaseline='middle';
- g.fillText('山火作戰圖　燃燒中 '+W.F.size+' 公頃　已燒毀 '+W.B.size+' 公頃　控制 '+ctl+'%　'+W.wind.nm+'（火頭往'+wfDirN(W.wind.d)+'）　'+(wfNight()?'夜間：直升機停飛、延燒趨緩':'白天'),10,17);
+ g.fillText('山火作戰圖　燃燒中 '+W.F.size+' 公頃　已燒毀 '+W.B.size+' 公頃　控制 '+ctl+'%　'+W.wind.nm+(W.gust&&W.gust.on&&W.gust.g>1.15?'・陣風 '+Math.round(W.wind.ms*W.gust.g)+' m/s':'')+'（火頭往'+wfDirN(W.gd||W.wind.d)+'）　'+(wfNight()?'夜間：直升機停飛、延燒趨緩':'白天'),10,17);
  // 風向標
  const wx=scW-30,wy=60,d=W.wind.d;g.fillStyle='rgba(12,12,11,.8)';g.beginPath();g.arc(wx,wy,18,0,TAU);g.fill();
  g.strokeStyle='#7db3e8';g.lineWidth=2.5;g.beginPath();g.moveTo(wx-d[0]*12,wy-d[1]*12);g.lineTo(wx+d[0]*12,wy+d[1]*12);g.stroke();
