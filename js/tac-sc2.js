@@ -105,7 +105,7 @@ function tacSc2Step(inc,B,dt){
  if(sc==='ship')for(const x of B.cells){if(x.f>=B.F-1||x.h<.5)continue;const y=B.cells[(x.f+1)*B.W+x.c];if(y&&y.fu>0&&y.ty==='room')y.h=Math.min(1,Math.max(y.h,.01)+dt*.004*(x.h-.5))}
  if(sc==='lift'&&B.lift){const x=tacCel(B,B.lift.f,B.lift.c);if(x.vic>0)x.vh-=dt*.0004}
  B.sc2T=(B.sc2T||0)-dt;if(B.sc2T>0)return;B.sc2T=1;
- if(sc==='collapse'||sc==='crane')for(const q of B.sq){if(!tacIn(q)||q.down||q.ty==='robot')continue;const x=tacCel(B,q.f,q.c);
+ if(sc==='collapse'||sc==='crane'||sc==='sink')for(const q of B.sq){if(!tacIn(q)||q.down||q.ty==='robot')continue;const x=tacCel(B,q.f,q.c);
   if(x.rub&&!x.shore&&Math.random()<.004){q.hp-=.35;radio(inc,'安全官',tacNm(B,q.f,q.c)+'二次崩塌，'+q.cs+' 遭落下物擊中！先架設支撐再進入。');tacEvt(inc,B,'danger','二次崩塌（'+q.cs+'）',1);if(x.vic)x.vh-=.1;if(q.hp<.3)tacDown(inc,B,q,'二次崩塌')}}
  if(B.dg&&!B.dg.on){const x=tacCel(B,0,B.dg.c);if(x.h>.35){B.dg.on=1;B.chem=Object.assign({},B.dg.chem);B.chemK=0;B.leak={f:0,c:B.dg.c,on:1};
   radio(inc,'安全官',tacNm(B,0,B.dg.c)+'是危險品貨櫃，受熱破裂洩漏不明化學品！劃設危害區、化物辨識。');tacEvt(inc,B,'danger','危險品貨櫃洩漏',1)}}}

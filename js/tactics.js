@@ -588,6 +588,7 @@ function tacCan(B,q,k,f,c){
  if(q.down)return'該組已倒地，等待 RIT 救援';
  {const cb=tacCbCan(B,q,k,f,c);if(cb!==null)return cb}
  {const s3=tacSc3Can(B,q,k,f,c);if(s3!==null)return s3}
+ {const s4=tacSc4Can(B,q,k,f,c);if(s4!==null)return s4}
  {const w=tacOutCan(B,q,k,f,c)||tacHazCan(B,q,k)||tacScCan(B,q,k,f,c)||tacSdbCan(q,k);if(w)return w}
  if(q.sk==='vol'&&(TAC_VOLNO[k]||(k==='move'&&f>=0&&(tacCel(B,f,c).h>.05||tacCel(B,f,c).s>.4))||(k==='dctrl'&&f>=0)))return'拒絕：義消（一般）不執行入室攻擊、搜索等深入火場的任務（可改派義消+或正職）';
  if(q.vol&&(k==='attack'||k==='sky'||k==='confine'||k==='trans'||k==='cover'||k==='hydro'))return'義消徒步到場、沒有車輛水線';
@@ -665,6 +666,7 @@ function tacOrder(inc,q,k,f,c,quiet,side,door){
   if(ts!==q.tside)tacTruck(inc,B,q,ts,1);
   if(!quiet)radio(inc,q.cs,'收到，於'+TAC_SDN[ts]+'側對'+TAC_SDN[side]+'側鄰棟外牆周界防護。');
   return true}
+ if(k==='rope')return tacSc4RopeOrder(inc,B,q,f,c,quiet);
  if(k==='dcool')return tacDcoolOrder(inc,B,q,f,c,quiet);
  if(k==='veis')return tacVeisOrder(inc,B,q,f,c,quiet);
  const why=tacCan(B,q,k,f,c)||tacRefuse(B,q,k,f,c);
@@ -895,6 +897,7 @@ function tacSquad(inc,B,q,dt,eff){
   if(k==='stand'){if(!B.sp.on){q.wk+=dt;if(q.wk>=8){q.wk=0;B.sp.on=1;B.sp.u=q.u;
     radio(inc,q.cs,'已接妥'+TAC_SDN[B.sp.side]+'側送水口，連結送水管加壓完成，各樓層出水口可接線。')}}return}
   if(k==='veis'){tacVeisStep(inc,B,q,dt);return}
+  if(k==='cush'){tacSc4Cush(inc,B,q,dt);return}
   if(q.ty==='ladder'&&(k==='ladder'||k==='master'||k==='vent'||k==='roof'||k==='roofres')){
    if(q.ext<1){q.ext=Math.min(1,q.ext+dt/(k==='roofres'?10:7));return}
    if(k==='roofres'){
@@ -933,7 +936,7 @@ function tacSquad(inc,B,q,dt,eff){
   if(q.line&&eff>0&&q.pf>0&&Math.random()<dt*.1)tacSay(q,'attack');
   if(q.line&&eff>0&&q.pf>0){
    // 泡沫：泡沫車、特殊化學車與 CAFS 幫浦車（泡沫瞄）對油火有效，對一般火也比清水好
-   const foam=q.code==='57'||q.code==='01'||q.cafs,fo=cl.fuel?(foam?(q.cafs?1:1.2):.3):(q.code==='57'?1.3:q.cafs?1.25:1),pw=.085*eff*q.pf*fo*(q.n/3)*cmd;
+   const foam=q.code==='57'||q.code==='01'||q.code==='機'||q.cafs,fo=cl.fuel?(foam?(q.cafs?1:1.2):.3):(q.code==='57'?1.3:q.cafs?1.25:1),pw=.085*eff*q.pf*fo*(q.n/3)*cmd;
    tacSteam(inc,B,q,cl,pw,dt);
    cl.h=Math.max(0,cl.h-dt*pw);cl.wet=1;if(cl.h<.03){cl.h=0;cl.dw=1}
    // 水霧也會冷卻門另一側的空間
@@ -958,6 +961,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='ident'){tacIdent(inc,B,q,dt);return}
  if(k==='dike'||k==='neut'||k==='snatch'){tacCbTask(inc,B,q,k,cl,dt);return}
  if(k==='stab'||k==='extr'){tacSc3Task(inc,B,q,k,cl,dt);return}
+ if(k==='rope'||k==='extg'||k==='clear'){tacSc4Task(inc,B,q,k,cl,dt);return}
  if(k==='plug'){tacPlug(inc,B,q,dt);return}
  if(k==='shore'){q.wk+=dt;if(q.wk>=(q.usar?14:20)){q.wk=0;cl.shore=1;q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'支撐架設完成，可以進入瓦礫搜救。');tacEvt(inc,B,'milestone','支撐：'+tacNm(B,q.f,q.c))}return}
  if(k==='dcool'){tacDcoolStep(inc,B,q,dt);return}
@@ -1285,7 +1289,7 @@ function tacAI(inc,B,dt,M){
  // A 級化學品但 A 級防護衣不足 2 套：請求增派化災車
  if(M.stn&&B.chem&&B.chem.lv>=3&&!B.chem.fuel&&tacPPECap(inc).A<2&&!B.hzReq){B.hzReq=1;tacReinf(inc,B,'hazmat')}
  // 油料火或油料外洩（油池可能被引燃）：清水只能打散油火，現場（含途中）沒有泡沫車、特殊化學車或 CAFS 車時請求泡沫車
- if(M.stn&&B.chem&&B.chem.fuel&&!B.foamReq&&(B.cells.some(x=>x.fuel&&x.h>.1)||(B.leak&&B.leak.on&&B.sc))&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='57'||u.code==='01'||u.cafs)){B.foamReq=1;tacReinf(inc,B,'foam')}
+ if(M.stn&&B.chem&&B.chem.fuel&&!B.foamReq&&(B.cells.some(x=>x.fuel&&x.h>.1)||(B.leak&&B.leak.on&&B.sc))&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='57'||u.code==='01'||u.code==='機'||u.cafs)){B.foamReq=1;tacReinf(inc,B,'foam')}
  // 高樓：起火層在 3F 以上，或火在低樓層但上方樓層還要搜索時，開設前進指揮所
  const upS=B.F-B.bf>=5&&B.cells.some(x=>x.f-B.bf>=3&&x.ty==='room'&&(x.sl<2||x.vic>0));
  if(M.stn&&B.F-B.bf>=5&&(B.of-B.bf>=3||B.of<B.bf||upS)){
@@ -1378,7 +1382,7 @@ function tacAI(inc,B,dt,M){
    if(em.length&&!fireOnFloor&&(q.ty!=='pump'||!burning.length||q.task==='hold')&&tacOrder(inc,q,'overhaul',em[0].f,em[0].c,1))continue}
   // 救人優先（AI）：已知有受困者（民眾指稱、瓦礫、已發現）而搜救人手不足時，沒分到水線的幫浦組先去救人
   if(M.attack&&M.search&&q.ty==='pump'&&!q.line&&!tacIn(q)&&entryOK){
-   const kv=B.cells.filter(x=>(x.vic>0&&(x.srch>=1||x.rep||x.rub))&&x.h<.45&&!B.sq.some(y=>y!==q&&(y.task==='search'||y.task==='search2')&&y.tf===x.f&&y.tc===x.c));
+   const kv=B.cells.filter(x=>(tacPinFree(x)>0&&(x.srch>=1||x.rep||x.rub))&&x.h<.45&&!B.sq.some(y=>y!==q&&(y.task==='search'||y.task==='search2')&&y.tf===x.f&&y.tc===x.c));
    const nS=B.sq.filter(y=>y.task==='search'||y.task==='carry').length;
    const kt=kv.length&&nS<kv.length+1?kv.slice(0,4).find(t=>tacOrder(inc,q,'search',t.f,t.c,1)):null;
    if(kt){radio(inc,q.cs,'救人優先，前往'+tacNm(B,kt.f,kt.c)+'搜救。');continue}}

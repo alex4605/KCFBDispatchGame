@@ -61,6 +61,7 @@ function tacSc3Sides(B,m){const sd={};for(const s of TAC_SIDES)sd[s]=m[s];B.sd=s
  if(!sd[B.arr]||!sd[B.arr].road)B.arr=B.ents[0].side;if(B.hyd&&!sd[B.hyd.side].road)B.hyd.side=B.arr}
 const TAC_CHEMS3=['氨氣','氯氣','鹽酸','硫酸','氫氟酸','氫氧化鈉（液鹼）','甲苯','丙酮','甲醇','金屬鈉'];
 function tacSc3Init(inc,B,T,put,seed){
+ if(tacSc4Init(inc,B,T,put,seed))return true;
  const sc=T.sc,t=tacTxt(inc),R=Math.random,N=B.L.N,rooms=N.filter(n=>n.ty==='room'&&!n.court),cel=(f,c)=>tacCel(B,f,c),pk=a=>a[Math.floor(R()*a.length)];
  const chemOf=nm=>Object.assign({},TAC_CHEM.find(c=>c.n===nm)||{n:nm,lv:2},{vap:1});
  if(sc==='chem'){
@@ -126,7 +127,7 @@ function tacSc3Can(B,q,k,f,c){
  if(k!=='stab'&&k!=='extr')return null;
  if(q.ty==='robot'||q.ty==='ladder')return'此組無法執行';if(q.sk==='vol')return'拒絕：義消（一般）不執行破壞救援';
  if(f===undefined||f<0)return'請點選有人受困的車輛或倒塌結構';
- const x=tacCel(B,f,c),n=B.L.N[c];if(!(x.pin>0))return'這裡沒有被夾住的受困者';
+ const x=tacCel(B,f,c),n=B.L.N[c];if(!(x.pin>0))return'這裡沒有被夾住的受困者';if(x.ledge)return'懸在外牆的受困者請用雲梯救援或繩索救援';
  if(k==='stab'){if(x.rub)return'倒塌結構請用「支撐」';if(x.stab)return'已穩固';return''}
  if(x.rub&&!x.shore)return'要先架設支撐，才能頂升、破壞救援（避免二次崩塌）';
  if(q.ty!=='resc'&&!q.usar&&q.ty!=='pump')return'破壞救援需要救助組、特搜或幫浦組的破壞器材';
@@ -146,11 +147,14 @@ const tacPinFree=x=>Math.max(0,x.vic-(x.pin||0));
 // ===== 戰術 AI =====
 function tacSc3AI(inc,B,free,take){
  const sc=B.sc.k;
- if(sc==='mvc'||sc==='crane'){
+ if(/^(mvc|crane|rail|sink|air|crowd)$/.test(sc)){
   if(!B.reqR3&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='71'||u.code==='搜')){B.reqR3=1;tacReinf(inc,B,'resc')}
   for(const x of B.cells){if(!(x.pin>0))continue;
    if(B.sq.some(q=>q.tf===x.f&&q.tc===x.c&&/stab|extr|shore/.test(q.task)))continue;
-   if(x.rub&&!x.shore){const r=free.find(q=>(q.ty==='resc'||q.usar)&&q.air>.5);if(r&&tacOrder(inc,r,'shore',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'架設支撐。')}continue}
+   if(x.rub&&!x.shore){let r=free.find(q=>(q.ty==='resc'||q.usar)&&q.air>.5);
+    // 救助組都被編成 RIT：由一組閒置的幫浦組接手 RIT，把救助組換出來架支撐
+    if(!r){const rt=B.sq.find(q=>q.task==='rit'&&(q.ty==='resc'||q.usar)),p=free.find(q=>q.ty==='pump'&&!q.line&&!tacIn(q));if(rt&&p&&tacOrder(inc,p,'rit',-1,0,1)){take(p);r=rt;radio(inc,p.cs,'接替 RIT，讓'+rt.cs+'去架設支撐。')}}
+    if(r&&tacOrder(inc,r,'shore',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'架設支撐。')}continue}
    if(!x.rub&&!x.stab){const r=free.find(q=>q.ty!=='robot'&&q.ty!=='ladder'&&!q.vol&&!q.line);if(r&&tacOrder(inc,r,'stab',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'車輛穩固。')}continue}
    const r=free.find(q=>q.usar)||free.find(q=>q.ty==='resc')||free.find(q=>q.ty==='pump'&&!q.line);if(r&&tacOrder(inc,r,'extr',x.f,x.c,1)){take(r);radio(inc,r.cs,'前往'+tacNm(B,x.f,x.c)+'破壞救援。')}}
   if(B.pts.length>=3&&!B.st.triage&&tacAmbFree(inc,B)>=2)tacStnOpen(inc,B,'triage',1);

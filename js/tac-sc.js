@@ -32,7 +32,7 @@ function tacScAdj(a,b,door,wall,L){
   if(ab.every(n=>n.pipe||n.hole)||(ab.some(n=>n.hole)&&ab.some(n=>n.ty==='hall')))door(a,b);else wall(a,b);return true}
  return false}
 function tacScLay(T,K,L,add,room,cuts,R){
- if(tacSc3Lay(T,K,L,add,room,cuts,R)||tacSc2Lay(T,K,L,add,room,cuts,R))return;
+ if(tacSc4Lay(T,K,L,add,room,cuts,R)||tacSc3Lay(T,K,L,add,room,cuts,R)||tacSc2Lay(T,K,L,add,room,cuts,R))return;
  const lane=(gx,gy,gw,gh,o)=>add(Object.assign({ty:'hall',gx,gy,gw,gh,lane:1},o||{}));
  const lanes=(x0,x1,y0,y1,o)=>{if(x1-x0<.05)return;const hs=cuts(x0,x1,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],y0,hs[i+1]-hs[i],y1-y0,o)};
  const pk=a=>a[Math.floor(R()*a.length)];
@@ -179,6 +179,7 @@ function tacScAir(B){
 // 每幀：氣體引燃與氣爆、油池泡沫覆蓋與引燃、侷限空間送風與偵測
 function tacScStep(inc,B,dt){
  if(!B.sc)return;const sc=B.sc.k;
+ tacSc4Step(inc,B,dt);
  tacSc2Step(inc,B,dt);
  if(sc==='pit'){
   if(B.ppv)for(const x of B.cells){const n=B.L.N[x.c];if(n.pipe||n.hole)x.cz=Math.max(0,(x.cz||0)-dt*.03)}
@@ -227,7 +228,7 @@ function tacScCan(B,q,k,f,c){
 function tacScRefuse(B,q,k,f,c){
  if(!B.sc||f===undefined||f<0)return'';
  const rt=tacRoute(B,q,f,c).concat([[f,c]]);
- {const w=tacSc2Refuse(B,q,k,f,c,rt);if(w)return w}
+ {const w=tacSc2Refuse(B,q,k,f,c,rt)||tacSc4Refuse(B,q,k,f,c,rt);if(w)return w}
  if(B.sc.k==='pit'&&k!=='exit'&&k!=='gas'&&rt.some(p=>B.L.N[p[1]].pipe)){
   if(q.ty!=='resc'&&!q.usar)return'拒絕：侷限空間要由救助組（三腳架、救援繩索與供氣設備）進入';
   if(!B.pitGm)return'拒絕：侷限空間還沒做氣體偵測，依規定不得進入（先對人孔做氣體偵測）';
@@ -244,7 +245,7 @@ function tacScAI(inc,B,free,take,M){
  if(M.safety&&B.chem&&B.chem.lelk&&!B.blasted&&sc!=='pit'&&(B.roe||'force')==='force'&&!B.roeSet){B.roeSet=1;B.roe='dctrl';
   radio(inc,'安全官','可燃氣體外洩，禁用會產生火花的破壞器材與電器，各組改採門控進入（手動器材）！')}
  if(!M.attack)return;
- tacSc2AI(inc,B,free,take);tacSc3AI(inc,B,free,take);
+ tacSc2AI(inc,B,free,take);tacSc3AI(inc,B,free,take);tacSc4AI(inc,B,free,take);
  // 侷限空間只能由救助組進入：現場沒有救助組（或特搜）時請求增援，在途的不重複請求
  if(sc==='pit'&&!B.reqR&&!B.sq.some(q=>q.ty==='resc'||q.usar)&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='71')){B.reqR=1;tacReinf(inc,B,'resc')}
  if(sc==='pit'&&!B.ppv&&!B.sq.some(q=>q.task==='ppv')){const r=free.find(q=>!tacIn(q)&&!tacCan(B,q,'ppv'));
@@ -260,6 +261,7 @@ function tacScAI(inc,B,free,take,M){
   const r=free.find(q=>(q.ty==='resc'||q.ty==='pump')&&!tacIn(q)&&(q.ppe||'F')==='F'&&!q.line);if(r&&tacPPE(inc,B,r,'B',1))take(r)}}
 // 現場民眾的說法（非火災情境）
 function tacScCiv(inc,B,k){
+ {const a4=tacSc4Civ(inc,B,k);if(a4!==undefined)return a4}
  {const a3=tacSc3Civ(inc,B,k);if(a3!==undefined)return a3}
  {const a2=tacSc2Civ(inc,B,k);if(a2!==undefined)return a2}
  const sc=B.sc.k,vr=B.cells.filter(x=>x.vic>0),nm=x=>tacNm(B,x.f,x.c);
@@ -281,7 +283,7 @@ function tacScCiv(inc,B,k){
  if(k==='layout')return sc==='pit'?'人孔下面是污水管，往兩邊大概各二三十公尺。':B.out?'這段路兩邊都可以進來。':'這棟'+(B.F-B.bf)+'層，樓梯在旁邊。';
  return''}
 // 結案時的現場回報
-const tacScDone=B=>tacSc3Done(B)||tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
+const tacScDone=B=>tacSc4Done(B)||tacSc3Done(B)||tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
 // 俯視車輛（長方形）：中心 x,y、車長 len、車寬 wid；vert 車頭朝下（停車格）；moto 機車
 function tacCarDraw(g,x,y,len,wid,col,vert,dark,moto){
  g.save();g.translate(x,y);if(vert)g.rotate(Math.PI/2);
@@ -304,7 +306,7 @@ function tacLongVeh(g,B,n,r,realL,col,dark,draw){
  if(!dark&&draw)draw(x0,y0,len,wid,pt&&pt.gx>n.gx)}
 // 繪製：場區的車輛、騎樓店面、人孔、地下管道、邊坡
 function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
- if(tacSc3Draw(g,G,B,n,x,r,k,dark))return;
+ if(tacSc4Draw(g,G,B,n,x,r,k,dark)||tacSc3Draw(g,G,B,n,x,r,k,dark))return;
  const t=G.t,col=c=>dark?'#1e1c19':c;
  tacSc2Draw(g,G,B,n,x,r,k,dark,rnd);
  if(k==='car')tacCarRow(g,r,dark,rnd);
