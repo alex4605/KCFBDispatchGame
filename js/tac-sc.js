@@ -171,7 +171,7 @@ function tacScInit(inc,B,T){
   B.sc.brief='游泳池氯氣外洩：'+tacNm(B,0,o.c)+'加氯設備洩漏，泳池區多人咳嗽、倒地。先化物辨識、劃設熱區（氯氣需 A 級），開窗通風降低濃度；救人的小組要著足夠的防護，受污染人員須除污。'}
  tacSc3Post(inc,B);
  if(B.L.varN&&B.sc.brief)B.sc.brief=B.sc.brief.replace('：','（'+B.L.varN+'）：');
- B.vtot=vt;if(vt){let h=-1;for(const x of B.cells)if(x.vic){h=x.f;break}B.hint=h}}
+ vt+=tacRescInit(B);B.vtot=vt;if(vt){let h=-1;for(const x of B.cells)if(x.vic){h=x.f;break}B.hint=h}}
 // 侷限空間的空氣：管道內缺氧（濃度越高含氧越低）；送風機運轉時快速稀釋
 function tacScAir(B){
  for(const x of B.cells){const n=B.L.N[x.c];if(!n.pipe&&!n.hole)continue;
@@ -179,7 +179,7 @@ function tacScAir(B){
 // 每幀：氣體引燃與氣爆、油池泡沫覆蓋與引燃、侷限空間送風與偵測
 function tacScStep(inc,B,dt){
  if(!B.sc)return;const sc=B.sc.k;
- tacSc4Step(inc,B,dt);
+ tacSc4Step(inc,B,dt);tacRescStep(inc,B,dt);
  tacSc2Step(inc,B,dt);
  if(sc==='pit'){
   if(B.ppv)for(const x of B.cells){const n=B.L.N[x.c];if(n.pipe||n.hole)x.cz=Math.max(0,(x.cz||0)-dt*.03)}
@@ -245,7 +245,7 @@ function tacScAI(inc,B,free,take,M){
  if(M.safety&&B.chem&&B.chem.lelk&&!B.blasted&&sc!=='pit'&&(B.roe||'force')==='force'&&!B.roeSet){B.roeSet=1;B.roe='dctrl';
   radio(inc,'安全官','可燃氣體外洩，禁用會產生火花的破壞器材與電器，各組改採門控進入（手動器材）！')}
  if(!M.attack)return;
- tacSc2AI(inc,B,free,take);tacSc3AI(inc,B,free,take);tacSc4AI(inc,B,free,take);
+ tacSc2AI(inc,B,free,take);tacSc3AI(inc,B,free,take);tacSc4AI(inc,B,free,take);tacRescAI(inc,B,free,take);
  // 侷限空間只能由救助組進入：現場沒有救助組（或特搜）時請求增援，在途的不重複請求
  if(sc==='pit'&&!B.reqR&&!B.sq.some(q=>q.ty==='resc'||q.usar)&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='71')){B.reqR=1;tacReinf(inc,B,'resc')}
  if(sc==='pit'&&!B.ppv&&!B.sq.some(q=>q.task==='ppv')){const r=free.find(q=>!tacIn(q)&&!tacCan(B,q,'ppv'));

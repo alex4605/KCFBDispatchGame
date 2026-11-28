@@ -103,7 +103,7 @@ function tacReport(inc,B){
  // 財損：燒毀比例、延燒鄰棟、復燃
  const rooms=B.cells.filter(x=>x.ty==='room').length,burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
  sc.loss=Math.max(0,100-burnt/Math.max(1,rooms)*120-Object.keys(B.expL).length*25-(B.rkN||0)*5-(B.cz?25:0));
- const notes=[];tacCbRep(B,sc,notes);
+ const notes=[];tacCbRep(B,sc,notes);tacRescRep(B,sc,notes);
  const avg=(sc.time+sc.resc+sc.safe+sc.loss)/4,grade=avg>=90?'S':avg>=80?'A':avg>=65?'B':avg>=50?'C':'D';
  if(v.noRit)notes.push('有小組入室時尚未編成 RIT');
  if(v.noAcc)notes.push('入室時尚未設置人員管制板，無法掌握氣量');

@@ -589,6 +589,7 @@ function tacCan(B,q,k,f,c){
  {const cb=tacCbCan(B,q,k,f,c);if(cb!==null)return cb}
  {const s3=tacSc3Can(B,q,k,f,c);if(s3!==null)return s3}
  {const s4=tacSc4Can(B,q,k,f,c);if(s4!==null)return s4}
+ {const rs=tacRescCan(B,q,k,f,c);if(rs!==null)return rs}
  {const w=tacOutCan(B,q,k,f,c)||tacHazCan(B,q,k)||tacScCan(B,q,k,f,c)||tacSdbCan(q,k);if(w)return w}
  if(q.sk==='vol'&&(TAC_VOLNO[k]||(k==='move'&&f>=0&&(tacCel(B,f,c).h>.05||tacCel(B,f,c).s>.4))||(k==='dctrl'&&f>=0)))return'拒絕：義消（一般）不執行入室攻擊、搜索等深入火場的任務（可改派義消+或正職）';
  if(q.vol&&(k==='attack'||k==='sky'||k==='confine'||k==='trans'||k==='cover'||k==='hydro'))return'義消徒步到場、沒有車輛水線';
@@ -962,6 +963,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='dike'||k==='neut'||k==='snatch'){tacCbTask(inc,B,q,k,cl,dt);return}
  if(k==='stab'||k==='extr'){tacSc3Task(inc,B,q,k,cl,dt);return}
  if(k==='rope'||k==='extg'||k==='clear'){tacSc4Task(inc,B,q,k,cl,dt);return}
+ if(k==='care'||k==='locate'){tacRescTask(inc,B,q,k,cl,dt);return}
  if(k==='plug'){tacPlug(inc,B,q,dt);return}
  if(k==='shore'){q.wk+=dt;if(q.wk>=(q.usar?14:20)){q.wk=0;cl.shore=1;q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'支撐架設完成，可以進入瓦礫搜救。');tacEvt(inc,B,'milestone','支撐：'+tacNm(B,q.f,q.c))}return}
  if(k==='dcool'){tacDcoolStep(inc,B,q,dt);return}
@@ -1014,7 +1016,7 @@ function tacSquad(inc,B,q,dt,eff){
   if(k==='search'&&cl.srch<1){cl.srch=Math.min(1,cl.srch+rate/.6);if(cl.srch>=1&&!cl.sl)tacPrim(B,cl,0);return}
   // 次級搜索：徹底翻找，找出初搜漏掉的人
   if(k==='search2'&&cl.sl<2){cl.s2=Math.min(1,cl.s2+rate/1.4);
-   if(cl.s2>=1){cl.sl=2;cl.srch=1;if(cl.hid){radio(inc,q.cs,tacNm(B,q.f,q.c)+'次級搜索發現初搜遺漏的受困者 '+cl.hid+' 名！');cl.vic+=cl.hid;cl.hid=0}}
+   if(cl.s2>=1){cl.sl=2;cl.srch=1;if(cl.hid&&cl.rub&&!cl.loc){if(!cl.hidW){cl.hidW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'瓦礫深處目視、呼叫都找不到人，建議以生命探測（搜救犬、音響生命探測器）確認。')}}else if(cl.hid){radio(inc,q.cs,tacNm(B,q.f,q.c)+'次級搜索發現初搜遺漏的受困者 '+cl.hid+' 名！');cl.vic+=cl.hid;cl.hid=0}}
    return}
   if(cl.vic>0){
    // 估算扛人到屋外所需氣量；不夠就回報位置撤出，由後續小組接手
@@ -1026,7 +1028,7 @@ function tacSquad(inc,B,q,dt,eff){
    if(q.air<need){q.prev=null;q.task='exit';q.tf=-1;q.tc=0;
     radio(inc,q.cs,tacNm(B,q.f,q.c)+'發現受困者 '+cl.vic+' 名，本組氣量不足以搬運，回報位置撤出，請後續小組接手。');return}}
   if(cl.pin>0&&!tacPinFree(cl)&&!cl.pinW){cl.pinW=1;radio(inc,q.cs,tacNm(B,q.f,q.c)+'受困者被'+(cl.rub?'倒塌結構壓住':'車體夾住')+'，需要'+(cl.rub?'支撐後頂升':'車輛穩固後破壞救援')+'。')}
-  if(tacPinFree(cl)>0){const bed=(cl.bedv||0)>0,take=bed?1:Math.min(tacPinFree(cl),q.n>=4?2:1);cl.vic-=take;if(bed){cl.bedv--;if(q.n<4)radio(inc,q.cs,'臥床病患要 4 人以上抬，本組只有 '+q.n+' 人，搬運會很慢。')}q.cbed=bed?1:0;q.carry=take;q.cvh=cl.vh;q.cvc=cl.vcz||0;q.task='carry';q.tf=-1;q.tc=0;
+  if(tacPinFree(cl)>0){const lb=(cl.lbv||0)>0,bed=lb||(cl.bedv||0)>0,take=bed?1:Math.min(tacPinFree(cl),q.n>=4?2:1);cl.vic-=take;if(lb){cl.lbv--;if(q.n<4)radio(inc,q.cs,'脫困傷患要上長背板、頸圈固定，4 人以上抬比較穩，本組只有 '+q.n+' 人，搬運會很慢。')}else if(bed){cl.bedv--;if(q.n<4)radio(inc,q.cs,'臥床病患要 4 人以上抬，本組只有 '+q.n+' 人，搬運會很慢。')}q.cbed=bed?1:0;q.carry=take;q.cvh=cl.vh;q.cvc=cl.vcz||0;q.task='carry';q.tf=-1;q.tc=0;
    radio(inc,q.cs,tacNm(B,q.f,q.c)+'發現受困者 '+take+' 名，搬運撤出。');q.sayT=0;tacSay(q,'found');tacEvt(inc,B,'victim',tacNm(B,q.f,q.c)+'發現受困者 '+take+' 名（'+q.cs+'）');return}
   // 本室無人：往同層下一個還沒做到這一級的房間
   const lv=k==='search'?1:2;
@@ -1183,7 +1185,7 @@ function tacFire(inc,B,dt){
    if(x.emb&&x.h<.02&&!B.sq.some(q=>q.f===x.f&&q.c===x.c)&&Math.random()<dt*(x.li?.012:x.deep?.005:.0015)){x.h=x.li?.3:.15;x.emb=0;x.dw=0;
     radio(inc,'安全官',tacNm(B,x.f,x.c)+(x.li?'鋰電池熱失控復燃！需持續大量灌水冷卻。':'殘火復燃！請派員殘火處理。'));B.rkN=(B.rkN||0)+1;tacEvt(inc,B,'warn',tacNm(B,x.f,x.c)+'殘火復燃')}}
   x.s=Math.max(0,Math.min(1,x.s-dt*out*Math.max(.3,x.s)*2));
-  if(x.vic>0){x.vh-=dt*(tacToxV(B,x)+Math.max(0,x.h-.35)*.03);
+  if(x.vic>0){x.vh=Math.min(1,x.vh-dt*(tacToxV(B,x)+Math.max(0,x.h-.35)*.03+tacTrauma(B,x)));
    if(x.vh<=0){B.lost+=x.vic;S.rep-=3*x.vic;radio(inc,'受理',tacNm(B,x.f,x.c)+'受困者 '+x.vic+' 名罹難（評鑑 -'+(3*x.vic)+'）。');
     x.vic=0;if(S.rep<=0){S.rep=0;S.over=true}}}}}
 // 水線分配：依下令先後，最多 effLines 條

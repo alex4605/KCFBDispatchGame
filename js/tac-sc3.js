@@ -166,18 +166,13 @@ function tacSc3Task(inc,B,q,k,cl,dt){
  if(!(cl.pin>0)){q.task='idle';return}
  q.wk+=dt;
  if(k==='stab'){if(q.wk<6)return;q.wk=0;cl.stab=1;q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'車輛穩固完成（墊木、支撐、拔鑰匙斷電），可以破壞救援。');return}
- const need=(q.usar?12:q.ty==='resc'?18:35)*(cl.rub?1.3:1);
- if(!cl.stab&&!cl.rub&&!q.ex0){q.ex0=1;if(Math.random()<.35){cl.vh=Math.max(.05,(cl.vh||.6)-.15);q.hp-=.1;radio(inc,'安全官',tacNm(B,q.f,q.c)+'車輛沒先穩固，破壞時車體晃動，受困者與隊員受傷！');tacEvt(inc,B,'warn','未先穩固車輛（'+q.cs+'）');(B.viol||(B.viol={})).noStab=1}}
- if(q.wk<need)return;q.wk=0;q.ex0=0;cl.pin--;
- radio(inc,q.cs,tacNm(B,q.f,q.c)+(cl.rub?'以氣墊頂升、破壞後':'破壞救援（油壓剪、擴張器）')+'救出 1 名受困者'+(cl.pin>0?'，還有 '+cl.pin+' 名被夾住':'')+'，交由搬運。');
- tacEvt(inc,B,'victim','破壞救援：'+tacNm(B,q.f,q.c));
- if(cl.pin<=0){q.task='search';q.tf=q.f;q.tc=q.c}}
+ q.wk=0;tacExtrStep(inc,B,q,cl,dt)}
 // 搜索時被夾住的受困者不能直接搬運
 const tacPinFree=x=>Math.max(0,x.vic-(x.pin||0));
 // ===== 戰術 AI =====
 function tacSc3AI(inc,B,free,take){
  const sc=B.sc.k;
- if(/^(mvc|crane|rail|sink|air|crowd)$/.test(sc)){
+ if(/^(mvc|crane|rail|sink|air|crowd|collapse)$/.test(sc)){
   if(!B.reqR3&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='71'||u.code==='搜')){B.reqR3=1;tacReinf(inc,B,'resc')}
   for(const x of B.cells){if(!(x.pin>0))continue;
    if(B.sq.some(q=>q.tf===x.f&&q.tc===x.c&&/stab|extr|shore/.test(q.task)))continue;

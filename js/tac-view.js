@@ -23,7 +23,9 @@ const TAC_GRP=[
   ['rope','繩索救援','','救助組、特搜｜點懸在外牆的受困者（吊籠、窗外）｜到上一層窗口架設繩索系統垂降，約 20 秒把人拉進窗內再搬運下樓｜雲梯到不了的高度用這個'],
   ['clear','人潮疏導','','各組（雲梯組、機器人除外；警方到場較快）｜點人群太擠的區域｜打開空間、引導人潮離開，人群密度降下來才能進去搜救｜人潮推擠時人群底下的傷患持續惡化'],
   ['stab','車輛穩固','','各組（雲梯組、機器人除外）｜點有人被夾住的事故車｜墊木、支撐、拔鑰匙斷電，約 6 秒｜沒穩固就破壞，車體晃動會讓受困者與隊員受傷'],
-  ['extr','破壞救援','','救助組、特搜最快，幫浦組較慢｜點有人被夾住的車輛或倒塌結構｜車輛用油壓剪、擴張器開門掀頂；倒塌結構以氣墊頂升（要先支撐）；每次救出 1 名，交由搬運｜倒塌結構沒支撐不能頂升'],
+  ['extr','破壞救援','','救助組、特搜最快，幫浦組較慢｜點有人被夾住的車輛或倒塌結構｜車輛用油壓剪、擴張器開門掀頂；倒塌結構以氣墊頂升（要先支撐）；進度記在現場，多組同時作業會相加；每次救出 1 名，上長背板搬運｜倒塌結構沒支撐不能頂升；車輛沒穩固、斷電，未爆氣囊可能爆開；受壓超過 90 秒的人釋放前沒醫療處置會擠壓症候群'],
+  ['care','醫療處置','','各組（雲梯組、機器人除外；特搜醫療組只在屋外）｜點受困者所在的位置｜在受困者旁頸椎保護、給氧（醫療組可輸液），持續到救出：受困者惡化減緩、危急的慢慢回穩；釋放前有處置可避免擠壓症候群｜會佔住一組人力'],
+  ['locate','生命探測','','救助組（音響生命探測器，約 22 秒）、特搜（搜救犬，約 10 秒）｜點瓦礫、倒塌結構、土石｜找出被埋在深處、搜索找不到的受困者｜每處只需探測一次'],
   ['shore','支撐','','救助組、特搜｜點瓦礫空間｜架設支撐（約 20 秒，特搜較快）：防止二次崩塌，瓦礫中搜救加快｜只有瓦礫空間需要'],
   ['roofres','屋頂救援','U','各組（機器人除外；雲梯組直接架梯）｜立即執行，或點畫面上的屋頂｜上屋頂把避難民眾帶下來｜走樓梯的小組每趟帶 1～2 人，人多要再下令；屋頂超出雲梯高度時雲梯組不能執行']]],
  ['排煙',[['vent','破窗排煙','V','各組（排煙組較快，機器人除外）｜點有窗的房間｜打破窗戶建立排煙開口；點頂樓樓梯間則改為屋頂排煙｜火點還沒有水線就開口會助燃；悶燒缺氧時可能爆燃'],
@@ -52,7 +54,7 @@ const TAC_GRP=[
   ['hyd','佔據水源','','幫浦組（人員須在車邊）｜立即執行｜移車到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
   ['stand','送水口加壓','C','幫浦組（人員須在車邊）｜立即執行｜移車到送水口那一側，接連結送水管，約 8 秒後各樓層出水口可接線｜七層以上，或五層以上的大型場所（百貨、醫院、機構）才有']]]];
 // 指令的 Emoji
-const TAC_EMO={cush:'🛟',rope:'🪢',clear:'🚶',extg:'🧯',snatch:'🏃',stab:'🪵',extr:'✂️',zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={care:'🩹',locate:'🐕',cush:'🛟',rope:'🪢',clear:'🚶',extg:'🧯',snatch:'🏃',stab:'🪵',extr:'✂️',zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
@@ -68,7 +70,7 @@ function tacFlameGlow(g,fx,fy,rad,alpha){
  if(alpha!==undefined&&alpha<1){g.save();g.globalAlpha=alpha;g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2);g.restore()}
  else g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2)}
 // 需要再點選目標的指令
-const TAC_NEEDT={rope:1,clear:1,extg:1,snatch:1,stab:1,extr:1,dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={care:1,locate:1,rope:1,clear:1,extg:1,snatch:1,stab:1,extr:1,dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 let TAC_UIS=1; // 戰術畫面的縮放倍率（寬螢幕放大）
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
@@ -767,6 +769,7 @@ function drawTac(){
    if(x.gm){const a=Math.round((S.t-x.gm.t)/60);rows.push(['氣體偵測（'+(a?a+' 分鐘前':'剛剛')+'）','#7db3e8']);
     for(const gk of TAC_GAS)rows.push(['　'+gk[1]+'　'+x.gm[gk[0]]+' '+gk[2],tacGasCol(gk[0],x.gm[gk[0]])])}
    if(x.emb)rows.push(['餘燼未處理（可能復燃）','#ff8a5a']);
+   for(const rr of tacRescRows(B,x))rows.push(rr);
    if(n.ty==='room')rows.push([x.sl>=2?'已次級搜索':x.sl===1?'已初期搜索':'未搜索','#7db3e8']);
    if(x.o2<13&&x.h>.35&&!x.v)rows.push(['⚠ 缺氧悶燒：開口可能爆燃','#ff6a5a']);
    if(oa){if(x.h>.5)rows.push(['⚠ 輻射熱強：下風處與鄰近區域易延燒、飛火','#ff6a5a'])}
@@ -842,7 +845,7 @@ function tacSideHTML(inc){
  if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,tacElevTop(B)))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
  h+=tacSysHTML(B);
  h+=tacSdbHTML(B);
- h+=tacSc4HTML(inc,B);
+ h+=tacSc4HTML(inc,B);h+=tacRescHTML(B);
  if(B.lift)h+='<div class="row"><span>電梯</span><span>'+(B.leak.on?'<b style="color:var(--red)">未斷電</b>（機房 '+tacNm(B,B.leak.f,B.leak.c)+'）':'已斷電、煞車鎖定')+'</span></div>';
  if(B.bv)h+='<div class="row"><span>'+B.bv.n+'壓力</span><span>'+(B.bv.boom?'<b style="color:var(--red)">已 BLEVE</b>':'<b style="color:'+(B.bv.p>.75?'var(--red)':B.bv.p>.5?'var(--amb)':'var(--grn)')+'">'+Math.round(B.bv.p*100)+'%</b>'+(B.bv.rel?'　安全閥起跳':'')+'　冷卻 '+(B.bv.cool||0).toFixed(1)+' 線')+'</span></div>';
  if(!B.out)h+='<div class="row"><span>屋頂出入口</span><span>'+(B.roof?'<b style="color:var(--amb)">開啟（樓梯間往上排煙）</b>':'關閉')+'</span></div>';
