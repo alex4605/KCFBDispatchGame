@@ -1,7 +1,7 @@
 // 戰術指揮：室外場景（資源回收場、加油站）——場區格局、風向、飛火、油料外洩、場區繪製
 // 室外沿用建物的節點模型：堆置區、加油島等是「空間」（room），場內車道是「走廊」（hall）；只有一層、沒有樓梯
 'use strict';
-const TAC_YFU={forest:1.3,home:1.5,grass:.5,reed:.65,shrub:1,shack:1.5,cars:1,plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
+const TAC_YFU={tent:1.6,forest:1.3,home:1.5,grass:.5,reed:.65,shrub:1,shack:1.5,cars:1,plastic:2.4,paper:2.2,metal:.5,ewaste:1.6,drum:1.4,cylz:.6,yoff:1,island:1.2,tank:1.5,mart:1,wash:.3};
 const TAC_WINDN={n:'北',e:'東',s:'南',w:'西',ne:'東北',nw:'西北',se:'東南',sw:'西南'};
 // 風向（風從哪裡吹來）與吹往的單位向量
 function tacWind(){const ks=Object.keys(TAC_WINDN),k=ks[Math.floor(Math.random()*ks.length)];
@@ -37,7 +37,7 @@ function tacYardLay(T,K,L,add,room,cuts,R){
    const hs=cuts(0,L.GW,1,1.6);for(let i=0;i<hs.length-1;i++){const n=lane(hs[i],y0,hs[i+1]-hs[i],y1-y0);n.levee=1}}
   else{const ys=cuts(0,L.GH,.8,1.1);let sh=0,car=0;
    for(let j=0;j<ys.length-1;j++){const xs=cuts(0,L.GW,.75,1.15);
-    for(let i=0;i<xs.length-1;i++){let k=R()<.75?'grass':'shrub';
+    for(let i=0;i<xs.length-1;i++){let k=R()<.75?(T.camp&&R()<.5?'tent':'grass'):'shrub';
      if(!sh&&j===ys.length-2&&i===xs.length-2){k='shack';sh=1}else if(!car&&j===ys.length-2&&i===0){k='cars';car=1}
      const n=room(xs[i],ys[j],xs[i+1]-xs[i],ys[j+1]-ys[j],k);if(k==='shack')wall(n)}}}}
  else{ // 加油站：後排便利商店與地下油槽區，中段遮雨棚下一排加油島，前段車道臨街

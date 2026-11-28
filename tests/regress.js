@@ -53,7 +53,7 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
   ok('一般玩法 600 秒',r.solved>3&&!errs.length,{...r,errs:errs.slice(0,3)});await p.close()}
  if(which==='all'||which==='tac'){let closed=0,n=0;
   for(const k of['mfire','hifire','fact','tinfire','nursing','skyscraper','wastefire','mfire','carfire','truckfire','tanker','gas','co','sewer','confined','tunnel','ship','cargo','collapse','forced','odor','lift',
-   'chem','schoollab','pileup','buscrash','crane','drainfall','train','sinkhole','height','balcony','airlanding','elec','crowd']){const {p,errs}=await page(b);
+   'chem','schoollab','pileup','buscrash','crane','drainfall','train','sinkhole','height','balcony','airlanding','elec','crowd','rtc','kidcar','machine','fall','powerline','foodpois','tentfire']){const {p,errs}=await page(b);
    const r=await p.evaluate(eval(TAC_RUN),k);n++;if(r.closed||r.early)closed++;console.log('  ',JSON.stringify(r),errs.slice(0,2).join(' | '));
    if(errs.length)fail++;await p.close()}
   ok('戰術 AI 結案率',closed>=n-3,{closed,n})}

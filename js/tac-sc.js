@@ -169,7 +169,7 @@ function tacScInit(inc,B,T){
   for(let i=0,n=tacRint(4,7);i<n;i++)put(0,pk(pr.length?pr:rooms).c,1,.75+R()*.2,0);
   seed(120);
   B.sc.brief='游泳池氯氣外洩：'+tacNm(B,0,o.c)+'加氯設備洩漏，泳池區多人咳嗽、倒地。先化物辨識、劃設熱區（氯氣需 A 級），開窗通風降低濃度；救人的小組要著足夠的防護，受污染人員須除污。'}
- tacSc3Post(inc,B);
+ tacSc3Post(inc,B);vt+=tacSc5Post(inc,B,T);
  if(B.L.varN&&B.sc.brief)B.sc.brief=B.sc.brief.replace('：','（'+B.L.varN+'）：');
  vt+=tacRescInit(B);B.vtot=vt;if(vt){let h=-1;for(const x of B.cells)if(x.vic){h=x.f;break}B.hint=h}}
 // 侷限空間的空氣：管道內缺氧（濃度越高含氧越低）；送風機運轉時快速稀釋
@@ -179,7 +179,7 @@ function tacScAir(B){
 // 每幀：氣體引燃與氣爆、油池泡沫覆蓋與引燃、侷限空間送風與偵測
 function tacScStep(inc,B,dt){
  if(!B.sc)return;const sc=B.sc.k;
- tacSc4Step(inc,B,dt);tacRescStep(inc,B,dt);
+ tacSc4Step(inc,B,dt);tacRescStep(inc,B,dt);tacSc5Step(inc,B,dt);
  tacSc2Step(inc,B,dt);
  if(sc==='pit'){
   if(B.ppv)for(const x of B.cells){const n=B.L.N[x.c];if(n.pipe||n.hole)x.cz=Math.max(0,(x.cz||0)-dt*.03)}
@@ -283,7 +283,7 @@ function tacScCiv(inc,B,k){
  if(k==='layout')return sc==='pit'?'人孔下面是污水管，往兩邊大概各二三十公尺。':B.out?'這段路兩邊都可以進來。':'這棟'+(B.F-B.bf)+'層，樓梯在旁邊。';
  return''}
 // 結案時的現場回報
-const tacScDone=B=>tacSc4Done(B)||tacSc3Done(B)||tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
+const tacScDone=B=>B.sc.done||tacSc4Done(B)||tacSc3Done(B)||tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
 // 俯視車輛（長方形）：中心 x,y、車長 len、車寬 wid；vert 車頭朝下（停車格）；moto 機車
 function tacCarDraw(g,x,y,len,wid,col,vert,dark,moto){
  g.save();g.translate(x,y);if(vert)g.rotate(Math.PI/2);
@@ -306,7 +306,7 @@ function tacLongVeh(g,B,n,r,realL,col,dark,draw){
  if(!dark&&draw)draw(x0,y0,len,wid,pt&&pt.gx>n.gx)}
 // 繪製：場區的車輛、騎樓店面、人孔、地下管道、邊坡
 function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
- if(tacSc4Draw(g,G,B,n,x,r,k,dark)||tacSc3Draw(g,G,B,n,x,r,k,dark))return;
+ if(tacSc5Draw(g,G,B,n,x,r,k,dark)||tacSc4Draw(g,G,B,n,x,r,k,dark)||tacSc3Draw(g,G,B,n,x,r,k,dark))return;
  const t=G.t,col=c=>dark?'#1e1c19':c;
  tacSc2Draw(g,G,B,n,x,r,k,dark,rnd);
  if(k==='car')tacCarRow(g,r,dark,rnd);

@@ -46,14 +46,14 @@ function tacSc3Lay(T,K,L,add,room,cuts,R){
   {const pool=sh(['dock','yoff','proc','drum']);row(y4,L.GH,i=>pool[i%pool.length])}
   return true}
  if(T.yard==='hwy'){ // 國道：路肩、2～3 車道散落多輛事故車（汽車、聯結車、遊覽車）、邊坡或高架
-  L.GW=4.2+K*.45;const rd=T.bus?(R()<.4?'mtn':R()<.5?'city':'hwy'):'hwy'; // 遊覽車車禍可能在山區道路或市區道路，其餘是國道
+  L.GW=4.2+K*.45;const rd=T.city?'city':T.bus?(R()<.4?'mtn':R()<.5?'city':'hwy'):'hwy'; // 遊覽車車禍可能在山區道路或市區道路，其餘是國道
   const n3=rd==='hwy'&&R()<.45,via=rd==='hwy'&&R()<.3;L.var=rd==='hwy'?(n3?'3':'2')+(via?'v':''):rd;L.varN=rd==='mtn'?'山區道路':rd==='city'?'市區道路':(n3?'三車道':'雙車道')+(via?'高架路段':'平面路段');
   const y1=rd==='city'?.7:.5,rows=[[y1,y1+.8],[y1+.8,y1+1.6]];if(n3)rows.push([y1+1.6,y1+2.4]);const yE=rows[rows.length-1][1];L.GH=yE+(via?.5:.7);
   if(rd==='city'){const xs=cuts(0,L.GW,.9,1.3);for(let i=0;i<xs.length-1;i++)room(xs[i],0,xs[i+1]-xs[i],y1,'shopf').walled=1}
   else if(rd==='mtn'){const xs=cuts(0,L.GW,.9,1.4);for(let i=0;i<xs.length-1;i++)room(xs[i],0,xs[i+1]-xs[i],y1,'slope')}
   else lanes(0,L.GW,0,y1,{shd:1});
   const nv=Math.round(T.nv[0]+R()*(T.nv[1]-T.nv[0])),occ=rows.map(()=>[]);
-  const types=T.bus?['bus'].concat(Array(nv-1).fill(0).map(()=>R()<.8?'car':'truck')):Array(nv).fill(0).map(()=>R()<.72?'car':R()<.6?'truck':'bus');
+  const types=T.bus?['bus'].concat(Array(nv-1).fill(0).map(()=>R()<.8?'car':'truck')):Array(nv).fill(0).map(()=>R()<(T.small?.85:.72)?'car':T.small||R()<.6?'truck':'bus');
   const LEN={car:.9,truck:2.05,bus:1.9};
   for(const ty of types){for(let t=0;t<30;t++){const r=Math.floor(R()*rows.length),x=.25+R()*(L.GW-LEN[ty]-.5);
    if(occ[r].some(v=>x<v[0]+v[1]+.12&&v[0]<x+LEN[ty]+.12))continue;occ[r].push([x,LEN[ty],ty]);break}}
@@ -69,13 +69,14 @@ function tacSc3Lay(T,K,L,add,room,cuts,R){
    for(let i=0;i<vs.length-1;i++)room(vs[i],yE,vs[i+1]-vs[i],L.GH-yE,i===bi?'bus':'verge')}
   return true}
  if(T.yard==='csite'){ // 工地／廠區：上排道路、施工區（吊車、倒塌結構、鷹架）、車道、工區與工務所
-  L.GW=3.8+K*.4;const y1=.6,y2=y1+1.2,y3=y2+.5;L.GH=y3+.9;L.var=T.ind?'struct':R()<.45?'road':'crane';L.varN={struct:'廠區',crane:'施工工地',road:'工地旁道路'}[L.var];
+  L.GW=3.8+K*.4;const y1=.6,y2=y1+1.2,y3=y2+.5;L.GH=y3+.9;L.var=T.ind||T.mach?'struct':T.fall?'crane':R()<.45?'road':'crane';L.varN={struct:'廠區',crane:'施工工地',road:'工地旁道路'}[L.var];
   if(L.var==='road'){ // 吊臂倒向公共道路：壓到路上的車與騎樓店面
    {const xs=cuts(0,L.GW,.9,1.3);for(let i=0;i<xs.length-1;i++)room(xs[i],0,xs[i+1]-xs[i],y1,i===1?'debris':'shopf').walled=i!==1}
    {const x0=.5+R()*.8;let x=0;const parts=[['car',.9],['crane',1.3],['car',.9]];lanes(0,x0,y1,y2);x=x0;for(const p of parts){room(x,y1,p[1],y2-y1,p[0]);x+=p[1]}lanes(x,L.GW,y1,y2)}
    lanes(0,L.GW,y2,y3);{const pool=sh(['site','scaf','yoff','site']);row(y3,L.GH,i=>pool[i%pool.length])}return true}
   lanes(0,L.GW,0,y1);
-  {const pool=sh(T.ind?['debris','debris','proc','scaf','site']:['crane','debris','debris','scaf','site']);row(y1,y2,i=>pool[i%pool.length],.8,1.2)}
+  {const pool=T.mach?['proc','debris','proc','store','site']:sh(T.ind?['debris','debris','proc','scaf','site']:['crane','debris','debris','scaf','site']);row(y1,y2,i=>pool[i%pool.length],.8,1.2)}
+  if(T.mach)L.varN='工廠';else if(T.fall)L.varN='施工工地';
   lanes(0,L.GW,y2,y3);
   {const pool=sh(['site','yoff','site','proc']);row(y3,L.GH,i=>pool[i%pool.length])}
   return true}

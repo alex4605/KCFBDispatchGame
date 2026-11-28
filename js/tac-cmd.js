@@ -116,7 +116,7 @@ function tacReport(inc,B){
  if(B.cz)notes.push('發生樓板坍塌');
  if(!notes.length)notes.push('無明顯缺失');
  return{nm:(inc.nm||KIND[inc.k].n)+' · '+inc.addr,dur,grade,avg:Math.round(avg),sc,notes,
-  sum:[['首次出水',tm(tw)],['火勢控制',tm(tc)],['救出／送醫',B.resc+' / '+B.tx],['罹難',B.lost],['燒毀',burnt+' / '+rooms+' 室'],['MAYDAY',B.mdN||0],['殉職',B.lodd]],
+  sum:[['首次出水',tm(tw)],['火勢控制',tm(tc)],['救出／送醫',B.resc+' / '+B.tx],['罹難',B.lost],['燒毀',burnt+' / '+rooms+' 室'],['MAYDAY',B.mdN||0],['殉職',B.lodd]].concat(B.bonus?[['指揮獎金','$'+B.bonus]]:[]),
   ev:(B.ev||[]).slice()}}
 function tacShowRep(r){
  const el=document.getElementById('tacRep');if(!el)return;

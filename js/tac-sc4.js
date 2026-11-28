@@ -136,6 +136,7 @@ function tacSc4Step(inc,B,dt){
 // ===== 拒絕：帶電、人群 =====
 function tacSc4Refuse(B,q,k,f,c,rt){
  const sc=B.sc&&B.sc.k;if(!sc||k==='exit')return'';
+ {const r5=tacSc5Refuse(B,q,k,f,c,rt);if(r5)return r5}
  if(sc==='rail'&&B.pwOn&&rt.some(p=>{const n=B.L.N[p[1]];return n.trk||/rcar|loco/.test(n.kind)}))return'拒絕：'+(B.L.var==='mrt'?'第三軌':'電車線')+'還沒斷電，進入軌道有觸電危險；先通知斷電（側欄）';
  if(sc==='elec'&&B.pwOn&&c===B.ebx&&/attack|sky|trans|confine|master|hydro|guard/.test(k))return'拒絕：變電箱帶電，禁止射水（觸電危險）；改用滅火器，或等台電斷電';
  if(sc==='crowd'&&k!=='clear'){const x=tacCel(B,f,c);if(x.crowd>.5)return'拒絕：'+tacNm(B,f,c)+'人潮太擠進不去，先人潮疏導'}
@@ -168,11 +169,11 @@ function tacSc4Cush(inc,B,q,dt){
 // ===== 側欄：電力、救生氣墊、人群 =====
 function tacSc4HTML(inc,B){
  const sc=B.sc&&B.sc.k;if(!sc)return'';let h='';const rw=(a,b)=>'<div class="row"><span>'+a+'</span><span>'+b+'</span></div>';
- if(B.pwScn)h+=rw(sc==='elec'?'變電箱電力':(B.L.var==='mrt'?'第三軌':'電車線'),inc.pow===2?'<b style="color:var(--grn)">已斷電</b>':inc.pow===1?'斷電中 '+Math.ceil(inc.powT)+' 秒':'<b style="color:var(--red)">帶電</b> <button data-tpow="1">通知斷電</button>');
+ if(B.pwScn)h+=rw(B.mach?'機台電源（上鎖掛牌）':B.wire!==undefined?'掉落電線（台電）':sc==='elec'?'變電箱電力':(B.L.var==='mrt'?'第三軌':'電車線'),inc.pow===2?'<b style="color:var(--grn)">已斷電</b>':inc.pow===1?'斷電中 '+Math.ceil(inc.powT)+' 秒':'<b style="color:var(--red)">帶電</b> <button data-tpow="1">通知斷電</button>');
  if(B.ledgeSc)h+=rw('救生氣墊',B.cush?'<b style="color:var(--grn)">已架設</b>':'<b style="color:var(--amb)">未架設</b>');
  if(sc==='crowd'){const m=Math.max(0,...B.cells.map(x=>x.crowd||0));h+=rw('人群密度',m>.5?'<b style="color:var(--red)">'+Math.round(m*100)+'%（進不去）</b>':Math.round(m*100)+'%')}
  return h?'<div class="hd mt">現場狀況</div><div class="twater">'+h+'</div>':''}
-function tacPowReq(inc,B,quiet){if(inc.pow)return;inc.pow=1;inc.powT=30+Math.random()*30;radio(inc,'受理',(B.sc&&B.sc.k==='rail'?'通知'+(B.L.var==='mrt'?'捷運行控中心':'鐵路調度中心')+'斷電':'通知台電斷電')+'，預估 '+Math.ceil(inc.powT)+' 秒完成。')}
+function tacPowReq(inc,B,quiet){if(inc.pow)return;inc.pow=1;inc.powT=30+Math.random()*30;radio(inc,'受理',(B.mach?'通知廠方機台斷電、上鎖掛牌（LOTO）':B.sc&&B.sc.k==='rail'?'通知'+(B.L.var==='mrt'?'捷運行控中心':'鐵路調度中心')+'斷電':'通知台電斷電')+'，預估 '+Math.ceil(inc.powT)+' 秒完成。')}
 // ===== 戰術 AI =====
 function tacSc4AI(inc,B,free,take){
  const sc=B.sc&&B.sc.k;if(!sc)return;

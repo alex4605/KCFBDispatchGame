@@ -40,7 +40,7 @@ function tacExtrStep(inc,B,q,cl,dt){
   if(R<.25){cl.vh=Math.max(.05,(cl.vh||.6)-.15);q.hp-=.1;radio(inc,'安全官',tacNm(B,q.f,q.c)+'車輛沒先穩固，破壞時車體晃動，受困者與隊員受傷！');tacEvt(inc,B,'warn','未先穩固車輛（'+q.cs+'）');(B.viol||(B.viol={})).noStab=1}
   else if(R<.45&&!cl.ab){cl.ab=1;cl.vh=Math.max(.05,(cl.vh||.6)-.1);q.hp-=.15;radio(inc,'安全官',tacNm(B,q.f,q.c)+'未爆的安全氣囊突然爆開，隊員受傷！破壞前要先穩固、斷電（拔鑰匙、斷電瓶）。');tacEvt(inc,B,'warn','未爆氣囊爆開（'+q.cs+'）');(B.viol||(B.viol={})).airbag=1}}
  const n=B.sq.filter(y=>y.task==='extr'&&y.f===q.f&&y.c===q.c&&!y.down).length;
- cl.exP=(cl.exP||0)+dt*tacExtrRate(q)/(cl.rub?1.3:1);
+ cl.exP=(cl.exP||0)+dt*tacExtrRate(q)/(cl.rub?1.3:1)*(cl.kidc?4:1);
  if(n>1&&!cl.coW){cl.coW=1;radio(inc,q.cs,'兩組協同破壞救援'+tacNm(B,q.f,q.c)+'，一組撐開、一組剪切，進度加快。')}
  if(cl.exP<1)return;cl.exP=0;q.ex0=0;cl.coW=0;
  // 擠壓症候群：受壓超過 90 秒、釋放前沒有醫療處置
@@ -48,8 +48,8 @@ function tacExtrStep(inc,B,q,cl,dt){
  if(crush&&!tacCared(cl)){cl.vh=Math.max(.02,(cl.vh||.6)-.35);(B.viol||(B.viol={})).crush=1;
   radio(inc,'救護組','擠壓症候群！受困者長時間受壓、突然釋放後休克（血鉀上升、心律不整）。釋放前要先醫療處置（輸液）。');tacEvt(inc,B,'danger','擠壓症候群（'+tacNm(B,q.f,q.c)+'）',1)}
  else if(crush)radio(inc,'救護組','釋放前已預先輸液，受困者生命徵象穩定。');
- cl.pin--;cl.lbv=(cl.lbv||0)+1;cl.pT=cl.pin>0?cl.pT:0;
- radio(inc,q.cs,tacNm(B,q.f,q.c)+(cl.rub?'以氣墊頂升、破壞後':'破壞救援（油壓剪、擴張器）')+'救出 1 名受困者'+(cl.pin>0?'，還有 '+cl.pin+' 名被夾住':'')+'，上長背板搬運。');
+ cl.pin--;if(!cl.kidc)cl.lbv=(cl.lbv||0)+1;cl.pT=cl.pin>0?cl.pT:0;
+ radio(inc,q.cs,tacNm(B,q.f,q.c)+(cl.kidc?'擊破離孩子最遠的車窗、開鎖後':cl.rub?'以氣墊頂升、破壞後':B.mach?'拆解機台（油壓擴張器、切斷滾輪軸）後':'破壞救援（油壓剪、擴張器）')+'救出 1 名受困者'+(cl.pin>0?'，還有 '+cl.pin+' 名被夾住':'')+(cl.kidc?'，抱出交給救護人員降溫。':'，上長背板搬運。'));
  tacEvt(inc,B,'victim','破壞救援：'+tacNm(B,q.f,q.c));
  if(cl.pin<=0){q.task='search';q.tf=q.f;q.tc=q.c}}
 // ===== 戰術 AI：生命探測、醫療處置、第二組協同破壞 =====
