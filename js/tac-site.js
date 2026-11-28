@@ -54,8 +54,9 @@ function tacExitSide(B,q,c,f){
  const es=B.ents.filter(e=>e.c===c&&tacEF(B,e)===(f===undefined?B.bf:f));
  return(es.find(e=>e.side===q.tside)||es.find(e=>e.side===q.side)||es[0]||{side:B.arr}).side}
 // 水壓：水帶越長、樓層越高，出水越弱；連結送水管由地面加壓，只計樓層內的水帶
-function tacPf(len,f,sp){
- return sp?Math.max(.5,Math.min(.95,.95-.03*Math.max(0,len-3))):Math.max(.1,Math.min(1,1-.03*Math.max(0,len-5)-.065*f))}
+// 中繼送水（rl）時長度與樓層的壓損減半
+function tacPf(len,f,sp,rl){const k=rl?.5:1;
+ return sp?Math.max(.5,Math.min(.95,.95-.03*k*Math.max(0,len-3))):Math.max(.1,Math.min(1,1-.03*k*Math.max(0,len-5)-.065*k*f))}
 // 一條攻擊線到 (f,c) 的佈線方案：{src:'pump'|'sp', u:供水車, len, pf, ent}；拉不到回傳 null
 function tacLineTo(B,q,f,c){
  let best=null;
@@ -63,11 +64,11 @@ function tacLineTo(B,q,f,c){
  for(const p of pumps){
   const e=tacBestEnt(B,p.tside,f,c,true);if(!e)continue;
   const len=tacOutLen(p.tside,e.side)+tacPath(B,tacEF(B,e),e.c,f,c).length+1+(p.xh||0);   // 車停在畫面外：多接幾條水帶
-  if(len>TAC_HOSE)continue;
-  const pf=tacPf(len,Math.max(0,f-B.bf),0);
+  const rl=tacRelayOK(B,p.u);if(len>TAC_HOSE+(rl?TAC_RELAY_HOSE:0))continue;
+  const pf=tacPf(len,Math.max(0,f-B.bf),0,rl);
   if(!best||pf>best.pf)best={src:'pump',u:p.u,len,pf,ent:e}}
  if(B.sp&&B.sp.on&&f>B.bf){
-  const len=tacPath(B,f,tacNearStair(B,f,c),f,c).length+2,pf=tacPf(len,f-B.bf,1);
+  const len=tacPath(B,f,tacNearStair(B,f,c),f,c).length+2,pf=tacPf(len,f-B.bf,1,tacRelayOK(B,'sp'));
   if(!best||pf>best.pf)best={src:'sp',u:B.sp.u,len,pf,ent:null}}
  return best}
 // 消防栓那側要有幫浦車佔水，否則只能用車上水箱
@@ -151,6 +152,8 @@ function tacExtraEnts(B){const L=B.L;
 const TAC_VLEN={'11':8.5,'16':6.5,'21':11,'31':10.5,'41':5.5,'51':9,'57':8.5,'61':9.5,'71':8.5,'75':7.5,'91':6,'01':9.5,'搜':9,'99':6,'警':5.5,'43':5.3,'機':12.5,'履':4,'艇':7};
 const TAC_VPRI={'21':0,'31':0,'11':1,'16':1,'57':1,'71':2,'搜':2,'51':2,'01':2,'75':3,'履':3,'61':4,'41':5,'91':6,'99':6,'警':7,'43':6,'機':1,'艇':8};
 const TAC_VGAP=2;
+// 車寬（公尺）：繪製用，消防車約 2.5 公尺
+const TAC_VWID={'91':2.1,'99':2.1,'41':2,'警':1.9,'43':1.9,'履':1.6,'16':2.3,'機':3};
 function tacMPU(inc,B){const d=KIND[inc.k];return d.fac||/warehouse|chemfire|wastefire/.test(inc.k)?10:(B.F>=7||/dept|hosp/.test(inc.k))?8:4.5}
 function tacParkModel(inc,B){
  const L=B.L,mpu=tacMPU(inc,B),out={front:{},slots:{},mpu};

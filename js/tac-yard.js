@@ -13,6 +13,7 @@ function tacWF(B,a,b){const W=B.wind;if(!W)return 1;const x=B.L.N[a],y=B.L.N[b];
  return Math.max(.3,1+1.3*W.v*(dx*W.d[0]+dy*W.d[1])/l)}
 // 場區格局：在 tacLayout 內呼叫，用它的 add／room／cuts 產生節點
 function tacYardLay(T,K,L,add,room,cuts,R){
+ if(TAC_SCY[T.yard])return tacScLay(T,K,L,add,room,cuts,R);
  const lane=(gx,gy,gw,gh)=>add({ty:'hall',gx,gy,gw,gh,lane:1});
  const wall=n=>{n.walled=1;return n};
  if(T.yard==='waste'){ // 資源回收場：中央車道兩側一區區堆置區，一角有辦公室
@@ -68,7 +69,7 @@ function tacYardInit(inc,B,T){
   const cy=B.L.N.find(n=>n.kind==='cylz');if(cy||/鋼瓶/.test(t)){B.gas=(cy||B.L.N.find(n=>n.kind==='plastic')||d).c;B.gasF=0}
   // 悶燒好幾個小時：數區深層悶燒
   if(/悶燒/.test(t))for(const x of B.cells)if(x.deep&&Math.random()<.5){x.h=Math.max(x.h,.2);x.s=.6}}
- else{
+ else if(T.yard==='gas'){
   const isl=B.L.N.filter(n=>n.isl),tk=B.L.N.find(n=>n.kind==='tank');
   B.chem=TAC_FUEL;
   for(const x of B.cells)if(B.L.N[x.c].isl||B.L.N[x.c].kind==='tank')x.fuel=1;
@@ -103,6 +104,7 @@ function tacYardCell(g,G,B,n,x,r,T){
   g.strokeStyle='rgba(233,200,90,.25)';g.setLineDash([8,8]);g.lineWidth=1.5;g.beginPath();
   if(r[2]>=r[3]){g.moveTo(r[0],r[1]+r[3]/2);g.lineTo(r[0]+r[2],r[1]+r[3]/2)}else{g.moveTo(r[0]+r[2]/2,r[1]);g.lineTo(r[0]+r[2]/2,r[1]+r[3])}g.stroke();g.setLineDash([]);
   if(x.pool){g.fillStyle='rgba(120,90,160,.28)';g.beginPath();g.ellipse(r[0]+r[2]/2,r[1]+r[3]/2,r[2]*.4,r[3]*.38,0,0,TAU);g.fill()}
+  tacScDraw(g,G,B,n,x,r,undefined,false,()=>.5);
   return}
  g.fillStyle=burnt?'#141210':'#2a2823';g.fillRect(r[0],r[1],r[2],r[3]);
  let sd=n.c*9301+49297;const rnd=()=>((sd=(sd*9301+49297)%233280)/233280);
@@ -133,8 +135,9 @@ function tacYardCell(g,G,B,n,x,r,T){
  else if(k==='home'){g.fillStyle=dark?'#1a1816':'#4a3530';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle=dark?'#2a221c':'#8a5a4a';g.lineWidth=2;
   g.beginPath();g.moveTo(r[0]+6,r[1]+r[3]/2);g.lineTo(r[0]+r[2]-6,r[1]+r[3]/2);g.stroke();g.strokeStyle='#8a857a';g.lineWidth=3;g.strokeRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12)}
  else if(k==='shack'){g.fillStyle=dark?'#1a1816':'#5a6268';g.fillRect(r[0]+6,r[1]+6,r[2]-12,r[3]-12);g.strokeStyle='rgba(200,205,210,.35)';g.lineWidth=1;for(let yy=r[1]+10;yy<r[1]+r[3]-8;yy+=5){g.beginPath();g.moveTo(r[0]+7,yy);g.lineTo(r[0]+r[2]-7,yy);g.stroke()}}
- else if(k==='cars'){for(let i=0;i<3;i++){g.fillStyle=dark?'#1e1c19':['#6a7a8a','#8a6a5a','#5a5a5a'][i];scRR(g,r[0]+r[2]*(.1+i*.3),r[1]+r[3]*.25,r[2]*.22,r[3]*.5,3);g.fill()}}
+ else if(k==='cars')tacCarRow(g,r,dark,rnd);
  else if(k==='wash'){g.strokeStyle='rgba(125,179,232,.3)';g.lineWidth=1;for(let i=1;i<5;i++){g.beginPath();g.moveTo(r[0]+r[2]*i/5,r[1]+4);g.lineTo(r[0]+r[2]*i/5,r[1]+r[3]-4);g.stroke()}}
+ tacScDraw(g,G,B,n,x,r,k,dark,rnd);
  g.strokeStyle='rgba(190,185,170,.18)';g.lineWidth=1;g.strokeRect(r[0]+1,r[1]+1,r[2]-2,r[3]-2)}
 // 繪製：遮雨棚、化學品危害區、風向
 function tacYardTop(g,G,B,T){
@@ -169,10 +172,10 @@ function tacHazDraw(g,G,B,vf){
   g.save();g.beginPath();g.rect(r[0],r[1],r[2],r[3]);g.clip();g.strokeStyle='rgba('+col+',.35)';g.lineWidth=1;
   for(let k=-r[3];k<r[2];k+=12){g.beginPath();g.moveTo(r[0]+k,r[1]+r[3]);g.lineTo(r[0]+k+r[3],r[1]);g.stroke()}g.restore();
   g.fillStyle='rgba('+col+',.95)';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';
-  g.fillText(!B.chemK?'疑似化學品':x.hz>=B.chem.lv?'熱區（'+['','C','B','A'][B.chem.lv]+'級）':'暖區',r[0]+r[2]/2,r[1]+r[3]*.42)}
+  g.fillText(!B.chemK?'疑似化學品':B.chem.zone?B.chem.zone:x.hz>=B.chem.lv?'熱區（'+['','C','B','A'][B.chem.lv]+'級）':'暖區',r[0]+r[2]/2,r[1]+r[3]*.42)}
  if(B.leak&&B.leak.on&&B.leak.f===vf){const r=G.r(B.leak.c),pl=.5+.5*Math.sin(S.t*6);
   g.strokeStyle='rgba(160,110,220,'+(.5+.5*pl).toFixed(2)+')';g.lineWidth=2;g.beginPath();g.arc(r[0]+r[2]/2,r[1]+r[3]*.7,8+pl*6,0,TAU);g.stroke();
-  g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.fuel?'油料外洩':'洩漏源',r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
+  g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.srcN||(B.chem.fuel?'油料外洩':'洩漏源'),r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
 // 河堤：臨河那側改為水域（不能停車、沒有入口）
 function tacYardPost(inc,B,T){
  if(T.wui){ // 建物防護：道路在聚落那側，林地那側不能停車，兩側是產業道路（大型車禁入）

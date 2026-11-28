@@ -173,9 +173,9 @@ function tacGasRead(B,x){
  if(B.gasL&&B.gasL.t>0&&x.f===B.bf){const g=B.gasL.c;lel+=x.c===g?55:B.L.N[g].nb.includes(x.c)?28:x.ty==='hall'?10:0}
  if(B.gas!==undefined&&!B.gasX&&x.f===B.gasF&&x.c===B.gas&&x.h>.2)lel+=8; // 瓦斯桶受熱洩漏
  if(B.k==='chemfire'&&k==='machine')h2s+=4+x.h*30+x.s*10;
- if(B.chem&&x.cz>0){if(B.chem.fl)lel+=x.cz*70;if(B.chem.h2s)h2s+=x.cz*150}
+ if(B.chem&&x.cz>0){if(B.chem.fl)lel+=x.cz*(B.chem.lelk||70);if(B.chem.h2s)h2s+=x.cz*150}
  if(k==='park'||k==='mech')h2s+=x.s*3;
- const co=Math.min(1999,Math.round((x.s*700+x.h*1400)*(1+sm)));
+ const co=Math.min(1999,Math.round((x.s*700+x.h*1400)*(1+sm)+(B.chem&&B.chem.co?(x.cz||0)*2400:0)));
  const hcn=Math.min(99,Math.round((x.s*22+x.h*18)*hf*10)/10);
  return{o2:Math.round(x.o2*10)/10,lel:Math.min(100,Math.round(lel)),co,h2s:Math.round(h2s),hcn}}
 // 警報值：O₂ <19.5%；LEL ≥10%；CO ≥35 ppm；H₂S ≥10 ppm；HCN ≥4.7 ppm
@@ -194,7 +194,7 @@ function tacStaff(inc,B,dt){
  if(!src)return;
  const dst=B.cells.filter(x=>x.f===src.f&&x.ty==='room'&&x.c!==src.c&&x.s<.08&&x.h<.02&&tacPath(B,src.f,src.c,x.f,x.c).length).sort((a,b)=>tacGd(B,b.c,B.oc)-tacGd(B,a.c,B.oc))[0];
  if(!dst){S2.n--;radio(inc,'受理','機構人員回報同層已無安全區域，人員撤離。');return}
- src.vic--;dst.vic++;dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
+ src.vic--;dst.vic++;if(src.bedv>0){src.bedv--;dst.bedv=(dst.bedv||0)+1}dst.vh=Math.max(dst.vh,src.vh);dst.rep=1;
  radio(inc,'受理','機構護理人員將一名住民由'+tacNm(B,src.f,src.c)+'水平避難至'+tacNm(B,dst.f,dst.c)+'。');
  if(src.s>.5&&Math.random()<.3){S2.n--;radio(inc,'受理','一名機構人員吸入濃煙不適，退出避難作業。')}}
 // ===== 交給轄區分隊善後 =====

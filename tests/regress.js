@@ -52,10 +52,10 @@ function lint(){const fs=require('fs'),dir=path.resolve(__dirname,'..','js'),src
    return{t:Math.round(S.t),solved:S.solved,rep:Math.round(S.rep)}});
   ok('一般玩法 600 秒',r.solved>3&&!errs.length,{...r,errs:errs.slice(0,3)});await p.close()}
  if(which==='all'||which==='tac'){let closed=0,n=0;
-  for(const k of['mfire','hifire','fact','tinfire','nursing','skyscraper','wastefire','mfire']){const {p,errs}=await page(b);
+  for(const k of['mfire','hifire','fact','tinfire','nursing','skyscraper','wastefire','mfire','carfire','truckfire','tanker','gas','co','sewer','confined','tunnel','ship','cargo','collapse','forced','odor','lift']){const {p,errs}=await page(b);
    const r=await p.evaluate(eval(TAC_RUN),k);n++;if(r.closed||r.early)closed++;console.log('  ',JSON.stringify(r),errs.slice(0,2).join(' | '));
    if(errs.length)fail++;await p.close()}
-  ok('戰術 AI 結案率',closed>=n-1,{closed,n})}
+  ok('戰術 AI 結案率',closed>=n-2,{closed,n})}
  if(which==='all'||which==='handoff'){const {p,errs}=await page(b);
   const r=await p.evaluate(()=>{const k='mfire';S.spawn=999;for(const z in POOL)for(const lv in POOL[z])POOL[z][lv]=[k];for(const z in POOLB)for(const lv in POOLB[z])POOLB[z][lv]=[k];
    for(let i=0;i<9&&!S.inc.length;i++)spawn();const inc=S.inc[0];sendLv(inc,2);reindex();auto(inc);let n=0;while(!inc.rev&&n<20000){step(.05);n++}
