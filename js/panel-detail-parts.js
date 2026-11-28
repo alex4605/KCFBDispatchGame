@@ -54,10 +54,11 @@ function dWater(inc,d){
    h+='<div class="row" style="padding:2px 0;align-items:flex-start"><span class="mono" style="font-size:12px;color:var(--blu);line-height:1.7">'+
     chain+'</span><span class="tag" style="background:'+(wo?'var(--grn)':inc.hook>0?'var(--amb)':'var(--red)')+';white-space:nowrap">'+
     (wo?'已通水':inc.hook>0?('佔水中 '+Math.ceil(inc.hook)+' 秒'):'未通水')+'</span></div>';
-   h+='<div class="sub">'+(inc.shuttle?'無可用消防栓，大型車也進不去：幫浦車輪流往返補水，需 2 輛以上才能不斷水':inc.tender?'無可用消防栓，全靠水庫車載水接力':
+   h+='<div class="sub">'+(inc.shuttle?'無可用消防栓，大型車也進不去：幫浦車輪流往返補水，需 2 輛以上才能不斷水':inc.tender?'無可用消防栓：水庫車循環送水（卸水至移動式水槽、空車回消防栓補水，多輛輪替），幫浦車由水槽吸水':
     '消防栓距 '+inc.hd+' 格 · 需 '+(1+inc.relay)+' 輛幫浦（1 佔水'+(inc.relay?' + '+inc.relay+' 中繼':'')+'）')+'</div>';
+   if(tenderOn(inc))h+='<div class="twater" style="margin:4px 0">'+tenderHTML(inc)+'</div>';
    const pct=tp[1]?Math.round(tp[0]/tp[1]*100):0;
-   const src=(inc.shuttle?'無栓，幫浦車往返運水':inc.tender?'無栓，水庫車載水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
+   const src=(inc.shuttle?'無栓，幫浦車往返運水':inc.tender?'無栓，水庫車循環送水':(inc.hin>=600?'幹道消防栓':inc.hin>=480?'一般道路消防栓':'巷弄消防栓')
     +(hydShare(inc)<1?'（共用分流）':'')+(inc.hd>8?'（管線 '+inc.hd+' 格，壓損 '+Math.round((1-Math.max(.55,1-inc.hd*.018))*100)+'%）':''))
     +(inc.hooked?'':'　※尚未佔水，目前使用車載水');
    h+='<div class="row" style="padding:4px 0"><span class="sub">出水 '+eff+' 線 · 耗水 '+use+

@@ -38,18 +38,20 @@ function waterRoles(inc,pumps){
  if(inc.tender||inc.shuttle)return{sup:[],atk:near(pumps)};
  const n=1+inc.relay;
  return{sup:pumps.slice(0,n),atk:near(pumps.length>n?pumps.slice(n):pumps)}}
+// 循環送水時水庫車的水只經移動式水槽供應，不算在現場車上水箱
+const tkU=(inc,u)=>u.st==='work'&&CODE[u.code].cap&&!(u.code==='61'&&inc.tender&&!inc.shuttle);
 function tankPool(inc){let a=0,b=0;
- for(const u of onScene(inc))if(u.st==='work'&&CODE[u.code].cap){a+=u.tank;b+=CODE[u.code].cap}
+ for(const u of onScene(inc))if(tkU(inc,u)){a+=u.tank;b+=CODE[u.code].cap}
  return[a,b]}
 function drawWater(inc,L){
  let[pool]=tankPool(inc);if(pool<=0)return 0;
  const take=Math.min(L,pool),r=take/pool;
- for(const u of onScene(inc))if(u.st==='work'&&CODE[u.code].cap)u.tank=Math.max(0,u.tank-u.tank*r);
+ for(const u of onScene(inc))if(tkU(inc,u))u.tank=Math.max(0,u.tank-u.tank*r);
  return take}
 function fillTanks(inc,L){
  for(const u of onScene(inc)){
-  if(u.st!=='work')continue;
-  const cap=CODE[u.code].cap;if(!cap)continue;
+  if(!tkU(inc,u))continue;
+  const cap=CODE[u.code].cap;
   const room=cap-u.tank;if(room<=0)continue;
   const add=Math.min(room,L);u.tank+=add;L-=add;if(L<=0)break}}
 function refillRun(u,inc){
@@ -58,8 +60,8 @@ function refillRun(u,inc){
  if(!best)return false;
  const p=chase(field(best[0],best[1],modeOf(u.code)),u);
  if(!p)return false;
- unpark(u);u.path=p;u.st='fill';u.back=inc.id;
- radio(inc,u.cs,'水箱見底，返回最近水源補水，來回約需一段時間。');
+ unpark(u);u.path=p;u.st='fill';u.back=inc.id;u.dmpM=0;u.dump=0;if(u.code==='61')u.rtn=1;
+ radio(inc,u.cs,u.code==='61'&&tenderOn(inc)?'卸水完畢，空車回最近消防栓補水（每趟約 '+fmt(tenderCycle(inc))+'）。':'水箱見底，返回最近水源補水，來回約需一段時間。');
  return true}
 // 運水接力（無消防栓且水庫車進不去）：現場水量低於一半、且沒有車在補水途中時，
 // 派水最少的一輛把剩水倒給其他車後去補水；只剩一輛時等水箱見底才走
@@ -83,6 +85,7 @@ function hydShare(inc){
 // 實際供水量（L/s）：模擬與面板共用同一個算式
 function inflowOf(inc){
  if(!inc.hooked)return 0;
+ if(tenderOn(inc))return Math.round(tenderRate(inc)); // 循環送水：依水庫車數量與往返時間
  let tend=0;for(const u of onScene(inc))if(u.st==='work'&&u.code==='61')tend++;
  const share=inc.tender?1:hydShare(inc),loss=inc.tender?1:Math.max(.55,1-(inc.hd||0)*.018);
  return Math.round((inc.hin||INFLOW)*share*loss+Math.min(300,tend*150))}
@@ -90,7 +93,8 @@ function waterOK(inc){
  if(!KIND[inc.k].w)return true;
  if(inc.hooked)return true;
  let tk=0;
- for(const u of onScene(inc))if(u.st==='work'&&CODE[u.code].cap)tk+=u.tank;
+ for(const u of onScene(inc))if(tkU(inc,u))tk+=u.tank;
+ if(inc.dk&&inc.dk.on)tk+=inc.dk.v;
  return tk>60}
 
 function pmText(inc){
@@ -311,7 +315,7 @@ function stagePark(u){
  u.path=chain;return true}
 function unpark(u){u.slot=null;u.arm=null;u.parked=0;u.ox=0;u.oy=0}
 function arrive(u){
- u.st='work';u.at=S.t;
+ u.st='work';u.at=S.t;u.rtn=0;
  if(u.lead){const ic=S.inc.find(i=>i.id===u.inc);
   if(ic)radio(ic,u.cs,stName(u).replace(/分隊.*$/,'')+'分隊帶隊官隨車到場，率隊進入內圈作業。')}
  const inc=S.inc.find(i=>i.id===u.inc);if(!inc)return;

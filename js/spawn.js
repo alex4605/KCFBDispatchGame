@@ -63,7 +63,8 @@ if(d.road){inc.x=a[0];inc.y=a[1]}
   else{inc.tender=1;
    // 大型車進不去（山區產業道路）時，水庫車無法到場：改由幫浦車輪流往返補水，多派一輛
    if(!bigOK){inc.shuttle=1;const g=need.find(g=>g.c.indexOf('11')>=0||g.c.indexOf('16')>=0);if(g)g.n++;else need.push(G(['11','16'],2,'幫浦車'))}
-   else if(!need.some(g=>g.c.indexOf('61')>=0))need.push(G(['61'],1,'水庫車'))}}
+   // 循環送水：至少兩輛水庫車輪替（一輛卸水、一輛往返補水）
+   else{const g=need.find(g=>g.c.indexOf('61')>=0);if(g)g.n=Math.max(g.n,2);else need.push(G(['61'],2,'水庫車'))}}}
  const flat=[];
  for(const g of inc.need){
   if(!g.k){flat.push(g);continue}

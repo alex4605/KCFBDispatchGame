@@ -447,7 +447,7 @@ function drawTac(){
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}
   else if(vf<B.F&&tacLeakC(B,vf,a.c,bc)){g.fillStyle='#8a7860';const nn=4;for(let k=0;k<nn;k++){if(s[2]>s[3])g.fillRect(s[0]+s[2]*k/nn,s[1]+1.5,s[2]/nn-1.5,3);else g.fillRect(s[0]+1.5,s[1]+s[3]*k/nn,3,s[3]/nn-1.5)}}}
  // 化學品危害區、場區遮雨棚與風向
- tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacSmokeArrows(g,G,B,vf,T);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
+ tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacSmokeArrows(g,G,B,vf,T);tacOutSmokeDraw(g,G,B,T);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
  // 撒水頭動作的空間：藍色水滴
  if(B.spk&&B.spk.ok&&vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.spkOn)continue;const r=G.r(n.c);
   for(let k=0;k<5;k++){const ph=(T*1.5+k/5)%1;g.fillStyle='rgba(125,179,232,'+(.7*(1-ph)).toFixed(2)+')';g.beginPath();g.arc(r[0]+r[2]*(.15+.7*((k*37+n.c*11)%17/17)),r[1]+r[3]*(.15+ph*.7),2.2,0,TAU);g.fill()}}
@@ -746,21 +746,24 @@ function drawTac(){
     ['燃燒面積　'+P.burn+' / '+P.area+' ㎡',P.burn?'#ff8a5a':'#9d9a92'],
     ['含氧量　'+P.o2+' %',P.o2<14?'#ff6a5a':P.o2<18?'#e9a13b':'#9d9a92'],
     ['煙層下緣　約 '+tacLayM(x)+' m'+(tacLayV(x)<.45?'（低姿）':''),tacLayV(x)<.25?'#ff6a5a':tacLayV(x)<.45?'#e9a13b':'#9d9a92']];
-   {const ws=tacWinSt(B,x,n);rows.push(['對外窗戶　'+ws[0],ws[1]])}
+   const oa=tacOpenAir(B,x);
+   if(oa)rows.splice(rows.length-1,1,['露天：煙順'+(B.wind?B.wind.nm.slice(0,B.wind.nm.indexOf('風')+1):'風')+'往下風處飄散','#9d9a92']);
+   else{const ws=tacWinSt(B,x,n);rows.push(['對外窗戶　'+ws[0],ws[1]])}
    {let dn=0;for(const o of n.nb){if(tacOpn(B,h0.c,o))continue;const dt2=tacDoorTxt(B,h0.f,h0.c,o);if(!dt2)continue;if(++dn>5)break;rows.push(['往'+tacNm(B,h0.f,o)+'：'+dt2[0],dt2[1]])}}
    if(x.gm){const a=Math.round((S.t-x.gm.t)/60);rows.push(['氣體偵測（'+(a?a+' 分鐘前':'剛剛')+'）','#7db3e8']);
     for(const gk of TAC_GAS)rows.push(['　'+gk[1]+'　'+x.gm[gk[0]]+' '+gk[2],tacGasCol(gk[0],x.gm[gk[0]])])}
    if(x.emb)rows.push(['餘燼未處理（可能復燃）','#ff8a5a']);
    if(n.ty==='room')rows.push([x.sl>=2?'已次級搜索':x.sl===1?'已初期搜索':'未搜索','#7db3e8']);
    if(x.o2<13&&x.h>.35&&!x.v)rows.push(['⚠ 缺氧悶燒：開口可能爆燃','#ff6a5a']);
-   if(x.h>.7&&x.s>.6&&!x.fl&&!x.vv)rows.push(['⚠ 閃燃前兆','#ff6a5a']);
+   if(oa){if(x.h>.5)rows.push(['⚠ 輻射熱強：下風處與鄰近區域易延燒、飛火','#ff6a5a'])}
+   else if(x.h>.7&&x.s>.6&&!x.fl&&!x.vv)rows.push(['⚠ 閃燃前兆','#ff6a5a']);
    else if(tacLayV(x)<.25&&x.h>.55&&!x.fl)rows.push(['⚠ 煙層下降（滾燃風險）','#ff6a5a']);
    g.font='12px '+FONT;const bw=Math.max(170,...rows.map(r=>g.measureText(r[0]).width))+16+38,bh=Math.max(rows.length*16+10,96);
    let bx=hv.x+16,by=hv.y+12;if(bx+bw>tW-4)bx=hv.x-bw-12;if(by+bh>tH-4)by=tH-bh-4;
    g.fillStyle='rgba(12,12,11,.92)';g.fillRect(bx,by,bw,bh);g.strokeStyle='rgba(255,255,255,.18)';g.lineWidth=1;g.strokeRect(bx,by,bw,bh);
    g.font='12px '+FONT;g.textAlign='left';g.textBaseline='top';
    rows.forEach((r,k)=>{g.fillStyle=r[1];g.fillText(r[0],bx+8,by+6+k*16)});
-   tacLayBar(g,bx+bw-30,by+18,Math.min(bh-26,110),x)}}
+   if(!oa)tacLayBar(g,bx+bw-30,by+18,Math.min(bh-26,110),x)}}
  if(B.mayday){g.fillStyle='rgba(226,86,79,'+(.6+.4*Math.sin(T*8)).toFixed(2)+')';g.font='700 14px '+FONT;g.textAlign='right';g.fillText('MAYDAY × '+B.mayday+'　'+B.sq.filter(q=>q.down).map(q=>q.cs+' '+tacFlr(B,q.f)).join('、'),tW-10,8)}}
 // 面板 HTML
 function tacTopHTML(inc){
@@ -852,7 +855,8 @@ function tacSideHTML(inc){
  const bar=(v,c)=>'<span class="tbar"><i style="width:'+Math.round(Math.max(0,Math.min(1,v))*100)+'%;background:'+c+'"></i></span>';
  h+='<div class="hd mt">水源與水線</div><div class="twater">';
  h+='<div class="row"><span>水源</span><span>'+(B.hyd?'消防栓 '+TAC_SDN[B.hyd.side]+'側 '+B.hyd.d+' m · '+(hydU?'<b style="color:var(--grn)">'+hydU.cs+' 佔水</b>':'<b style="color:var(--red)">未佔水，只能用水箱</b>')
-  :inc.shuttle?'無消防栓，幫浦車輪流補水':inc.tender?'無消防栓，水庫車供水':'—')+'</span></div>';
+  :inc.shuttle?'無消防栓，幫浦車輪流補水':inc.tender?'無消防栓，水庫車循環送水':'—')+'</span></div>';
+ h+=tenderHTML(inc);
  h+='<div class="row"><span>供水／用水</span><span>'+inflow+' / '+use+' L/s '+bar(inflow?use/inflow:use?1:0,use>inflow?'var(--red)':'var(--blu)')+'</span></div>';
  if(tp[1])h+='<div class="row"><span>車上水箱</span><span>'+Math.round(tp[0]/tp[1]*100)+'% '+bar(tp[0]/tp[1],tp[0]/tp[1]<.25?'var(--red)':'var(--blu)')+'</span></div>';
  if(B.sp)h+='<div class="row"><span>送水口</span><span>'+TAC_SDN[B.sp.side]+'側 '+(B.sp.on?'<b style="color:var(--grn)">加壓中</b>':'未接')+'</span></div>';

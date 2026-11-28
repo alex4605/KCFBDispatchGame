@@ -10,8 +10,8 @@ function stepIncident(i,dt){
   if(Kd.w&&wo&&!inc.fl.w){inc.fl.w=1;radio(inc,first?first.cs:'現場','水線佈設完成，開始出水。')}
   if(Kd.w&&inc.tender&&first){
    let onTank=0;for(const u of onScene(inc))if(u.st==='work'&&u.code==='61')onTank++;
-   if(!onTank&&inc.hooked&&!inc.fl.gap){inc.fl.gap=1;
-    radio(inc,first.cs,'水庫車返回補水中，現場無供水車，請求另一輛水庫車接替。')}
+   if(!onTank&&inc.hooked&&!inc.fl.gap&&(!inc.dk||inc.dk.v<inc.dk.cap*.3)){inc.fl.gap=1;
+    radio(inc,first.cs,'水庫車都在往返補水，移動式水槽水位偏低，請求加派水庫車。')}
    if(onTank&&inc.fl.gap)inc.fl.gap=0}
   const flow=stepWater(inc,dt,first);
   stepAgencies(inc,Kd,dt,first);
@@ -54,6 +54,7 @@ function stepWater(inc,dt,first){
   let flow=1;
   if(Kd.w){
    if(!inc.lines&&first)inc.lines=recLines(inc);
+   tenderStep(inc,dt,first);
    let tend=0,pmp=0;
    for(const u of onScene(inc))if(u.st==='work'){
     if(u.code==='61')tend++;
@@ -97,7 +98,7 @@ function stepWater(inc,dt,first){
       inc.burst=10+Math.random()*6;
       radio(inc,first.cs,'第 '+effLines(inc)+' 線水帶爆管，該線暫停出水，更換中。')}}}
    const eff=Math.max(0,effLines(inc)-(inc.burst>0?1:0));
-   const use=eff*LPS,net=(inflow-use)*dt;
+   const use=eff*LPS,inA=tenderOn(inc)?tenderFeed(inc,use,dt):inflow,net=(inA-use)*dt;
    if(net<0){const got2=drawWater(inc,-net);
     if(got2<-net*.999){ // 水量不足
      if(!inc.dry){inc.dry=1;radio(inc,first?first.cs:'現場','現場水箱見底，射水中斷，請求供水。')}
