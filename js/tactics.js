@@ -453,6 +453,7 @@ function tacInit(inc){
  B.elev=Fa>=6&&T.lay==='corridor'; // 六層以上走廊式建物有消防專用升降機
  B.fwdF=Math.max(bf+1,of>=bf+3?of-2:bf+Math.floor((F-bf)/2)); // 火在低樓層時設在建物中段，方便上方樓層搜索
  if(T.sc)tacScInit(inc,B,T);
+ tacSysInit(inc,B);
  inc.tac=B;tacSync(inc);
  if(T.hoax)radio(inc,'受理','指揮中心接管現場戰術指揮：報案指稱'+tacFlr(B,of)+'冒煙，現場未見明顯火光，請查證該層各戶。');
  else if(B.sc)radio(inc,'受理','指揮中心接管現場戰術指揮：'+B.sc.brief);
@@ -531,6 +532,15 @@ function tacRoute(B,q,f,c){
  const e=tacBestEnt(B,q.side,f,c,false);return e?[[tacEF(B,e),e.c]].concat(tacPath(B,tacEF(B,e),e.c,f,c)):[]}
 // 會帶水線出水的任務：靠水線掩護推進，不用耐熱上限拒絕（沒有水線時由移動中的檢查擋下）
 const TAC_HOSEK={attack:1,confine:1,hydro:1,guard:1};
+// 安全區：沒有煙、熱、化學品、缺氧的空間，可以不戴面罩（不接肺力閥、不耗氣）
+const tacSafe=x=>x.s<.12&&x.h<.04&&!(x.hz>0)&&x.o2>=19.5&&!((x.cz||0)>.03);
+// 高樓：起火層的直下層是安全區邊界，進入起火層（以上）前一定要先接上肺力閥
+const tacHiR=B=>B.F-B.bf>=5;
+// 接上肺力閥的時機：要進入不安全的空間（低樓層在燃燒門外、高樓在起火層直下層）
+function tacMaskNeed(B,q,ns){
+ if(q.mk||q.ty==='robot'||q.ty==='ladder'||B.wild||(q.ppe||'F')==='C')return false;
+ if(!tacSafe(tacCel(B,ns[0],ns[1])))return true;
+ return tacHiR(B)&&ns[0]>=B.of&&B.cells.some(x=>x.f===B.of&&(x.h>.05||x.s>.2))}
 // 小組拒絕命令：回傳以「拒絕：」開頭的原因（'' 表示接受）。機器人不會拒絕
 function tacRefuse(B,q,k,f,c){
  if(q.ty==='robot'||q.ty==='ladder'||q.down)return'';
@@ -566,6 +576,7 @@ function tacCan(B,q,k,f,c){
  if(q.air<.3&&!lad&&q.ty!=='robot'&&k!=='exit'&&k!=='force'&&k!=='dctrl')return'空氣瓶不足，需先撤出換瓶';
  if((k==='force'||k==='dctrl')&&(f===undefined||f<0))return q.ty==='robot'?'機器人無法執行':tacIn(q)?'人員在室內':'';
  if(f===undefined||f<0)return'請點選建物內的位置';
+ if(k==='shore')return tacShoreCan(B,q,f,c);
  if(lad){
   if(f<B.bf)return'地下室無法使用雲梯';
   if(k==='roofres')return B.F-B.bf>(TAC_LADR[q.code]||7)?'屋頂超出雲梯可達高度':'';
@@ -605,7 +616,7 @@ function tacLadSide(B,q,wins){
  const ok=(wins||TAC_SIDES).filter(s=>!tacCanSide(B,q,s));
  return ok.includes(q.tside)?q.tside:ok[0]||null}
 function tacOrder(inc,q,k,f,c,quiet,side,door){
- const B=inc.tac;
+ const B=inc.tac;q.wd=0;
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
  if(k==='vent'&&f===B.F-1&&tacStair(B,c))k='roof';
  if(k==='truck')return tacTruck(inc,B,q,side,quiet);
@@ -710,7 +721,11 @@ function tacSquad(inc,B,q,dt,eff){
  if(inside&&q.carry&&q.air<.6&&tacFwdOK(B)&&q.f===B.fwd.f&&(B.fwd.stock>0||B.st.air)){if(!B.st.air)B.fwd.stock--;q.air=1;radio(inc,q.cs,'搬運途中於前進指揮所換瓶，續行搬運。')}
  if(inside&&q.ty!=='robot'){
   const hv=q.task==='attack'||q.task==='search'||q.task==='ritgo'||q.carry;
-  q.air-=dt/TAC_AIR*(hv?1.15:1)*(q.carry?1.3:1)*(1+q.fat*.3);
+  // 面罩：在安全區不接肺力閥、不耗氣；煙熱突然進到所在空間時緊急戴上（吸到一點煙）
+  if(!q.mk&&!tacSafe(cl)&&!B.wild&&(q.ppe||'F')!=='C'){q.mk=1;q.mkF=q.f;q.mkT=0;q.hp=Math.max(.3,q.hp-.04);radio(inc,q.cs,tacNm(B,q.f,q.c)+'煙進來了，緊急戴上面罩、接上肺力閥。')}
+  // 撤回安全區：卸下肺力閥，不再耗氣
+  if(q.mk&&q.mkF>=0&&q.f<=q.mkF&&tacSafe(cl)&&(q.task==='exit'||q.task==='fwdref'||q.task==='idle'||q.task==='station')){q.mk=0}
+  if(q.mk)q.air-=dt/TAC_AIR*(hv?1.15:1)*(q.carry?1.3:1)*(1+q.fat*.3);
   q.fat=Math.min(1.2,q.fat+dt/220*(hv?1.4:1)*tacSk(q).fat);
   // 體力透支：撤出到屋外休息，恢復後回原任務
   if(q.fat>=1&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'){
@@ -718,13 +733,14 @@ function tacSquad(inc,B,q,dt,eff){
   if(q.air<=0){q.air=0;tacDown(inc,B,q,'空氣瓶耗盡');return}
   // 低壓：剩餘氣量不足以從目前位置撤到屋外（含安全餘裕）就撤出換瓶，換瓶後回原任務；
   // 搬運受困者與 RIT 救援除外。樓層越高越早撤
-  const est=(Math.abs(q.f-(tacFwdOK(B)&&q.f>B.fwd.f?B.fwd.f:B.bf))*2.6+(tacGd(B,q.c,tacNearStair(B,q.f,q.c))+1)*1.8)*1.8*1.15*(1+q.fat*.6)*(1+q.fat*.3),lowAt=Math.min(.7,Math.max(.33,(est*1.3+8)/TAC_AIR));
-  if(q.air<lowAt&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'&&q.task!=='fwdref'){
+  // 只要撐到安全區（前進指揮所、接上肺力閥的樓層或屋外）就能卸下面罩
+  const est=(Math.abs(q.f-(tacFwdOK(B)&&q.f>B.fwd.f?B.fwd.f:q.mkF>=0?Math.min(q.f,q.mkF):B.bf))*2.6+(tacGd(B,q.c,tacNearStair(B,q.f,q.c))+1)*1.8)*1.8*1.15*(1+q.fat*.6)*(1+q.fat*.3),lowAt=Math.min(.7,Math.max(.33,(est*1.3+8)/TAC_AIR));
+  if(q.mk&&q.air<lowAt&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'&&q.task!=='fwdref'){
    const fw=tacFwdOK(B)&&q.f>B.fwd.f;
    if(!q.low)radio(inc,q.cs,'空氣瓶低壓警報，'+(fw?'到'+tacFlr(B,B.fwd.f)+'前進指揮所換瓶。':'撤出換瓶。'));
    q.low=1;q.prev=(q.task==='idle'||q.task==='rit')?null:{task:q.task,tf:q.tf,tc:q.tc};
    if(fw){q.task='fwdref';q.tf=B.fwd.f;q.tc=0}else{q.task='exit';q.tf=-1;q.tc=0}}
-  else if(q.air<lowAt&&!q.low){q.low=1;radio(inc,q.cs,'空氣瓶低壓警報，完成手上任務後撤出。')}
+  else if(q.mk&&q.air<lowAt&&!q.low){q.low=1;radio(inc,q.cs,'空氣瓶低壓警報，完成手上任務後撤出。')}
   const prot=(q.task==='attack'||q.task==='guard'||q.task==='confine'||q.task==='hydro')&&q.line&&eff>0&&q.pf>.15&&q.f===q.tf&&q.c===q.tc;
   if(cl.h>.68)q.hp-=dt*(cl.h-.62)*(prot?.015:.07);
   // 沒有水線掩護、所在空間超過耐熱上限：自動撤退（搬運與 RIT 救援除外；機器人不受限）
@@ -744,6 +760,10 @@ function tacSquad(inc,B,q,dt,eff){
  if(ns&&ns[0]>=0&&q.ty!=='robot'&&!q.mt&&q.task!=='exit'&&q.task!=='carry'&&q.task!=='ritgo'&&q.task!=='fwdref'&&!tacCovered(q,eff)&&tacCel(B,ns[0],ns[1]).h>tacHotLim(q)){
   const y=tacCel(B,ns[0],ns[1]);radio(inc,q.cs,'前方'+tacNm(B,ns[0],ns[1])+'溫度約 '+tacTmp(B,y)+'°C，'+(TAC_WET[q.task]?'水線還沒出水':'沒有水線掩護')+'，無法前進'+(inside?'，撤出。':'，屋外待命。'));
   q.prev=null;if(inside){q.task='exit';q.tf=-1;q.tc=0}else{q.task='idle';q.tf=-1;q.tc=0}q.nf=q.f;q.nc=q.c;return}
+  // 接上肺力閥：在安全區邊界（燃燒門外、高樓起火層的直下層）停下來戴面罩約 6 秒
+ if(ns&&ns[0]>=0&&!q.mt&&tacMaskNeed(B,q,ns)){q.mkT=(q.mkT||0)+dt;q.nf=q.f;q.nc=q.c;
+  if(q.mkT<6)return;q.mkT=0;q.mk=1;q.mkF=q.f;
+  if(tacHiR(B)&&q.f>=0)radio(inc,q.cs,'於'+tacFlr(B,q.f)+'安全區接上肺力閥，進入作業區。');return}
  if(ns){q.nf=ns[0];q.nc=ns[1];
   const lockE=q.f<0&&ns[0]>=0&&q.ent&&q.ent.lock?q.ent:null;
   const lockD=q.f>=0&&ns[0]===q.f&&B.lk.has(tacDK(B,q.f,q.c,ns[1]));
@@ -874,6 +894,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='move'){q.task='idle';return}
  if(k==='fwdgo'){q.task='station';q.stn='fwd';radio(inc,q.cs,tacFlr(B,q.f)+'前進指揮所設置完成，備用氣瓶 '+B.fwd.stock+' 支。');tacEvt(inc,B,'milestone','前進指揮所就位（'+tacFlr(B,q.f)+'）');return}
  if(k==='fwdref'){ // 前進指揮所：換瓶（備用瓶用完就要等充填區送上來）、休息
+  if(tacSafe(cl))q.mk=0;
   if(q.refill==='none'&&B.st.air)q.refill=null;
   if(!q.refill){q.refill=B.st.air?'air':B.fwd.stock>0?'cyl':'none';if(q.refill==='cyl')B.fwd.stock--}
   // 前進指揮所的備用氣瓶用完、又沒有氣瓶充填區：不能在這裡等，撤到屋外換瓶（之後回原任務）
@@ -885,6 +906,7 @@ function tacSquad(inc,B,q,dt,eff){
  if(k==='beat'||k==='brk'){tacWildTask(inc,B,q,k,cl,dt,cmd);return}
  if(k==='ident'){tacIdent(inc,B,q,dt);return}
  if(k==='plug'){tacPlug(inc,B,q,dt);return}
+ if(k==='shore'){q.wk+=dt;if(q.wk>=(q.usar?14:20)){q.wk=0;cl.shore=1;q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'支撐架設完成，可以進入瓦礫搜救。');tacEvt(inc,B,'milestone','支撐：'+tacNm(B,q.f,q.c))}return}
  if(k==='gas'){q.wk+=dt;if(q.wk>=5){q.wk=0;tacGasMeas(inc,B,q,cl);q.task='idle'}return} // 氣體偵測：到點量測約 5 秒
  if(k==='dctrl'){ // 門控（室內）：指定門則慢慢破開、控制開度開門並守住；否則先把本處通往火點或濃煙的門關上，再守在門邊控制開度，相鄰火點吃不到新鮮空氣
   if(q.dto!=null&&!q.dcd){const dk=tacDK(B,q.f,q.c,q.dto);
@@ -922,7 +944,7 @@ function tacSquad(inc,B,q,dt,eff){
   const c=tacNear(B,q.f,q.c,x=>x.h>.05);if(c!==null){q.task='attack';q.tc=c;q.lt=S.t}
   return}
  if(k==='search'||k==='search2'){
-  const rate=dt/(q.ty==='resc'?5:8)/(cl.rub?(q.usar?1.2:q.ty==='resc'?2.5:4):1)/(q.usar?1.3:1)/(TAC_RK[tacK(B,q.f,q.c)]||{sr:1}).sr/(1+cl.s*(tacTIC(q)?.6:1.5))*(q.n/3)*cmd;
+  const rate=dt/(q.ty==='resc'?5:8)/(cl.rub?(q.usar?1.2:q.ty==='resc'?2.5:4)*(cl.shore?.7:1):1)/(q.usar?1.3:1)/(TAC_RK[tacK(B,q.f,q.c)]||{sr:1}).sr/(1+cl.s*(tacTIC(q)?.6:1.5))*(q.n/3)*cmd;
   // 初期搜索：快速掃過可能遇難處所，濃煙中可能漏人
   if((k==='search'||k==='search2')&&!cl.vic&&Math.random()<dt*.15)tacSay(q,!tacTIC(q)&&cl.s>.7?'smoke':'search');
   if(k==='search'&&cl.srch<1){cl.srch=Math.min(1,cl.srch+rate/.6);if(cl.srch>=1&&!cl.sl)tacPrim(B,cl,0);return}
@@ -980,6 +1002,7 @@ function tacSquad(inc,B,q,dt,eff){
    radio(inc,q.cs,'RIT 已接觸 '+dn.cs+'，更換備用氣瓶，協同撤出。')}
   return}}
 function tacOutside(inc,B,q){
+ q.mk=0;q.mkT=0;
  if(q.carry){for(let i=0;i<q.carry;i++)tacPatient(inc,B,q.cvh===undefined?.7:q.cvh,q.cs);
   q.carry=0;q.task='idle';
   if(!q.low){q.prev=null}}
@@ -1127,7 +1150,7 @@ function tacLines(inc,B,dt){
 // M：{safety, water, search, ems, attack, ladder, stn}
 function tacAI(inc,B,dt,M){
  B.aiT-=dt;if(B.aiT>0)return;B.aiT=1.5;
- const free=B.sq.filter(q=>!q.down&&!q.tmv&&(q.task==='idle'||q.task==='hold')&&!q.prev&&(q.ty==='ladder'||q.ty==='robot'||q.air>(tacIn(q)?.45:.6)));
+ const free=B.sq.filter(q=>!q.down&&!q.tmv&&!q.wd&&(q.task==='idle'||q.task==='hold')&&!q.prev&&(q.ty==='ladder'||q.ty==='robot'||q.air>(tacIn(q)?.45:.6)));
  const take=q=>{const i=free.indexOf(q);if(i>=0)free.splice(i,1)};
  const burning=B.cells.filter(x=>x.ty!=='stair'&&x.h>.05).sort((a,b)=>a.f-b.f||b.h-a.h);
  // 站點（AI 指揮）：指揮站、氣瓶充填區、後勤照護區、聯訪處、集結區
@@ -1207,6 +1230,8 @@ function tacAI(inc,B,dt,M){
     else if(tacOrder(inc,who,B.chemK?'plug':'ident',lk.f,lk.c,1))take(who)}}}
  // 氣體偵測（AI）：悶燒、鋰電池、瓦斯外洩、住警器等案件，先派一組到起火點量測
  tacScAI(inc,B,free,take,M);
+ if(M.stn)tacSysAI(inc,B);
+ if(M.attack||M.safety)tacBvAI(inc,B,free,take);
  if(M.attack&&!B.aiGas&&(B.T.away||B.T.li||B.T.smk||B.T.elder||B.gasL||B.k==='chemfire'||(B.sc&&B.chem&&B.chem.util))){
   const r=free.find(q=>(q.ty==='resc'||q.ty==='vent')&&!tacIn(q))||free.find(q=>q.ty==='pump'&&!tacIn(q)&&!q.line);
   if(r&&tacOrder(inc,r,'gas',B.of,B.oc,1)){B.aiGas=1;take(r);radio(inc,r.cs,'攜五用氣體偵測器前往'+tacNm(B,B.of,B.oc)+'量測。')}}
@@ -1307,7 +1332,7 @@ function tacAI(inc,B,dt,M){
   if(M.attack&&tacIn(q)&&q.task==='idle')tacOrder(inc,q,'exit',-1,0,1)}}
 // 洩漏還在（坑道持續產生的氣體不算）；可燃或有毒氣體還沒通風排除
 const tacLeakOn=B=>!!(B.leak&&B.leak.on&&!B.leak.np);
-const tacVapLeft=B=>!!(B.chem&&B.chem.vap&&B.cells.some(x=>(x.cz||0)>.1));
+const tacVapLeft=B=>!!(B.chem&&B.chem.vap&&B.cells.some(x=>(x.cz||0)>.1))||!!(B.chk&&tacCel(B,B.chk.f,B.chk.c).sl<1);
 // 由 stepIncident 呼叫：取代原本的抽象進度
 function tacIncident(inc,dt,first,flow){
  const B=inc.tac;
@@ -1323,6 +1348,7 @@ function tacIncident(inc,dt,first,flow){
  tacFire(inc,B,dt);
  tacChemStep(inc,B,dt);
  tacScStep(inc,B,dt);
+ tacSysStep(inc,B,dt);tacBvStep(inc,B,dt);tacTrafStep(inc,B,dt);
  tacStaff(inc,B,dt);
  tacYardStep(inc,B,dt);
  tacExpo(inc,B,dt);

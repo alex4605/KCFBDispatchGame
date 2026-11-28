@@ -24,11 +24,13 @@ const TAC_SCCHEM={
 const TAC_SCOK={search:1,search2:1,plug:1,gas:1,vent:1,npv:1,hydro:1,dctrl:1,exit:1,rit:1,ident:1};
 // 版面：場區節點之間的門牆規則（同一輛車的車頭與貨斗相通；人孔只通道路與地下管道）
 function tacScAdj(a,b,door,wall,L){
- if(a.vid&&a.vid===b.vid){door(a,b);L.op.add(Math.min(a.c,b.c)*1000+Math.max(a.c,b.c));return true}
+ if((a.xp&&b.ty==='hall')||(b.xp&&a.ty==='hall')){door(a,b);return true}
+ if(a.vid&&a.vid===b.vid&&a.kind!=='tankr'&&b.kind!=='tankr'){door(a,b);L.op.add(Math.min(a.c,b.c)*1000+Math.max(a.c,b.c));return true}
  if(a.pipe||b.pipe||a.hole||b.hole){const ab=[a,b];
   if(ab.every(n=>n.pipe||n.hole)||(ab.some(n=>n.hole)&&ab.some(n=>n.ty==='hall')))door(a,b);else wall(a,b);return true}
  return false}
 function tacScLay(T,K,L,add,room,cuts,R){
+ if(tacSc2Lay(T,K,L,add,room,cuts,R))return;
  const lane=(gx,gy,gw,gh,o)=>add(Object.assign({ty:'hall',gx,gy,gw,gh,lane:1},o||{}));
  const lanes=(x0,x1,y0,y1,o)=>{if(x1-x0<.05)return;const hs=cuts(x0,x1,1,1.6);for(let i=0;i<hs.length-1;i++)lane(hs[i],y0,hs[i+1]-hs[i],y1-y0,o)};
  if(T.yard==='pit'){ // 侷限空間：道路、工區（中間一個人孔），下方是地下管道（只能經人孔進出）
@@ -92,16 +94,19 @@ function tacScInit(inc,B,T){
    B.sc.brief='汽機車火警：'+tacNm(B,0,o.c)+'起火，兩側騎樓店面與路邊停放車輛有延燒風險；路邊停車是一格格分開的，火會沿車列延燒。'}
   else if(sc==='truck'){const cab=rooms.find(n=>n.kind==='cab'),cg=rooms.find(n=>n.kind==='cargo');o=/車頭/.test(t)||R()<.5?cab:cg;
    const x=cel(0,o.c);x.h=.5+R()*.15;x.s=.7;cel(0,cg.c).deep=1;
+   B.traf={up:R()<.5?B.arr:{e:'w',w:'e'}[B.arr]||'w'};
    B.sc.cargo=/紙箱/.test(t)?'紙箱':pk(['紙箱','塑膠原料','輪胎']);if(B.sc.cargo!=='紙箱')cel(0,cg.c).fk=1.4;
    B.sc.brief='國道火燒車：聯結車'+(o===cab?'車頭':'貨斗')+'起火（載運'+B.sc.cargo+'），內側車道有受阻車輛；國道沒有消防栓，用水靠車上水箱與水庫車。貨物深層悶燒，要殘火處理翻開。'}
   else{const cab=rooms.find(n=>n.kind==='cab'),tk=rooms.find(n=>n.kind==='tankr');o=tk;
-   const chem=/化學|白煙|菱形/.test(t);
-   if(chem){B.chem=Object.assign({},pk(TAC_CHEM.filter(c=>!c.h2s)));B.chemK=0}else{B.chem=Object.assign({},TAC_FUEL);B.chemK=1;cel(0,tk.c).fuel=1}
+   const chem=/化學|白煙|菱形/.test(t),lpg=!chem&&(/液化|LPG|瓦斯槽/.test(t)||R()<.35);
+   if(lpg){B.chem={n:'液化石油氣（LPG）',zone:'可燃氣體',ppeN:'消防衣＋空氣呼吸器，禁止火源',lv:1,fl:1,lelk:160,util:1,plug:'已關閉槽車緊急遮斷閥，LPG 停止外洩。'};B.chemK=1;
+    const fire=R()<.5;if(fire){const x=cel(0,tk.c);x.h=.5;x.s=.5}B.bv={c:tk.c,f:0,p:fire?.15:.05,k:1,n:'LPG 槽體',r:2.6,big:1}}
+   else if(chem){B.chem=Object.assign({},pk(TAC_CHEM.filter(c=>!c.h2s)));B.chemK=0}else{B.chem=Object.assign({},TAC_FUEL);B.chemK=1;cel(0,tk.c).fuel=1}
    B.leak={f:0,c:tk.c,on:1};
-   if(!chem&&R()<.3){const x=cel(0,tk.c);x.h=.45;x.s=.6}
+   if(!chem&&!lpg&&R()<.3){const x=cel(0,tk.c);x.h=.45;x.s=.6}
    put(0,cab.c,1,.75+R()*.15,1);
    seed(40);
-   B.sc.brief=(chem?'化槽車翻覆：槽體破損洩漏不明化學品，駕駛受困車頭。先劃設危害區、化物辨識，著適當防護再救人止漏。':
+   B.sc.brief=lpg?'LPG 槽車翻覆：液化石油氣自閥件外洩'+(B.bv.p>.2?'並已起火，火焰燒烤槽體':'')+'，駕駛受困車頭。槽體受熱會升壓、安全閥起跳，冷卻不足會發生 BLEVE（火球）：至少兩線以上大量射水冷卻槽體，壓力過高就全員撤離。':(chem?'化槽車翻覆：槽體破損洩漏不明化學品，駕駛受困車頭。先劃設危害區、化物辨識，著適當防護再救人止漏。':
     '油罐車翻覆：汽油外洩形成油池，駕駛受困車頭。油池遇火源會引燃：以泡沫覆蓋（泡沫車、CAFS 車對油池防護射水），再關閉緊急遮斷止漏。')}
   B.of=0;B.oc=o.c}
  else if(sc==='gas'){
@@ -129,6 +134,7 @@ function tacScInit(inc,B,T){
   const two=/兩個|第二個/.test(t)||R()<.3;put(0,pipes[0].c,1,.75,1);if(two)put(0,(pipes[1]||pipes[0]).c,1,.8,1);
   seed(200,1);for(const x of B.cells){const n=N[x.c];if(!n.pipe&&!n.hole)x.cz=0}
   B.sc.brief=(inc.k==='sewer'?'下水道硫化氫':'侷限空間救援')+'：人孔下方管道有 '+vt+' 名作業人員倒地，管道內缺氧並有硫化氫。依侷限空間程序：先對人孔氣體偵測、往人孔送風（正壓排煙），再由救助組著空氣呼吸器進入救援；不可貿然下去救人。'}
+ else if(sc!=='pool'&&tacSc2Init(inc,B,T,put,seed)){}
  else if(sc==='pool'){
   const sm=rooms.filter(n=>n.small),o=sm.length?pk(sm):rooms[rooms.length-1];B.oc=o.c;B.of=0;
   for(let f=0;f<B.F;f++){const x=cel(f,o.c);x.k='mech';x.fk=TAC_RK.mech.fk}
@@ -146,6 +152,7 @@ function tacScAir(B){
 // 每幀：氣體引燃與氣爆、油池泡沫覆蓋與引燃、侷限空間送風與偵測
 function tacScStep(inc,B,dt){
  if(!B.sc)return;const sc=B.sc.k;
+ tacSc2Step(inc,B,dt);
  if(sc==='pit'){
   if(B.ppv)for(const x of B.cells){const n=B.L.N[x.c];if(n.pipe||n.hole)x.cz=Math.max(0,(x.cz||0)-dt*.03)}
   tacScAir(B);
@@ -163,8 +170,8 @@ function tacScStep(inc,B,dt){
   for(const q of B.sq){if(!(q.frc>0)||tacEntryMode(B,q)!=='force'||q.ty==='robot')continue;
    const cs=[q.f>=0?tacCel(B,q.f,q.c):null,q.nf>=0?tacCel(B,q.nf,q.nc):null].filter(Boolean);
    const c=cs.find(x=>lel(x)>=60);if(c&&Math.random()<.12){spark={x:c,q};break}}
-  const src=hot&&Math.random()<.0025*Math.sqrt(hot)?B.cells.filter(x=>lel(x)>=100).sort((a,b)=>b.cz-a.cz)[0]:null;
-  if(spark)tacScBlast(inc,B,spark.x,spark.q.cs+' 破壞門鎖的火花');else if(src)tacScBlast(inc,B,src,'不明火源（電器開關、門鈴）')}
+  const src=hot&&S.t-B.t0>60&&!B.cells.some(x=>x.h>.05)&&Math.random()<.0025*Math.sqrt(hot)?B.cells.filter(x=>lel(x)>=100).sort((a,b)=>b.cz-a.cz)[0]:null;
+  if(spark)tacScBlast(inc,B,spark.x,spark.q.cs+' 破壞門鎖的火花');else if(src)tacScBlast(inc,B,src,B.out?'不明火源（車輛引擎、靜電）':'不明火源（電器開關、門鈴）')}
  // 油池：沒有泡沫覆蓋時可能被引燃（引擎熱、靜電、路過車輛）；泡沫車或 CAFS 車防護射水覆蓋
  if(B.chem&&B.chem.fuel){
   for(const q of B.sq)if(q.task==='guard'&&q.line&&q.pf>0&&tacIn(q)&&q.f===q.tf&&q.c===q.tc&&(q.code==='57'||q.code==='01'||q.cafs)){
@@ -193,6 +200,7 @@ function tacScCan(B,q,k,f,c){
 function tacScRefuse(B,q,k,f,c){
  if(!B.sc||f===undefined||f<0)return'';
  const rt=tacRoute(B,q,f,c).concat([[f,c]]);
+ {const w=tacSc2Refuse(B,q,k,f,c,rt);if(w)return w}
  if(B.sc.k==='pit'&&k!=='exit'&&k!=='gas'&&rt.some(p=>B.L.N[p[1]].pipe)){
   if(q.ty!=='resc'&&!q.usar)return'拒絕：侷限空間要由救助組（三腳架、救援繩索與供氣設備）進入';
   if(!B.pitGm)return'拒絕：侷限空間還沒做氣體偵測，依規定不得進入（先對人孔做氣體偵測）';
@@ -209,6 +217,7 @@ function tacScAI(inc,B,free,take,M){
  if(M.safety&&B.chem&&B.chem.lelk&&!B.blasted&&sc!=='pit'&&(B.roe||'force')==='force'&&!B.roeSet){B.roeSet=1;B.roe='dctrl';
   radio(inc,'安全官','可燃氣體外洩，禁用會產生火花的破壞器材與電器，各組改採門控進入（手動器材）！')}
  if(!M.attack)return;
+ tacSc2AI(inc,B,free,take);
  // 侷限空間只能由救助組進入：現場沒有救助組（或特搜）時請求增援，在途的不重複請求
  if(sc==='pit'&&!B.reqR&&!B.sq.some(q=>q.ty==='resc'||q.usar)&&!onScene(inc).concat(S.units.filter(u=>u.inc===inc.id)).some(u=>u.code==='71')){B.reqR=1;tacReinf(inc,B,'resc')}
  if(sc==='pit'&&!B.ppv&&!B.sq.some(q=>q.task==='ppv')){const r=free.find(q=>!tacIn(q)&&!tacCan(B,q,'ppv'));
@@ -224,6 +233,7 @@ function tacScAI(inc,B,free,take,M){
   const r=free.find(q=>(q.ty==='resc'||q.ty==='pump')&&!tacIn(q)&&(q.ppe||'F')==='F'&&!q.line);if(r&&tacPPE(inc,B,r,'B',1))take(r)}}
 // 現場民眾的說法（非火災情境）
 function tacScCiv(inc,B,k){
+ {const a2=tacSc2Civ(inc,B,k);if(a2!==undefined)return a2}
  const sc=B.sc.k,vr=B.cells.filter(x=>x.vic>0),nm=x=>tacNm(B,x.f,x.c);
  if(k==='open')return sc==='car'?['是'+tacNm(B,0,B.oc)+'先燒起來的，人都離開了。','旁邊還停了一排車，騎樓裡面是店面。']:
   sc==='truck'?['我是駕駛，'+(B.oc===B.L.N.find(n=>n.kind==='cab').c?'車頭先冒煙':'後面貨斗先冒煙')+'，我就停在外側車道跑下來了。','後面載的是'+B.sc.cargo+'，大概十幾噸。']:
@@ -243,10 +253,11 @@ function tacScCiv(inc,B,k){
  if(k==='layout')return sc==='pit'?'人孔下面是污水管，往兩邊大概各二三十公尺。':B.out?'這段路兩邊都可以進來。':'這棟'+(B.F-B.bf)+'層，樓梯在旁邊。';
  return''}
 // 結案時的現場回報
-const tacScDone=B=>B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常';
+const tacScDone=B=>tacSc2Done(B)||(B.sc.k==='pit'?'受困人員都已救出，侷限空間作業結束':B.sc.k==='car'||B.sc.k==='truck'?'車輛火勢撲滅、殘火處理完成':B.chem&&B.chem.fuel?'止漏完成、油池已處理':'氣源已關斷、現場通風後氣體偵測正常');
 // 繪製：場區的車輛、騎樓店面、人孔、地下管道、邊坡
 function tacScDraw(g,G,B,n,x,r,k,dark,rnd){
  const t=G.t,col=c=>dark?'#1e1c19':c;
+ tacSc2Draw(g,G,B,n,x,r,k,dark,rnd);
  if(k==='car'){const n2=Math.max(1,Math.round(r[2]/(t*.55)));for(let i=0;i<n2;i++){const w=r[2]/n2;g.fillStyle=col(['#6a7a8a','#8a6a5a','#5a5a5a','#7a7a6a'][i%4]);scRR(g,r[0]+w*i+w*.12,r[1]+r[3]*.2,w*.76,r[3]*.6,4);g.fill();
    g.fillStyle=dark?'#141210':'rgba(20,24,30,.6)';g.fillRect(r[0]+w*i+w*.3,r[1]+r[3]*.26,w*.4,r[3]*.48)}}
  else if(k==='scoot'){const n2=Math.max(2,Math.floor(r[2]/(t*.12)));for(let i=0;i<n2;i++){g.fillStyle=col(['#8a8a8a','#6a7a9a','#9a6a5a'][i%3]);g.fillRect(r[0]+r[2]*(i+.3)/n2,r[1]+r[3]*.18,r[2]*.4/n2,r[3]*.64)}}

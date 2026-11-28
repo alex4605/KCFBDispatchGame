@@ -13,7 +13,7 @@ function tacWF(B,a,b){const W=B.wind;if(!W)return 1;const x=B.L.N[a],y=B.L.N[b];
  return Math.max(.3,1+1.3*W.v*(dx*W.d[0]+dy*W.d[1])/l)}
 // 場區格局：在 tacLayout 內呼叫，用它的 add／room／cuts 產生節點
 function tacYardLay(T,K,L,add,room,cuts,R){
- if(T.yard==='road'||T.yard==='pit')return tacScLay(T,K,L,add,room,cuts,R);
+ if(TAC_SCY[T.yard])return tacScLay(T,K,L,add,room,cuts,R);
  const lane=(gx,gy,gw,gh)=>add({ty:'hall',gx,gy,gw,gh,lane:1});
  const wall=n=>{n.walled=1;return n};
  if(T.yard==='waste'){ // 資源回收場：中央車道兩側一區區堆置區，一角有辦公室
@@ -104,6 +104,7 @@ function tacYardCell(g,G,B,n,x,r,T){
   g.strokeStyle='rgba(233,200,90,.25)';g.setLineDash([8,8]);g.lineWidth=1.5;g.beginPath();
   if(r[2]>=r[3]){g.moveTo(r[0],r[1]+r[3]/2);g.lineTo(r[0]+r[2],r[1]+r[3]/2)}else{g.moveTo(r[0]+r[2]/2,r[1]);g.lineTo(r[0]+r[2]/2,r[1]+r[3])}g.stroke();g.setLineDash([]);
   if(x.pool){g.fillStyle='rgba(120,90,160,.28)';g.beginPath();g.ellipse(r[0]+r[2]/2,r[1]+r[3]/2,r[2]*.4,r[3]*.38,0,0,TAU);g.fill()}
+  tacScDraw(g,G,B,n,x,r,undefined,false,()=>.5);
   return}
  g.fillStyle=burnt?'#141210':'#2a2823';g.fillRect(r[0],r[1],r[2],r[3]);
  let sd=n.c*9301+49297;const rnd=()=>((sd=(sd*9301+49297)%233280)/233280);
@@ -174,7 +175,7 @@ function tacHazDraw(g,G,B,vf){
   g.fillText(!B.chemK?'疑似化學品':B.chem.zone?B.chem.zone:x.hz>=B.chem.lv?'熱區（'+['','C','B','A'][B.chem.lv]+'級）':'暖區',r[0]+r[2]/2,r[1]+r[3]*.42)}
  if(B.leak&&B.leak.on&&B.leak.f===vf){const r=G.r(B.leak.c),pl=.5+.5*Math.sin(S.t*6);
   g.strokeStyle='rgba(160,110,220,'+(.5+.5*pl).toFixed(2)+')';g.lineWidth=2;g.beginPath();g.arc(r[0]+r[2]/2,r[1]+r[3]*.7,8+pl*6,0,TAU);g.stroke();
-  g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.fuel?'油料外洩':'洩漏源',r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
+  g.fillStyle='#d8c4f6';g.font='600 10px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText(B.chem.srcN||(B.chem.fuel?'油料外洩':'洩漏源'),r[0]+r[2]/2,r[1]+r[3]*.7+14)}}
 // 河堤：臨河那側改為水域（不能停車、沒有入口）
 function tacYardPost(inc,B,T){
  if(T.wui){ // 建物防護：道路在聚落那側，林地那側不能停車，兩側是產業道路（大型車禁入）
