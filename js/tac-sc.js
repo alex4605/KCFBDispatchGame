@@ -22,7 +22,7 @@ const TAC_SCCHEM={
  co:{n:'一氧化碳',zone:'CO 危害區',ppeN:'空氣呼吸器（C 級無效）',lv:1,co:1,vap:1,util:1,tox:2,noC:1,plug:'已關閉熱水器並關斷瓦斯，一氧化碳來源停止。'},
  h2s:{n:'硫化氫（缺氧）',zone:'缺氧・H₂S',ppeN:'空氣呼吸器（C 級無效）',lv:1,h2s:1,fl:1,lelk:25,util:1,tox:1.6}};
 // 可燃氣體環境中可以進行的任務（不產生火花、以救人與排除氣源為主）
-const TAC_SCOK={search:1,search2:1,plug:1,gas:1,vent:1,npv:1,hydro:1,dctrl:1,exit:1,rit:1,ident:1};
+const TAC_SCOK={zone:1,dike:1,neut:1,search:1,search2:1,plug:1,gas:1,vent:1,npv:1,hydro:1,dctrl:1,exit:1,rit:1,ident:1};
 // 版面：場區節點之間的門牆規則（同一輛車的車頭與貨斗相通；人孔只通道路與地下管道）
 function tacScAdj(a,b,door,wall,L){
  if(a.court||b.court){wall(a,b);return true} // 天井、露天作業區：四面是牆
@@ -126,7 +126,7 @@ function tacScInit(inc,B,T){
    const chem=/化學|白煙|菱形/.test(t),lpg=!chem&&(/液化|LPG|瓦斯槽/.test(t)||R()<.35);
    if(lpg){B.chem={n:'液化石油氣（LPG）',zone:'可燃氣體',ppeN:'消防衣＋空氣呼吸器，禁止火源',lv:1,fl:1,lelk:160,util:1,plug:'已關閉槽車緊急遮斷閥，LPG 停止外洩。'};B.chemK=1;
     const fire=R()<.5;if(fire){const x=cel(0,tk.c);x.h=.5;x.s=.5}B.bv={c:tk.c,f:0,p:fire?.15:.05,k:1,n:'LPG 槽體',r:2.6,big:1}}
-   else if(chem){B.chem=Object.assign({},pk(TAC_CHEM.filter(c=>!c.h2s)));B.chemK=0}else{B.chem=Object.assign({},TAC_FUEL);B.chemK=1;cel(0,tk.c).fuel=1}
+   else if(chem){B.chem=Object.assign({},pk(TAC_CHEM.filter(c=>!c.h2s&&tacCP(c).ph!=='s')));B.chemK=0}else{B.chem=Object.assign({},TAC_FUEL);B.chemK=1;cel(0,tk.c).fuel=1}
    B.leak={f:0,c:tk.c,on:1};
    if(!chem&&!lpg&&R()<.3){const x=cel(0,tk.c);x.h=.45;x.s=.6}
    put(0,cab.c,1,.75+R()*.15,1);

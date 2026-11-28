@@ -93,7 +93,7 @@ function tacVeisStep(inc,B,q,dt){
   tacPrim(B,x,.1);x.sl=2;
   radio(inc,q.cs,'室內搜索（S）完成：'+(x.vic?'發現受困者 '+x.vic+' 名，由窗口救出。':'未發現受困者，由窗口撤出。'));return}
  if(q.vp===3){
-  if(x.vic>0){const bed=(x.bedv||0)>0;if(q.wk<(lad?8:6)*(bed?2:1))return;q.wk=0;x.vic--;if(bed)x.bedv--;tacPatient(inc,B,x.vh,q.cs+' 以 VEIS 由窗口');return}
+  if(x.vic>0){const bed=(x.bedv||0)>0;if(q.wk<(lad?8:6)*(bed?2:1))return;q.wk=0;x.vic--;if(bed)x.bedv--;tacPatient(inc,B,x.vh,q.cs+' 以 VEIS 由窗口',x.vcz);return}
   q.task='idle';q.ext=0;radio(inc,q.cs,'VEIS 完成，'+nm+'已隔離、搜索完畢。');tacEvt(inc,B,'milestone','VEIS：'+nm)}}
 function tacVeisDraw(g,G,B,vf){
  for(const q of B.sq){if(q.task!=='veis'||q.lf!==vf||q.ty==='ladder'||!q.lside||q.ext<=0)continue;
@@ -127,6 +127,7 @@ function tacTgtOK(B,q,k,f,c){
   case'dctrl':return n.nb.some(o=>!tacOpn(B,c,o)&&(B.lk.has(tacDK(B,f,c,o))||tacCel(B,f,o).h>.05||tacCel(B,f,o).s>.4));
   case'dcool':return!tacDcoolCan(B,q,f,c);
   case'veis':return!tacVeisCan(B,q,f,c);
+  case'dike':case'neut':return(x.cz||0)>.03||!!(B.leak&&B.leak.f===f&&B.leak.c===c);
   case'gas':return true;
   default:return false}}
 function tacTgtSet(B,qs,k,vf){

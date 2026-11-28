@@ -103,8 +103,8 @@ function tacReport(inc,B){
  // 財損：燒毀比例、延燒鄰棟、復燃
  const rooms=B.cells.filter(x=>x.ty==='room').length,burnt=B.cells.filter(x=>x.ty==='room'&&x.fu<.3).length;
  sc.loss=Math.max(0,100-burnt/Math.max(1,rooms)*120-Object.keys(B.expL).length*25-(B.rkN||0)*5-(B.cz?25:0));
+ const notes=[];tacCbRep(B,sc,notes);
  const avg=(sc.time+sc.resc+sc.safe+sc.loss)/4,grade=avg>=90?'S':avg>=80?'A':avg>=65?'B':avg>=50?'C':'D';
- const notes=[];
  if(v.noRit)notes.push('有小組入室時尚未編成 RIT');
  if(v.noAcc)notes.push('入室時尚未設置人員管制板，無法掌握氣量');
  if(B.bdN)notes.push('發生爆燃 '+B.bdN+' 次：悶燒缺氧的空間應採門控進入、先射水降溫再開口');
@@ -183,7 +183,7 @@ const tacGasCol=(k,v)=>k==='o2'?(v<19.5||v>23.5?'#ff6a5a':'#9d9a92'):(k==='lel'?
 function tacGasMeas(inc,B,q,x){
  const r=tacGasRead(B,x);x.gm=Object.assign({t:S.t},r);const bad=tacGasBad(r);
  radio(inc,q.cs,tacNm(B,x.f,x.c)+'氣體偵測：O₂ '+r.o2+'%、LEL '+r.lel+'%、CO '+r.co+' ppm、H₂S '+r.h2s+' ppm、HCN '+r.hcn+' ppm'+
-  (r.lel>=10?'。可燃氣體超標，禁止開口與任何火源！':bad.length?'。'+bad.join('、')+'超標，全程著空氣呼吸器。':'，各項正常。'));
+  (r.lel>=10?'。可燃氣體超標，禁止開口與任何火源！':bad.length?'。'+bad.join('、')+'超標，全程著空氣呼吸器。':'，各項正常。')+tacCbMeas(B,q,x));
  tacEvt(inc,B,r.lel>=10?'danger':bad.length?'warn':'milestone',tacNm(B,x.f,x.c)+'氣體偵測'+(bad.length?'：'+bad.join('、')+'超標':'正常'),r.lel>=25)}
 // 養護機構值班人員：每隔一段時間把起火層濃煙中的一名住民推床移到同層遠離火點、還沒有煙的房間（水平避難）；人員有限、濃煙太重就無法進行
 function tacStaff(inc,B,dt){

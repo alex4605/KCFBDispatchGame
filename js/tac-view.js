@@ -28,7 +28,10 @@ const TAC_GRP=[
   ['roof','屋頂出入口','O','各組（機器人除外）｜立即執行（再下一次就關閉）｜開啟或關閉頂樓樓梯間通往屋頂的出入口：開啟時樓梯間的煙往上排出（也加強煙囪效應）；關閉可保護屋頂避難者、避免拉動整座樓梯間的煙｜開啟前最好已有水線壓制起火層']]],
  ['野火',[['beat','撲打','','各組（雲梯組、機器人除外）｜點草地火線｜以打火拍、背負式水袋撲打低矮火線，撲滅後自動往附近火線｜火勢猛烈時無法靠近'],
   ['brk','防火線','','各組（雲梯組、機器人除外）｜點還沒燒到的草地｜清除可燃物開設防火線，阻斷延燒（救助組較快）｜要在火頭前方預先開設']]],
- ['化災',[['ident','化物辨識','I','化災組、化災應變隊｜點洩漏處｜偵檢辨識化學品並劃設危害區｜辨識前請著適當防護'],
+ ['化災',[['zone','劃設管制區','','各組（人員在屋外）｜立即執行（化災組、化災應變隊較快）｜依危害範圍、隔離距離與風向劃出熱區（警戒帶）、暖區（除污走廊）、冷區（指揮站、集結區，設在上風處）｜化物辨識後 60 秒內沒劃設記缺失'],
+  ['dike','圍堵','','各組（雲梯組、機器人除外）｜點外洩液體所在的區域或洩漏處｜沙包、吸附棉、導水板圍住外洩液體與射水的廢水：本區往外擴散減少，廢水不會流進排水溝｜氣體無法圍堵；進熱區要穿足夠的防護衣'],
+  ['neut','中和／覆蓋','','各組（化災組、化災應變隊較快；可燃液體要泡沫車、特殊化學車、CAFS 或化災組）｜點外洩處｜依化學品：酸鹼中和、可燃液體泡沫覆蓋、遇水反應的乾砂覆蓋，止漏後濃度快速下降｜氣體不能中和（可溶於水的用水霧稀釋）'],
+  ['ident','化物辨識','I','化災組、化災應變隊｜點洩漏處｜偵檢辨識化學品並劃設危害區｜辨識前請著適當防護'],
   ['plug','止漏','Z','各組（化災應變隊最快、化災組次之，其他組很慢；瓦斯、熱水器各組約 10 秒）｜點洩漏源｜止漏；加油站、油罐車為關閉緊急遮斷閥，瓦斯外洩為關閉開關與總閥，一氧化碳為關閉熱水器｜侷限空間持續產生的氣體無法止漏，要送風'],
   ['ppeF','消防衣','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜換回消防衣帽鞋｜耐火，但不防化學品'],
   ['ppeC','C級','','各組（雲梯組、機器人除外）｜立即執行（人員須在屋外）｜濾毒罐與防濺衣，不耗氣｜不耐火，不能進濃煙、缺氧或高濃度區'],
@@ -42,7 +45,7 @@ const TAC_GRP=[
   ['hyd','佔據水源','','幫浦組（人員須在車邊）｜立即執行｜移車到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
   ['stand','送水口加壓','C','幫浦組（人員須在車邊）｜立即執行｜移車到送水口那一側，接連結送水管，約 8 秒後各樓層出水口可接線｜七層以上，或五層以上的大型場所（百貨、醫院、機構）才有']]]];
 // 指令的 Emoji
-const TAC_EMO={dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
@@ -58,7 +61,7 @@ function tacFlameGlow(g,fx,fy,rad,alpha){
  if(alpha!==undefined&&alpha<1){g.save();g.globalAlpha=alpha;g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2);g.restore()}
  else g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2)}
 // 需要再點選目標的指令
-const TAC_NEEDT={dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 let TAC_UIS=1; // 戰術畫面的縮放倍率（寬螢幕放大）
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');
@@ -451,7 +454,7 @@ function drawTac(){
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}
   else if(vf<B.F&&tacLeakC(B,vf,a.c,bc)){g.fillStyle='#8a7860';const nn=4;for(let k=0;k<nn;k++){if(s[2]>s[3])g.fillRect(s[0]+s[2]*k/nn,s[1]+1.5,s[2]/nn-1.5,3);else g.fillRect(s[0]+1.5,s[1]+s[3]*k/nn,3,s[3]/nn-1.5)}}}
  // 化學品危害區、場區遮雨棚與風向
- tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacSmokeArrows(g,G,B,vf,T);tacOutSmokeDraw(g,G,B,T);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
+ tacHazDraw(g,G,B,vf);tacZoneDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacSmokeArrows(g,G,B,vf,T);tacOutSmokeDraw(g,G,B,T);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
  // 撒水頭動作的空間：藍色水滴
  if(B.spk&&B.spk.ok&&vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.spkOn)continue;const r=G.r(n.c);
   for(let k=0;k<5;k++){const ph=(T*1.5+k/5)%1;g.fillStyle='rgba(125,179,232,'+(.7*(1-ph)).toFixed(2)+')';g.beginPath();g.arc(r[0]+r[2]*(.15+.7*((k*37+n.c*11)%17/17)),r[1]+r[3]*(.15+ph*.7),2.2,0,TAU);g.fill()}}
@@ -813,7 +816,8 @@ function tacSideHTML(inc){
   h+=rw('防護衣',cap.A||cap.B?'A 級 '+(cap.A-tacPPEUsed(B,'A'))+'/'+cap.A+'　B 級 '+(cap.B-tacPPEUsed(B,'B'))+'/'+cap.B+'　C 級 不限':'<span class="sub">無化災車（僅 C 級）</span>');
   if(B.chem&&!B.chem.fuel)h+=rw('除污站',B.st.decon?'已開設':'<span style="color:var(--amb)">未開設</span>'+(B.sq.some(q=>q.cont)?'（'+B.sq.filter(q=>q.cont).length+' 組待除污）':''));
   if(EPA_K(inc.k))h+=rw('環保署化災應變隊',!inc.epa?'<button data-tepa="1">請求支援</button>':inc.epa===1?'集結中 '+fmt(inc.epaT):inc.epa===2?'前往中 '+Math.ceil(inc.epaT)+' 秒':'<b style="color:var(--grn)">已到場</b>');
-  if(B.wind)h+=rw('風向',B.wind.nm);
+  if(B.wind&&!tacCbOn(B))h+=rw('風向',B.wind.nm);
+  h+=tacCbHTML(inc,B);
   h+='</div>'}
  else if(B.wind)h+='<div class="hd mt">風向</div><div class="twater"><div class="row"><span>'+B.wind.nm+'</span><span class="sub">順風延燒快、會飛火</span></div>'+
   (B.wui?'<div class="row"><span>外圍山火'+(B.fside?'（'+TAC_SDN[B.fside]+'側）':'')+'</span><span>'+(B.wh>.05?'<b style="color:var(--red)">逼近中 '+Math.round(B.wh*100)+'%</b>':'已過境')+'</span></div><div class="row"><span>民宅</span><span>'+(B.homeLost?'<b style="color:var(--red)">燒毀 '+B.homeLost+' 棟</b>':'安全')+'</span></div>':'')+'</div>';
@@ -1131,7 +1135,7 @@ function tacClick(inc,B,hit,e,x,y){
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
 // 戰術畫面的按鈕：點擊時依 data-* 屬性分派（新增時加進 TAC_CLICK）
-const TAC_CLICK=['tsop','tsug','tsugall','tidle','tbmin','tfin','tsys','troe','tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
+const TAC_CLICK=['tdcm','tdcs','tdw','tsop','tsug','tsugall','tidle','tbmin','tfin','tsys','troe','tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
 const TAC_CLICK_SEL=TAC_CLICK.map(k=>'[data-'+k+']').join(',');
 document.getElementById('tac').addEventListener('click',e=>{
  const b=e.target.closest(TAC_CLICK_SEL);if(!b)return;
@@ -1156,7 +1160,10 @@ document.getElementById('tac').addEventListener('click',e=>{
   if(D.tsug){const q=B.sq.find(x=>x.u===TAC.sq);if(q&&!tacDoSuggest(ic,B,q))msg=q.cs+'：目前沒有合適的建議任務'}
   if(D.tsugall){let n=0;for(const q of tacIdleQ(ic,B))if(tacDoSuggest(ic,B,q))n++;msg=n?'已套用 '+n+' 組建議任務':'目前沒有合適的建議任務'}
   if(D.tidle){const l=tacIdleQ(ic,B);if(l.length){const i=l.findIndex(q=>q.u===TAC.sq);tacSel(B,l[(i+1)%l.length].u)}}
-  if(D.tfin)tacFinishGo(ic,B,D.tfin)}
+  if(D.tfin)tacFinishGo(ic,B,D.tfin);
+  if(D.tdcm){const d=tacDcn(B);d.mode=d.mode==='dry'?'wet':'dry';radio(ic,'除污站','除污方式改為'+(d.mode==='dry'?'乾除污（脫除外層防護衣、刷除、吸附）':'濕除污（沖淋、中和）')+'。')}
+  if(D.tdcs){const d=tacDcn(B),ss=['n','e','s','w'];if(ss.length){d.side=ss[(ss.indexOf(d.side)+1)%ss.length];if(B.st.decon)B.st.decon.side=d.side;radio(ic,'除污站','除污站移到'+TAC_SDN[d.side]+'側'+(tacDownSide(B,d.side)?'（下風處！）':'')+'。')}}
+  if(D.tdw)tacDwSet(ic,B,D.tdw)}
  if(D.ttab){TAC.tab=D.ttab;tacUI();return}
  if(D.tfl){const ic=S.inc.find(i=>i.id===TAC.id);if(ic&&ic.tac){tacFloor(ic.tac,+D.tfl);tacUI()}return}
  if(D.texit){tacClose();return}
@@ -1181,7 +1188,7 @@ document.addEventListener('keydown',e=>{
 // 節點：s 站點（data-tstn）、r 職務（data-trole）
 const ICS_TREE={top:{s:'icp',n:'指揮站',sub:'現場指揮官',ic:'🚩'},
  staff:[{r:'safety',n:'安全官',ic:'🦺'},{s:'media',n:'聯訪處',sub:'新聞發布',ic:'🎙'}],
- secs:[{n:'作業組',ic:'🔥',items:[{r:'water',n:'水源組長',ic:'💧'},{r:'search',n:'搜救組長',ic:'🔦'},{s:'fwd',n:'前進指揮所',ic:'⛺'},{s:'decon',n:'除污站',chem:1,ic:'🚿'}]},
+ secs:[{n:'作業組',ic:'🔥',items:[{r:'water',n:'水源組長',ic:'💧'},{r:'search',n:'搜救組長',ic:'🔦'},{s:'fwd',n:'前進指揮所',ic:'⛺'},{s:'decon',n:'除污站',chem:1,ic:'🚿'},{s:'mdecon',n:'大量除污',chem:1,ic:'🌧'}]},
   {n:'後勤組',ic:'📦',items:[{s:'stage',n:'待命集結區',ic:'🅿'},{s:'air',n:'氣瓶充填區',ic:'🫧'},{s:'rehab',n:'後勤照護區',ic:'🥤'}]},
   {n:'救護組',ic:'🚑',items:[{r:'ems',n:'救護組長',ic:'⛑'},{s:'triage',n:'檢傷站',ic:'🏷'},{s:'treat',n:'醫療站',ic:'🩺'}]}]};
 function tacIcsNode(inc,B,nd,cls){

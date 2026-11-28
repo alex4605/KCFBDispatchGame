@@ -38,21 +38,23 @@ function tacChemStep(inc,B,dt){
  const add=new Float32Array(B.cells.length);
  for(const x of B.cells){if(!(x.cz>0))continue;
   for(const cc of tacNb(B,x.f,x.c)){const y=B.cells[x.f*W+cc];
-   const wf=B.wind?tacWF(B,x.c,cc):1,m=dt*(B.out?.05:.022)*(x.cz-(y.cz||0))*wf*(tacShut(B,x.f,x.c,cc)?.2:1);if(m>0)add[x.f*W+cc]+=m}
-  // 蒸氣比空氣重：往下一層的樓梯間沉降（化工廠）
+   const wf=B.wind?tacWF(B,x.c,cc):1,m=dt*(B.out?.05:.022)*(x.cz-(y.cz||0))*wf*(tacShut(B,x.f,x.c,cc)?.2:1)*tacCbBar(B,x);if(m>0)add[x.f*W+cc]+=m}
+  // 蒸氣比空氣重：往下一層的樓梯間沉降、比空氣輕往上散（見 cbrne.js）
   // 消散：室外較快；止漏後、開窗通風、射水稀釋都會加快
   x.cz=Math.max(0,x.cz-dt*((B.out?.004:.0015)+(lk&&lk.on?0:.004)+(x.wet?.01:0)+(x.v?.004:0)))}
  for(let i=0;i<add.length;i++)if(add[i]>0){const y=B.cells[i];y.cz=Math.min(1,(y.cz||0)+add[i])}
  const L=B.chem.fuel?0:B.chem.lv;
  for(const x of B.cells){x.hz=!L||!(x.cz>.06)?0:Math.max(1,Math.min(L,x.cz>.55?L:x.cz>.25?L-1:1));
   // 受困者暴露在化學品中也會惡化
-  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz*(B.chem.tox||1)}}
+  if(x.vic>0&&x.hz)x.vh-=dt*.002*x.hz*(B.chem.tox||1)}
+ tacCbStep(inc,B,dt)}
 // 每幀：換裝、化學暴露、防護衣受熱、C 級的限制、空氣與體力、除污；回傳 true 表示這一幀已用掉
 function tacHazStep(inc,B,q,dt){
  if(q.task==='dress'){q.wk+=dt;if(q.wk>=tacDressT(q,q.ppeT)){q.wk=0;q.ppe=q.ppeT;q.task='idle';
   if(q.ppe==='F'&&q.n0){q.n=q.n0;q.n0=0}
   radio(inc,q.cs,'換裝完成（'+TAC_PPE[q.ppe].n+'）。')}return true}
- if(q.task==='decon'){q.wk+=dt;if(q.wk>=25){q.wk=0;q.cont=0;q.task='idle';radio(inc,q.cs,'除污完成，人員可再派遣。')}return true}
+ if(q.task==='decon'){if(!B.st.decon){q.task='idle';return true}tacDeconStep(inc,B,q,dt);return true}
+ if(q.task==='zone'){q.wk+=dt;if(q.wk>=(q.ty==='hazmat'||q.epa?3:6)){q.wk=0;q.task='idle';tacZoneSet(inc,B,q)}return true}
  // 野火：露天作業不背空氣呼吸器，但濃煙中會受傷
  if(B.wild&&tacIn(q)){q.air=1;const x=tacCel(B,q.f,q.c);if(x.s>.55){q.hp-=dt*.008;if(!q.smW){q.smW=1;radio(inc,q.cs,'濃煙中作業，沒有空氣呼吸器，人員嗆傷，往上風處移動！')}}else q.smW=0}
  const lv=q.ppe||'F',P=TAC_PPE[lv];
@@ -62,7 +64,7 @@ function tacHazStep(inc,B,q,dt){
   return false}
  if(q.down||q.ty==='robot')return false;
  const x=tacCel(B,q.f,q.c),hz=x.hz||0;
- if(hz>0&&(hz>=2||lv!=='F'))q.cont=1;
+ if(hz>0&&(hz>=2||lv!=='F'))q.cont=Math.max(q.cont||0,Math.min(3,hz)); // 污染程度：依暴露的危害等級（1 輕～3 重）
  if(hz>P.p){q.hp-=dt*.006*(hz-P.p)*(lv==='F'?1.2:1);
   if(!q.hzW){q.hzW=1;radio(inc,q.cs,'人員遭受化學暴露（'+(B.chemK?B.chem.n:'不明化學品')+'），防護等級不足！');tacEvt(inc,B,'danger',q.cs+' 化學暴露（'+tacNm(B,q.f,q.c)+'）',1)}
   if(q.hp<.3)tacDown(inc,B,q,'化學暴露')}
@@ -82,7 +84,7 @@ function tacHazStep(inc,B,q,dt){
 function tacIdent(inc,B,q,dt){
  if(!B.chem){q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'偵檢結果：未檢出化學品。');return}
  if(B.chemK){q.task='idle';return}
- q.wk+=dt;if(q.wk<(q.epa?8:25))return;q.wk=0;
+ q.wk+=dt;if(q.wk<(q.epa?8:25)*(tacCP(B.chem).det==='bio'?1.8:1))return;q.wk=0;
  const x=tacCel(B,q.f,q.c);
  if(!(x.cz>.03)){q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'偵檢未檢出，請往洩漏源方向偵檢。');return}
  B.chemK=1;q.task='idle';
@@ -107,7 +109,7 @@ function tacEpaSync(inc,B){
 function tacHazCan(B,q,k){
  if(q.cont&&!tacIn(q)&&k!=='exit'&&k!=='move'&&!/^ppe/.test(k))return'人員受化學污染，需先到除污站除污';
  if(q.task==='dress'&&!/^ppe/.test(k))return'換裝中';
- if(q.epa&&!['ident','plug','gas','move','exit','search','search2'].includes(k)&&!/^ppe/.test(k))return'化災應變隊只執行化物辨識、止漏、氣體偵測與搜索';
+ if(q.epa&&!['ident','plug','gas','move','exit','search','search2','zone','dike','neut'].includes(k)&&!/^ppe/.test(k))return'化災應變隊只執行化物辨識、止漏、氣體偵測與搜索';
  if(k==='ident'&&q.ty!=='hazmat'&&!q.epa)return'需要化災車的偵檢器材（化災組）或化災應變隊';
  if(k==='plug'&&!(B.leak&&B.leak.on))return'目前沒有洩漏需要止漏';
  if(k==='plug'&&B.leak.np)return'管道內持續產生的硫化氫無法止漏，請往人孔送風（正壓排煙）';
@@ -116,7 +118,15 @@ function tacHazCan(B,q,k){
 function tacHazHints(inc,B,add){
  if(B.chem&&!B.chemK)add(1,'疑似化學品洩漏：派化災組'+(inc.epa===3?'或化災應變隊':'')+'化物辨識，辨識前進入熱區一律著 A 級。');
  if(B.leak&&B.leak.on)add(1,(B.chem.fuel?'油料持續外洩：先關閉緊急遮斷並止漏，泡沫車壓制油火（射水會擴大油火）。':'洩漏持續：派員著適當防護止漏'+(inc.epa===3?'（化災應變隊最快）':'')+'。'));
- if(B.chem&&!B.chem.fuel&&!B.st.decon&&(B.sq.some(q=>q.cont)||B.cells.some(x=>x.hz>=2)))add(1,'需開設除污站，受污染人員除污後才能再派。');
+ if(B.chem&&!B.chem.fuel&&!B.st.decon&&(B.sq.some(q=>q.cont)||B.cells.some(x=>x.hz>=2)||B.pts.some(p=>p.cont)))add(1,'需開設除污站（設在上風處的暖區），受污染人員與傷患除污後才能再派、才能送醫。');
+ if(tacCbOn(B)){const P=tacCP(B.chem),D=B.dcn;
+  if(!B.zone&&(B.chemK||B.cells.some(x=>x.hz>0)))add(1,'劃設管制區：熱區、暖區、冷區，指揮站與集結區設在上風處（'+(tacUpSide(B)?TAC_SDN[tacUpSide(B)]+'側':'外圍')+'）。');
+  if(B.chemK&&D&&B.st.decon&&D.mode!==P.dec&&!(P.dec==='dry'&&!P.wr))add(1,B.chem.n+(P.wr?'遇水反應：除污站只能乾除污！':'是'+(P.cor?'腐蝕性':'')+TAC_PHN[P.ph]+'，除污站要改濕除污。'));
+  if(D&&B.st.decon&&tacDownSide(B,D.side))add(1,'除污站在下風處，應移到上風處（'+(tacUpSide(B)?TAC_SDN[tacUpSide(B)]+'側':'')+'）。');
+  if(B.chemK&&P.wr&&B.sq.some(q=>q.line&&q.f>=0))add(0,B.chem.n+'遇水反應：禁止射水，用乾砂覆蓋（中和／覆蓋）。');
+  if(B.chemK&&P.ph==='l'&&B.leak&&!B.cells.some(x=>x.dike))add(2,'外洩液體與射水的廢水要先圍堵（沙包、吸附棉），避免流入排水溝。');
+  if(B.dwn&&B.dwn.r>.05&&!B.dwn.mode)add(1,'化學品飄向下風處民眾：疏散或廣播就地避難（關窗、關空調）。');
+  if(B.pts.some(p=>p.cont)&&!B.st.mdecon&&B.pts.filter(p=>p.cont).length>=3)add(2,'受污染傷患多：開設大量除污（兩側消防車噴霧形成沖淋通道）。')}
  if(B.chem&&!B.chem.fuel&&EPA_K(inc.k)&&!inc.epa)add(2,'可請求環保署化災應變隊支援（集結約 5～8 分鐘）。');
  if(B.wind&&B.sq.some(q=>!tacIn(q)&&q.ty==='pump'&&TAC_SDV[q.tside][0]*B.wind.d[0]+TAC_SDV[q.tside][1]*B.wind.d[1]>.5)&&B.cells.some(x=>x.h>.3))
   add(2,'有車輛停在下風側（'+B.wind.nm+'），濃煙與毒性煙流會吹向人車，指揮站與集結區應設在上風處。')}

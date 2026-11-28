@@ -9,7 +9,8 @@ const TAC_STN=[
  {k:'triage',n:'救護檢傷站',need:'救護車一輛',codes:['91'],fx:'依傷勢優先後送；裝載較快；紅色傷患惡化減緩'},
  {k:'treat',n:'救護醫療站',need:'有 EMT-P 的救護車',codes:['91'],tp:1,fx:'等待後送的傷患惡化減為三成'},
  {k:'fwd',n:'前進指揮所',need:'指揮站已開設，五層以上建物，且一組屋外待命的幫浦或救助組',codes:['11','16','57','71','搜'],fx:'設在起火層下兩層、備用氣瓶 8 支：低壓的小組就近換瓶休息，不必下到一樓'},
- {k:'decon',n:'除污站',need:'化災車或環保署化災應變隊',codes:['51','01'],fx:'受化學污染的小組除污 25 秒後才能再派；化災應變隊到場可代為設置'},
+ {k:'decon',n:'除污站',need:'化災車或環保署化災應變隊',codes:['51','01'],fx:'設在上風處的暖區；可切換乾除污（快，蒸氣與粉末、遇水反應的化學品）或濕除污（液體、腐蝕性一定要）；一次一組，其餘排隊；受污染傷患要先除污才能送醫；化災應變隊到場可代為設置'},
+ {k:'mdecon',n:'大量除污',need:'除污站已開設，且一輛屋外待命的幫浦車',codes:['11','16','57'],fx:'兩側消防車噴霧形成沖淋通道：受污染民眾與傷患每人約 4 秒、同時 3 人除污'},
  {k:'media',n:'聯訪處',need:'指揮站已開設，且警方到場或另一輛指揮車',codes:['41','警'],fx:'統一對媒體與家屬發布，避免扣評鑑；結案評鑑 +2'}];
 const TAC_ROLE=[
  {k:'safety',n:'安全官',fx:'在入口設置人員管制板（之後才看得到各組氣量）；自動編成 RIT、MAYDAY 時派員救援、閃燃前兆時撤出小組'},
@@ -27,6 +28,7 @@ function tacStnPick(inc,B,k){
  if(k==='fwd'&&(!B.st.icp||B.F-B.bf<5))return{why:!B.st.icp?'需先開設指揮站':'五層以上建物才需要'};
  if(d.staff){if(!B.st.icp)return{why:'需先開設指揮站（由幕僚開設）'};if(tacStaffUsed(B)>=tacRoleSlots(inc,B))return{why:'幕僚不足（指揮車 2 名、行動指揮車 4 名）'};return{u:null,staff:1}}
  if(k==='decon'){const e=B.sq.find(q=>q.epa&&!tacIn(q)&&q.task==='idle');if(e)return{u:e.u}}
+ if(k==='mdecon'&&!B.st.decon)return{why:'需先開設除污站'};
  for(const code of d.codes)for(const u of onScene(inc)){
   if(u.code!==code||u.st!=='work'||tacStnBusy(B,u.id)||u.load)continue;
   if(d.drv)return{u:u.id};                 // 由司機操作，不看小組狀態
@@ -106,9 +108,10 @@ function tacStnStep(inc,B,dt){
    if(burning&&!spare&&!inc.req){inc.req={t:'need',s:'集結區已無待命幫浦組，請求增派幫浦車一輛。',c:'11',als:0,cs:'集結區'};inc.reqT=22;
     radio(inc,'集結區','集結區已無待命幫浦組，請求增派幫浦車一輛。')}}}}
 // 救出的受困者：依受困時的狀況檢傷（紅、黃、綠），在傷患集結處等待救護車後送
-function tacPatient(inc,B,vh,who){
+function tacPatient(inc,B,vh,who,cont){
  const sev=vh<.45?'red':vh<.8?'yellow':'green';
- B.pts.push({id:B.pid=(B.pid||0)+1,sev,hp:Math.min(1,vh+.15),t:S.t});B.resc++;
+ B.pts.push({id:B.pid=(B.pid||0)+1,sev,hp:Math.min(1,vh+.15),t:S.t,cont:cont||0});B.resc++;
+ if(cont)radio(inc,'救護組','救出的受困者受化學品污染，要先除污才能後送。');
  tacEvt(inc,B,'victim','救出受困者 1 名（'+TAC_SEVN[sev]+'）');
  radio(inc,who||'現場','救出受困者 1 名（'+{red:'紅色・危急',yellow:'黃色・嚴重',green:'綠色・輕傷'}[sev]+'），送至傷患集結處。')}
 const TAC_SEVN={red:'紅',yellow:'黃',green:'綠'},TAC_SEVP={red:0,yellow:1,green:2};
@@ -136,10 +139,12 @@ function tacEMS(inc,B,dt){
    continue}
   if(!B.pts.length)continue;
   // 有檢傷站才依傷勢排序，否則照救出先後
-  const q=B.st.triage?B.pts.slice().sort((a,b)=>TAC_SEVP[a.sev]-TAC_SEVP[b.sev]||a.t-b.t):B.pts.slice();
+  const q=(B.st.triage?B.pts.slice().sort((a,b)=>TAC_SEVP[a.sev]-TAC_SEVP[b.sev]||a.t-b.t):B.pts.slice()).filter(p=>!(p.cont>0&&B.st.decon));
+  if(!q.length)continue;
   const take=[q[0]];
   if(q[0].sev!=='red'&&q[1]&&q[1].sev!=='red')take.push(q[1]);
   for(const p of take)B.pts.splice(B.pts.indexOf(p),1);
+  {const cn=take.filter(p=>p.cont>0).length;if(cn){B.ctx=(B.ctx||0)+cn;S.rep-=cn;tacEvt(inc,B,'warn','受污染傷患未除污即送醫（'+u.cs+'）');radio(inc,'受理',u.cs+'載運未除污的受污染傷患，救護車與急診受到污染（評鑑 -'+cn+'）！')}}
   u.carryP=take;u.load=B.st.triage?4:7}
  B.ambT=(B.ambT||0)-dt}
 // 請求救護車（玩家按鈕或救護組長自動）
