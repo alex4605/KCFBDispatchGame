@@ -447,7 +447,7 @@ function drawTac(){
   if(vf<B.F&&tacShut(B,vf,a.c,bc)){g.fillStyle='#b5853f';if(s[2]>s[3])g.fillRect(s[0],s[1]+1.5,s[2],3);else g.fillRect(s[0]+1.5,s[1],3,s[3])}
   else if(vf<B.F&&tacLeakC(B,vf,a.c,bc)){g.fillStyle='#8a7860';const nn=4;for(let k=0;k<nn;k++){if(s[2]>s[3])g.fillRect(s[0]+s[2]*k/nn,s[1]+1.5,s[2]/nn-1.5,3);else g.fillRect(s[0]+1.5,s[1]+s[3]*k/nn,3,s[3]/nn-1.5)}}}
  // 化學品危害區、場區遮雨棚與風向
- tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
+ tacHazDraw(g,G,B,vf);if(B.out)tacYardTop(g,G,B,T);tacSysDraw(g,G,B,vf);tacDPulseDraw(g,G,B,vf,T);tacVeisDraw(g,G,B,vf);tacSmokeArrows(g,G,B,vf,T);tacTgtDraw(g,G,B,vf,T,B.sq.filter(q=>TAC.ms.indexOf(q.u)>=0||q.u===TAC.sq));
  // 撒水頭動作的空間：藍色水滴
  if(B.spk&&B.spk.ok&&vf<B.F)for(const n of L.N){const x=tacCel(B,vf,n.c);if(!x.spkOn)continue;const r=G.r(n.c);
   for(let k=0;k<5;k++){const ph=(T*1.5+k/5)%1;g.fillStyle='rgba(125,179,232,'+(.7*(1-ph)).toFixed(2)+')';g.beginPath();g.arc(r[0]+r[2]*(.15+.7*((k*37+n.c*11)%17/17)),r[1]+r[3]*(.15+ph*.7),2.2,0,TAU);g.fill()}}
@@ -669,7 +669,7 @@ function drawTac(){
    g.fillStyle=tacIn(q)&&!q.mk&&!B.wild?'#7a7870':q.air<.25?'#e2564f':q.air<.5?'#e9a13b':'#5dcaa5';g.fillRect(lx,ly+1,26*q.air,3)}}
   TAC.hits.unshift({t:'sq',id:q.u,x:p[0]-fr*3.5,y:p[1]-fr*4,w:fr*7,h:fr*7})}
  // 對話泡泡：入室小組喊話（約 3 秒）
- {const now=performance.now(),BB=[];for(const q of B.sq){if(!q.say||now-q.say.t>3000)continue;const p=TAC.sqp[q.u];if(!p||!tacIn(q)||q.f!==vf)continue;
+ {const now=performance.now(),BB=[];for(const q of B.sq){if(!q.say||now-q.say.t>3000)continue;const p=TAC.sqp[q.u];if(!p||(tacIn(q)?q.f!==vf:(vf!==B.bf&&!B.out)))continue;
   g.font='600 11px '+FONT;const w=g.measureText(q.say.s).width+12,bx=p[0]-w/2;let by=p[1]-fr*4-24;
   while(BB.some(r=>bx<r[0]+r[2]&&bx+w>r[0]&&by<r[1]+20&&by+20>r[1]))by-=22;BB.push([bx,by,w]);   // 泡泡重疊就往上疊
   const a=Math.min(1,(3000-(now-q.say.t))/400);
@@ -1148,11 +1148,11 @@ document.addEventListener('keydown',e=>{
  tTopH=tBotH='';tacUI()});
 // ===== ICS 架構圖 =====
 // 節點：s 站點（data-tstn）、r 職務（data-trole）
-const ICS_TREE={top:{s:'icp',n:'指揮站',sub:'現場指揮官'},
- staff:[{r:'safety',n:'安全官'},{s:'media',n:'聯訪處',sub:'新聞發布'}],
- secs:[{n:'作業組',items:[{r:'water',n:'水源組長'},{r:'search',n:'搜救組長'},{s:'fwd',n:'前進指揮所'},{s:'decon',n:'除污站',chem:1}]},
-  {n:'後勤組',items:[{s:'stage',n:'待命集結區'},{s:'air',n:'氣瓶充填區'},{s:'rehab',n:'後勤照護區'}]},
-  {n:'救護組',items:[{r:'ems',n:'救護組長'},{s:'triage',n:'檢傷站'},{s:'treat',n:'醫療站'}]}]};
+const ICS_TREE={top:{s:'icp',n:'指揮站',sub:'現場指揮官',ic:'🚩'},
+ staff:[{r:'safety',n:'安全官',ic:'🦺'},{s:'media',n:'聯訪處',sub:'新聞發布',ic:'🎙'}],
+ secs:[{n:'作業組',ic:'🔥',items:[{r:'water',n:'水源組長',ic:'💧'},{r:'search',n:'搜救組長',ic:'🔦'},{s:'fwd',n:'前進指揮所',ic:'⛺'},{s:'decon',n:'除污站',chem:1,ic:'🚿'}]},
+  {n:'後勤組',ic:'📦',items:[{s:'stage',n:'待命集結區',ic:'🅿'},{s:'air',n:'氣瓶充填區',ic:'🫧'},{s:'rehab',n:'後勤照護區',ic:'🥤'}]},
+  {n:'救護組',ic:'🚑',items:[{r:'ems',n:'救護組長',ic:'⛑'},{s:'triage',n:'檢傷站',ic:'🏷'},{s:'treat',n:'醫療站',ic:'🩺'}]}]};
 function tacIcsNode(inc,B,nd,cls){
  const slots=tacRoleSlots(inc,B),used=tacStaffUsed(B);
  let on,st,dis='',tip,attr;
@@ -1161,15 +1161,18 @@ function tacIcsNode(inc,B,nd,cls){
   else{const r=tacStnPick(inc,B,nd.s);st=r.why?r.why.replace(/^需要/,'需 '):'可開設';if(r.why)dis=' disabled'}}
  else{const r=TAC_ROLE.find(x=>x.k===nd.r);on=!!B.role[nd.r];attr='data-trole="'+nd.r+'"';tip=r.fx;
   st=on?'已指派':!B.st.icp?'需開設指揮站':used>=slots?'幕僚已滿':'可指派';if(!on&&(used>=slots))dis=' disabled'}
- return'<button class="icsn'+(cls?' '+cls:'')+(on?' on':'')+'" '+attr+dis+' title="'+esc(tip)+'"><b>'+nd.n+'</b><i>'+esc(st)+'</i></button>'}
+ const stc=on?'on':dis?'no':'av';
+ return'<button class="icsr '+stc+(cls?' '+cls:'')+'" '+attr+dis+' title="'+esc(tip)+'"><span class="ic">'+(nd.ic||'')+'</span><b>'+nd.n+(nd.sub?'<small>'+nd.sub+'</small>':'')+'</b><i>'+esc(st)+'</i></button>'}
+const tacIcsOn=(B,nd)=>nd.s?!!B.st[nd.s]:!!B.role[nd.r];
 function tacIcsHTML(inc,B){
  const slots=tacRoleSlots(inc,B),used=tacStaffUsed(B),T=ICS_TREE;
- let h='<div class="hd mt">ICS 編組 <span class="sub">幕僚 '+used+' / '+slots+'　點方塊開設／撤除、指派／解除</span></div><div class="ics">';
- h+='<div class="ics-top">'+tacIcsNode(inc,B,T.top,'top')+'</div>';
- h+='<div class="ics-staff">'+T.staff.map(n=>tacIcsNode(inc,B,n,'staff')).join('')+'</div>';
- h+='<div class="ics-secs">';
+ const all=[T.top,...T.staff,...T.secs.flatMap(s=>s.items.filter(n=>!n.chem||B.chem))],onN=all.filter(n=>tacIcsOn(B,n)).length;
+ let h='<div class="hd mt">ICS 編組 <span class="sub">已開設 '+onN+' / '+all.length+'　·　幕僚 '+used+' / '+slots+'</span></div>';
+ h+='<div class="icsleg"><span class="on">運作中</span><span class="av">可開設／指派</span><span class="no">條件不足</span><span class="sub">點一列開設／撤除</span></div><div class="ics2">';
+ h+=tacIcsNode(inc,B,T.top,'top');
+ h+='<div class="icsg"><div class="icsgh">🧭 指揮幕僚<span>'+T.staff.filter(n=>tacIcsOn(B,n)).length+' / '+T.staff.length+'</span></div>'+T.staff.map(n=>tacIcsNode(inc,B,n)).join('')+'</div>';
  for(const s of T.secs){const it=s.items.filter(n=>!n.chem||B.chem);
-  h+='<div class="ics-sec"><div class="ics-h">'+s.n+'</div>'+it.map(n=>tacIcsNode(inc,B,n)).join('')+'</div>'}
- h+='</div></div>';
+  h+='<div class="icsg"><div class="icsgh">'+s.ic+' '+s.n+'<span>'+it.filter(n=>tacIcsOn(B,n)).length+' / '+it.length+'</span></div>'+it.map(n=>tacIcsNode(inc,B,n)).join('')+'</div>'}
+ h+='</div>';
  if(!slots)h+='<div class="sub">開設指揮站後，指揮車提供 2 名幕僚、行動指揮車（MCV）提供 4 名幕僚，可指派安全官與各組長。</div>';
  return h}

@@ -148,3 +148,27 @@ function tacTgtDraw(g,G,B,vf,T,qs){
    const p=P[s],dv=TAC_SDV[s];g.strokeStyle='rgba(93,202,165,'+a.toFixed(2)+')';g.lineWidth=5;g.beginPath();g.moveTo(p[0]+dv[0]*10,p[1]+dv[1]*10);g.lineTo(p[2]+dv[0]*10,p[3]+dv[1]*10);g.stroke()}}
  g.restore();
  if(!C.cells.size&&!C.sides.length){g.fillStyle='rgba(233,161,59,.9)';g.font='600 12px '+FONT;g.textAlign='center';g.textBaseline='top';g.fillText('本層沒有可執行「'+(tacTN(B,k)||k)+'」的目標',G.bx+G.bw/2,G.by+6)}}
+// ===== 排煙時的煙流箭頭 =====
+// 有排煙行動（破窗、負壓、正壓、垂直排煙、屋頂出入口）時：開口往外的灰色箭頭、門與開口間由濃往淡的煙流方向
+function tacSmokeArrows(g,G,B,vf,T){
+ if(B.out||vf>=B.F)return;
+ const W=B.W,np=B.npvS||new Set(),pp=B.ppvS||new Set();
+ const act=B.ppv||np.size||B.roof||B.cells.some(x=>x.v||x.vv);if(!act)return;
+ const arrow=(x0,y0,x1,y1,w,col)=>{const a=Math.atan2(y1-y0,x1-x0),L=Math.hypot(x1-x0,y1-y0);if(L<4)return;
+  g.strokeStyle=col;g.lineWidth=w;g.setLineDash([5,4]);g.lineDashOffset=-T*18;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();g.setLineDash([]);
+  g.fillStyle=col;g.beginPath();g.moveTo(x1,y1);g.lineTo(x1-Math.cos(a-.5)*(5+w),y1-Math.sin(a-.5)*(5+w));g.lineTo(x1-Math.cos(a+.5)*(5+w),y1-Math.sin(a+.5)*(5+w));g.closePath();g.fill()};
+ const col=s=>'rgba(190,190,198,'+Math.min(.9,.35+s*.6).toFixed(2)+')';
+ g.save();
+ for(const n of B.L.N){const x=tacCel(B,vf,n.c),key=vf*W+n.c,c=G.ctr(n.c);
+  // 破窗／負壓排風：往窗外
+  if((x.v||np.has(key))&&x.s>.06&&n.wins&&n.wins.length&&vf>=B.bf){const sd=n.wins.find(w=>B.sd[w]&&B.sd[w].road)||n.wins[0],w=tacWinPt(G,n.c,sd),dv=TAC_SDV[sd];
+   arrow(c[0]+(w[0]-c[0])*.35,c[1]+(w[1]-c[1])*.35,w[0]+dv[0]*18,w[1]+dv[1]*18,np.has(key)?3.5:2.5,col(x.s))}
+  // 垂直排煙、頂樓樓梯間屋頂出入口：往上
+  if((x.vv||(n.ty==='stair'&&vf===B.F-1&&B.roof))&&x.s>.04){g.strokeStyle=col(x.s);g.lineWidth=2;g.beginPath();g.arc(c[0],c[1],11,0,TAU);g.stroke();
+   arrow(c[0],c[1]+7,c[0],c[1]-8,2.5,col(x.s))}
+  // 門與開口之間：由濃往淡（正壓送風路徑上順著送風方向）
+  for(const o of tacNb(B,vf,n.c)){if(o<n.c||tacShut(B,vf,n.c,o))continue;const y=tacCel(B,vf,o),d=x.s-y.s;
+   const ppd=pp.has(key)&&pp.has(vf*W+o);if(Math.abs(d)<.06&&!ppd)continue;
+   const [a,b]=d>=0?[n.c,o]:[o,n.c],m=tacDoorMid(G,a,b),ca=G.ctr(a),cb=G.ctr(b),la=Math.hypot(cb[0]-ca[0],cb[1]-ca[1])||1,ux=(cb[0]-ca[0])/la,uy=(cb[1]-ca[1])/la;
+   arrow(m[0]-ux*12,m[1]-uy*12,m[0]+ux*12,m[1]+uy*12,1.5+Math.min(2,Math.abs(d)*4),col(Math.max(x.s,y.s)))}}
+ g.restore()}
