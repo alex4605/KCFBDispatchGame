@@ -7,14 +7,15 @@ const tacSopOn=(inc,B)=>{if(B.sop===undefined)B.sop=inc.train?0:1;return!!B.sop}
 // 玩家指揮時要交給戰術 AI 的模組：已指派的職務＋ SOP（只用沒被玩家指揮的小組）
 function tacPlayMods(inc,B){
  const M={safety:B.role.safety,water:B.role.water,search:B.role.search,ems:B.role.ems};
- if(tacSopOn(inc,B))Object.assign(M,{attack:1,search:1,water:1,ems:1,rit:1,only:q=>!q.pc});
+ // SOP 全部（1）：攻擊、搜索、水源、救護、RIT；安全後勤（2）：只管水源、救護、RIT，攻擊與搜索由你指揮
+ if(tacSopOn(inc,B))Object.assign(M,B.sop===2?{water:1,ems:1,rit:1,only:q=>!q.pc}:{attack:1,search:1,water:1,ems:1,rit:1,only:q=>!q.pc});
  return M}
 // 每幀：記錄到場時間、玩家指揮的組待命 30 秒後交回 SOP
 function tacSopStep(inc,B,dt){
  for(const q of B.sq){if(q.seen===undefined)q.seen=S.t;
   if(!q.pc)continue;
   if(q.task==='idle'&&!q.prev&&!q.down&&!tacIn(q)){q.pcI=(q.pcI||0)+dt;
-   if(q.pcI>30&&B.sop){q.pc=0;q.pcI=0;radio(inc,'指揮官',q.cs+' 待命逾 30 秒，依標準作業（SOP）接手。')}}
+   if(q.pcI>30&&B.sop===1){q.pc=0;q.pcI=0;radio(inc,'指揮官',q.cs+' 待命逾 30 秒，依標準作業（SOP）接手。')}}
   else q.pcI=0}}
 // 建議任務：[指令, 樓層, 空間, 說明]；沒有合適的回傳 null
 function tacSuggest(inc,B,q){
@@ -39,7 +40,7 @@ function tacSuggest(inc,B,q){
  return null}
 function tacDoSuggest(inc,B,q){const s=tacSuggest(inc,B,q);if(!s)return false;return tacOrder(inc,q,s[0],s[1],s[2])}
 // 待分派：玩家指揮（或 SOP 關閉）而在屋外待命的組
-const tacIdleQ=(inc,B)=>B.sq.filter(q=>q.task==='idle'&&!q.prev&&!q.down&&!tacIn(q)&&q.ty!=='robot'&&(q.pc||!tacSopOn(inc,B))&&!q.sdb);
+const tacIdleQ=(inc,B)=>B.sq.filter(q=>q.task==='idle'&&!q.prev&&!q.down&&!tacIn(q)&&q.ty!=='robot'&&(q.pc||!tacSopOn(inc,B)||B.sop===2)&&!q.sdb);
 // 收尾：結案前還差什麼（餘燼、受困者、傷患、洩漏），以及一鍵派閒置小組處理
 function tacFinish(inc,B){
  if(B.hoax||!B.peak||B.cells.some(x=>x.h>=.04))return null;

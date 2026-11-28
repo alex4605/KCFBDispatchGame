@@ -13,7 +13,7 @@ function tacRescInit(B){if(!/^(collapse|crane|sink)$/.test(B.sc.k))return 0;let 
  for(const x of rb){if(n>=2||(n&&Math.random()<.5))break;x.hid=(x.hid||0)+1;if(!(x.vic>0))x.vh=.6+Math.random()*.15;n++}
  return n}
 // 每幀：受困時間
-function tacRescStep(inc,B,dt){for(const x of B.cells){if(x.pin>x.vic)x.pin=Math.max(0,x.vic);if(x.pin>0)x.pT=(x.pT||0)+dt}}
+function tacRescStep(inc,B,dt){for(const x of B.cells){if(x.pin>x.vic)x.pin=Math.max(0,x.vic);if(x.pin>0){x.pT=(x.pT||0)+dt;if(x.vh<.45&&x.vic>0&&!x.redD){x.redD=1;tacDecRed(inc,B,x)}}}}
 // ===== 新任務：醫療處置、生命探測 =====
 function tacRescCan(B,q,k,f,c){
  if(k!=='care'&&k!=='locate')return null;

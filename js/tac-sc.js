@@ -206,7 +206,7 @@ function tacScStep(inc,B,dt){
    for(const c of[q.c].concat(B.L.N[q.c].nb)){const y=tacCel(B,0,c);if((y.pool||y.fuel)&&!(y.foam>S.t)){y.foam=S.t+150;if(!B.foamM){B.foamM=1;radio(inc,q.cs,'泡沫覆蓋油池完成，隔絕油氣。')}}}}
   const fire=B.cells.some(x=>x.h>.05);
   for(const x of B.cells)if((x.pool||x.fuel)&&x.fu>0&&x.h<.02&&!(x.foam>S.t)&&!fire&&Math.random()<.0015){x.h=.3;x.s=.5;
-   radio(inc,'安全官',tacNm(B,0,x.c)+'油池被引燃！應先以泡沫覆蓋油池。');tacEvt(inc,B,'danger','油池引燃（'+tacNm(B,0,x.c)+'）',1);break}}
+   radio(inc,'安全官',tacNm(B,0,x.c)+'油池被引燃！應先以泡沫覆蓋油池。');tacEvt(inc,B,'danger','油池引燃（'+tacNm(B,0,x.c)+'）',1);tacDecPool(inc,B,x);break}}
  // 氣爆後，瓦斯持續外洩的地方一直有火（止漏才會熄）
  if(B.blasted&&B.leak&&B.leak.on){const x=tacCel(B,B.leak.f,B.leak.c);if(x.fu>0)x.h=Math.max(x.h,.35)}}
 // 氣爆：起火、窗戶炸破、附近人員與受困者受傷，可燃氣體燒掉；之後轉為火災搶救

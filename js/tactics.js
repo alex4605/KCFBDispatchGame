@@ -483,8 +483,8 @@ function tacNo(inc,q,why){const r=/^拒絕：/.test(why);msg=q.cs+'：'+(r?why.s
 function tacLadSide(B,q,wins){
  const ok=(wins||TAC_SIDES).filter(s=>!tacCanSide(B,q,s));
  return ok.includes(q.tside)?q.tside:ok[0]||null}
-// 親自指揮的程度（0～1）：親自下令過的小組數相對全部小組（6 成以上、至少 2 組全額）；同一組反覆下令不會加分
-const tacPlayF=B=>{const n=Object.keys(B.pcU||{}).length;return n<1?0:Math.min(1,n/Math.max(2,Math.ceil(B.sq.length*.6)))};
+// 親自指揮的程度（0～1）：親自下令過的小組數（每個親自做的決策也算 1）相對全部小組（6 成以上、至少 2 組全額）；同一組反覆下令不會加分
+const tacPlayF=B=>{const n=Object.keys(B.pcU||{}).length+(B.decN||0);return n<1?0:Math.min(1,n/Math.max(2,Math.ceil(B.sq.length*.6)))};
 function tacOrder(inc,q,k,f,c,quiet,side,door){
  const B=inc.tac;q.wd=0;if(!tacAIRun){q.pc=1;q.pcI=0;B.pcN=(B.pcN||0)+1;(B.pcU||(B.pcU={}))[q.u]=1} // 玩家下的命令：該組改由玩家指揮
  if(/^ppe/.test(k))return tacPPE(inc,B,q,k.slice(3),quiet);
@@ -1023,7 +1023,7 @@ function tacIncident0(inc,dt,first,flow){
   B.roofH-=dt*(ts*.004+.0004);
   if(B.roofH<=0){B.lost+=B.roofV;S.rep-=3*B.roofV;radio(inc,'受理','屋頂避難民眾 '+B.roofV+' 名罹難（評鑑 -'+3*B.roofV+'）。');B.roofV=0}}
  const ply=TAC.open&&TAC.id===inc.id;
- if(ply)tacSopStep(inc,B,dt);
+ if(ply){tacSopStep(inc,B,dt);tacDecStep(inc,B,dt)}
  tacAI(inc,B,dt,ply?tacPlayMods(inc,B):
   {safety:1,water:1,search:1,ems:1,attack:1,stn:1});
  if(B.wui){tacWuiStep(inc,B,dt,first);return}

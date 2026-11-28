@@ -25,6 +25,7 @@ function tacSideHTML(inc){
  let h='<div class="tstat">'+chip(B.hoax?'報案樓層':'起火',tacFlr(B,B.of))+chip('火勢',B.hoax?'無':Math.round(sumH/Math.max(.001,B.peak)*100)+'%')+
   chip('受困',B.vtot)+chip('救出',B.resc+(B.lost?' · 罹難 '+B.lost:''),B.lost?'var(--red)':'')+chip('未搜',unk+(B.out?' 區':' 室'))+
   chip('RIT',rit.length?rit.join('、'):'未編成',rit.length?'':'var(--amb)')+'</div>';
+ h+=tacDecHTML(B);
  h+=trainGoalsHTML(inc);
  h+=tacFinishHTML(inc,B);
  if(!tacAcc(B))h+='<div class="note">尚未設置人員管制板：看不到各組入室時間與氣量。開設指揮站並指派安全官後約 10 秒完成設置。</div>';
@@ -35,6 +36,8 @@ function tacSideHTML(inc){
  // 幕僚建議（有開設指揮站才有幕僚）
  const hs=tacHints(inc,B);
  h+='<div class="hd mt">幕僚建議</div>'+(hs?(hs.length?hs.map(x=>'<div class="thint">'+esc(x)+'</div>').join(''):'<div class="sub">目前沒有特別建議。</div>'):'<div class="sub" style="color:var(--fg3)">未開設指揮站，沒有幕僚提供建議。</div>');
+ // 受困者（被夾、被壓）：救助案件最重要的資訊，放在前面
+ h+=tacRescHTML(B);
  // 化學災害：化學品、洩漏、防護衣套數、除污站、化災應變隊
  const cap=tacPPECap(inc);
  if((B.chem&&!B.chem.nochem)||cap.A||B.sq.some(q=>q.epa)){const rw=(a,b)=>'<div class="row"><span>'+a+'</span><span>'+b+'</span></div>';
@@ -63,7 +66,7 @@ function tacSideHTML(inc){
  if(B.elev)h+='<div class="row"><span>消防專用升降機</span><span>'+(B.elOn?'<b style="color:var(--grn)">消防模式運轉（至 '+tacFlr(B,Math.max(B.bf,tacElevTop(B)))+'）</b>':B.elT>0?'切換中…':'<button data-telev="1"'+(B.st.icp?'':' disabled title="需先開設指揮站"')+'>啟用</button>')+'</span></div>';
  h+=tacSysHTML(B);
  h+=tacSdbHTML(B);
- h+=tacSc4HTML(inc,B);h+=tacRescHTML(B);
+ h+=tacSc4HTML(inc,B);
  if(B.lift)h+='<div class="row"><span>電梯</span><span>'+(B.leak.on?'<b style="color:var(--red)">未斷電</b>（機房 '+tacNm(B,B.leak.f,B.leak.c)+'）':'已斷電、煞車鎖定')+'</span></div>';
  if(B.bv)h+='<div class="row"><span>'+B.bv.n+'壓力</span><span>'+(B.bv.boom?'<b style="color:var(--red)">已 BLEVE</b>':'<b style="color:'+(B.bv.p>.75?'var(--red)':B.bv.p>.5?'var(--amb)':'var(--grn)')+'">'+Math.round(B.bv.p*100)+'%</b>'+(B.bv.rel?'　安全閥起跳':'')+'　冷卻 '+(B.bv.cool||0).toFixed(1)+' 線')+'</span></div>';
  if(!B.out)h+='<div class="row"><span>屋頂出入口</span><span>'+(B.roof?'<b style="color:var(--amb)">開啟（樓梯間往上排煙）</b>':'關閉')+'</span></div>';
@@ -73,11 +76,6 @@ function tacSideHTML(inc){
  {const gs=B.cells.filter(x=>x.gm).sort((a,b)=>b.gm.t-a.gm.t).slice(0,4);
   if(gs.length){h+='<div class="hd mt">氣體偵測</div>';for(const x of gs){const r=x.gm;
    h+='<div class="row" style="flex-wrap:wrap"><span>'+esc(tacNm(B,x.f,x.c))+'</span><span>'+TAC_GAS.map(k=>'<b style="color:'+tacGasCol(k[0],r[k[0]])+'">'+k[1]+' '+r[k[0]]+'</b>').join(' ')+'</span></div>'}}}
- // 請求增援
- if(maAny(inc)){h+='<div class="hd mt">跨縣市支援</div><div class="tords">'+Object.keys(MA_DEF).filter(k=>maOK(inc,k)).map(k=>{const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
-  return st?'<span class="sub">'+D.cs+'：'+(maStat(inc,k)||'已返隊')+'</span>':'<button data-tma="'+k+'" title="'+D.fx+'"'+(S.rep-D.cost<5?' disabled':'')+'>'+D.cs+'（評鑑 -'+D.cost+'）</button>'}).join('')+'</div>'}
- h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
-  return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';
  // 現場民眾
  // 現場民眾：對談紀錄（進場時民眾先描述火場基本狀況），下方為還沒問過的問題
  if(B.civ&&(tacCivOn(B)||B.civ.log)){if(tacCivOn(B))tacCivOpen(inc,B);
@@ -85,6 +83,11 @@ function tacSideHTML(inc){
   for(const l of(B.civ.log||[]).slice().reverse())h+='<div class="'+(l.w==='民'?'cm':'cf')+'"><b>'+(l.w==='民'?tacCivWho(inc):'指揮官')+'</b>'+esc(l.s)+'</div>';
   h+='</div>';
   if(tacCivOn(B)&&TAC_ASK.some(a=>!B.civ.asked[a.k]))h+='<div class="sub">指揮官持續詢問中…</div>'}
+ // 請求增援
+ if(maAny(inc)){h+='<div class="hd mt">跨縣市支援</div><div class="tords">'+Object.keys(MA_DEF).filter(k=>maOK(inc,k)).map(k=>{const D=MA_DEF[k],st=inc.ma&&inc.ma[k];
+  return st?'<span class="sub">'+D.cs+'：'+(maStat(inc,k)||'已返隊')+'</span>':'<button data-tma="'+k+'" title="'+D.fx+'"'+(S.rep-D.cost<5?' disabled':'')+'>'+D.cs+'（評鑑 -'+D.cost+'）</button>'}).join('')+'</div>'}
+ h+='<div class="hd mt">請求增援</div><div class="tords">'+TAC_REQ.map(r=>{const n=S.units.filter(u=>u.st==='idle'&&r[2].indexOf(u.code)>=0).length;
+  return'<button data-treq="'+r[0]+'"'+(n?'':' disabled')+'>'+r[1]+' <span class="sub">'+n+'</span></button>'}).join('')+'</div>';
  // ===== 分頁：水線 =====
  h+='\u0001wt';
  // 水源與水線
@@ -228,14 +231,39 @@ function tacCmdHTML(inc,B){
   const cls=(TAC.ord===k?'on ':'')+(ok?'':'dis ')+(t?'otg':'onw');
   return'<button data-tord="'+k+'" class="'+cls+'"><i class="emo">'+(TAC_EMO[k]||'')+'</i>'+(on2?on2[0]:o[1])+
    (qs.length>1&&ok&&ok<qs.length?' <i class="cnt">'+ok+'/'+qs.length+'</i>':'')+(o[2]?' <span class="key">'+o[2]+'</span>':'')+'</button>'};
- let h='<div class="tgrps">';
+ let h='<div class="tgrps">',hid=0;
  for(const gp of TAC_GRP){if((gp[0]==='化災'&&!hzOn)||(gp[0]==='野火'&&!B.wild))continue;
-  h+='<div class="tgrp"><span class="tgl">'+gp[0]+'</span>'+gp[1].map(btn).join('')+'</div>'}
+  const os=gp[1].filter(o=>TAC.allCmd||TAC.ord===o[0]||tacCmdRel(B,o[0]));hid+=gp[1].length-os.length;if(!os.length)continue;
+  h+='<div class="tgrp"><span class="tgl">'+gp[0]+'</span>'+os.map(btn).join('')+'</div>'}
+ if(hid||TAC.allCmd)h+='<div class="tgrp"><button data-tall="1" class="tmore" title="本案用不到的指令（例如建物案件的化災、救助指令）預設隱藏">'+(TAC.allCmd?'▴ 只顯示本案指令':'▾ 全部指令（另有 '+hid+' 個）')+'</button></div>';
  return'<div class="tinfo">'+tacCmdInfo(B,qs,why)+'</div>'+h+'</div>'}
+// 指令是否和本案有關（無關的預設隱藏；正在執行的任務一定顯示）
+function tacCmdRel(B,k){
+ if(B.sq.some(q=>q.task===k))return true;
+ const sc=B.sc&&B.sc.k,has=f=>B.cells.some(f),bld=!B.out;
+ switch(k){
+  case'cush':case'rope':return sc==='ledge';
+  case'clear':return has(x=>x.crowd>0);
+  case'stab':return has(x=>x.pin>0&&!x.rub&&!x.stab);
+  case'extr':return has(x=>x.pin>0);
+  case'care':return has(x=>x.pin>0&&x.vic>0);
+  case'locate':case'shore':return has(x=>x.rub);
+  case'roofres':return bld&&B.F>1;
+  case'dcool':case'veis':case'dctrl':case'trans':case'cover':case'vent':case'hydro':case'ppv':case'npv':case'vvent':case'roof':return bld||has(x=>B.L.N[x.c].walled&&x.h>.05);
+  case'extg':return sc==='elec'||sc==='air'||sc==='car'||bld;
+  case'ladder':case'master':return B.sq.some(q=>q.ty==='ladder');
+  case'stand':return!!B.sp;
+  case'gas':return bld||!!B.chem||sc==='pit';
+  case'search2':return bld||has(x=>x.ty==='room'&&x.walled);
+  case'confine':return bld||!!B.wild||B.cells.some(x=>x.h>.05);
+  case'overhaul':return B.peak>0||B.cells.some(x=>x.h>.05||x.emb);
+  case'attack':case'sky':return!(B.T||{}).nofire||B.peak>0||!!B.chem||has(x=>x.h>.05||x.fuel);
+  case'force':return bld||has(x=>B.L.N[x.c].walled);
+  default:return true}}
 function tacGlobHTML(inc,B){let h='';
  h+='<div class="tgrp tglob"><span class="tgl" title="小組自行開門（上鎖或關著的門、入口）時的方式：破壞進入快，但門的開關不受控制，悶燒缺氧的空間容易爆燃；門控進入在門口反覆開關門、短促射水冷卻後才進去，較慢，但不容易爆燃">ROE</span>'+
   ['force','dctrl'].map(r=>'<button data-troe="'+r+'"'+((B.roe||'force')===r?' class="on"':'')+'>'+(r==='force'?'🪓 破壞':'🚪 門控')+'</button>').join('')+
-  '<button data-tsop="1"'+(tacSopOn(inc,B)?' class="on"':'')+' title="到場標準作業：沒被你下過令的小組依標準作業自動行動（攻擊、佔水、搜索、編 RIT…）；你一下令該組就歸你指揮，待命 30 秒後交回 SOP">🤖 SOP '+(B.sop?'開':'關')+'</button>'+
+  '<button data-tsop="1"'+(tacSopOn(inc,B)?' class="on"':'')+' title="到場標準作業（點一下切換：全部 → 安全後勤 → 關）。全部：沒被你下過令的小組自動攻擊、佔水、搜索、編 RIT，你一下令該組就歸你指揮，待命 30 秒後交回 SOP；安全後勤：SOP 只管佔水、救護、RIT，攻擊與搜索都由你下令">🤖 SOP '+(B.sop===1?'全部':B.sop===2?'安全後勤':'關')+'</button>'+
   '<button data-tord="evac" class="evac" title="所有入室小組立即撤出建物，人員清點">⚠ 全員撤出</button></div>';
  return h}
 function tacCmdInfo(B,qs,why){
@@ -261,7 +289,7 @@ function tacBotHTML(inc){
  const cols=TAC_COLS.map(c=>[c,B.sq.map((q,i)=>[q,i]).filter(x=>tacCat(x[0])===c[0])]);
  const idle=tacIdleQ(inc,B),sop=tacSopOn(inc,B),nS=B.sq.filter(q=>!q.pc).length;
  let h='<div class="tbhd">'+(idle.length?'<button data-tidle="1" class="pendq" title="依序選取在屋外待命、等你下令的小組">⚑ 待分派 '+idle.length+' 組</button><button data-tsugall="1" title="每組套用畫面建議的任務">💡 全部套用建議</button>':'<span class="sub">沒有待分派的小組</span>')+
-  '<span class="sub">'+(sop?'🤖 SOP 自動：'+nS+' 組 · 你指揮：'+(B.sq.length-nS)+' 組':'🤖 SOP 關閉：全部由你指揮')+'</span><span class="sp"></span>'+tacGlobHTML(inc,B)+'<button data-tbmin="1">'+(TAC.bmin?'▴ 展開看板':'▾ 收合看板')+'</button></div>';
+  '<span class="sub">'+(sop?'🤖 SOP '+(B.sop===2?'安全後勤':'自動')+'：'+nS+' 組 · 你指揮：'+(B.sq.length-nS)+' 組':'🤖 SOP 關閉：全部由你指揮')+'</span><span class="sp"></span>'+tacGlobHTML(inc,B)+'<button data-tbmin="1">'+(TAC.bmin?'▴ 展開看板':'▾ 收合看板')+'</button></div>';
  if(TAC.bmin){h+='<div class="tbmini">'+B.sq.map((q,i)=>'<span class="mchip ty-'+q.ty+(q.u===TAC.sq||TAC.ms.indexOf(q.u)>=0?' sel':'')+(q.down?' dn':'')+(q.task==='idle'&&S.t-(q.seen||0)<15?' new':'')+'" data-tsq="'+q.u+'"><b>'+(i<9?(i+1)+' ':'')+q.cs+'</b> '+esc(q.down?'MAYDAY':q.task==='idle'?'待命':(tacTN(B,q.task)||q.task))+(sop&&!q.pc?' <i>SOP</i>':'')+'</span>').join('')+'</div>'}
  else{h+='<div class="tboard" style="--cols:'+cols.map(x=>x[1].length?'minmax(0,'+Math.min(3,1+x[1].length*.25)+'fr)':'72px').join(' ')+'">';
  for(const [c,qs] of cols){

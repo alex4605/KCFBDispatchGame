@@ -111,6 +111,7 @@ function tacDwStep(inc,B,dt){
  let r=0;for(const x of B.cells)if((B.out||x.v)&&(x.cz||0)>r)r=x.cz;
  r*=B.chem.lv>=3?1:B.chem.lv>=2?.6:.3;if(!(B.leak&&B.leak.on))r*=.4;D.r=r;
  if(D.mode==='evac0'&&S.t>=D.t){D.mode='evac';radio(inc,'110','下風處民眾疏散完成。');tacEvt(inc,B,'milestone','下風處民眾疏散完成')}
+ if(r>.12&&!D.mode)tacDecDw(inc,B);
  D.exp+=dt*r*(D.mode==='evac'?.05:D.mode==='shelter'?.35:1);
  for(const [th,n] of [[25,1],[55,2]]){if(D.exp>=th&&!(D.hit>=th)){D.hit=th;
   for(let i=0;i<n;i++)B.pts.push({id:B.pid=(B.pid||0)+1,sev:i===0&&th>30?'yellow':'green',hp:.9,t:S.t,cont:1});

@@ -354,3 +354,9 @@ button.hand:hover{background:#2d5a4a}
 .sugb{align-self:flex-start;margin:2px 0 0;padding:2px 9px;border-color:var(--grn);color:#bdf0de}
 .note.fin{background:#1f3a30;color:#d9f3e8}.note.fin .finb{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}.note.fin button{padding:3px 8px;font-size:12px}
 .tbhd .tgrp.tglob{margin-left:0;padding:2px 4px}.tbhd .tglob button{padding:3px 8px}
+/* 決策點 */
+.tdec{border:1px solid var(--red);background:rgba(226,86,79,.12);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+.tdec>b{color:var(--red);display:block;margin-bottom:3px}
+.tdec button{display:block;width:100%;text-align:left;margin:5px 0 0;padding:6px 8px;font-weight:600}
+.tdec button span{display:block;font-weight:400;font-size:11px;opacity:.75;margin-top:2px}
+.tmore{opacity:.85}

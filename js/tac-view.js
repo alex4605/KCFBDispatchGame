@@ -185,7 +185,7 @@ function tacClick(inc,B,hit,e,x,y){
  if(qs.length>1)msg='下令 '+ok+' / '+qs.length+' 組';
  TAC.ord=null;tBotH='';tacUI()}
 // 戰術畫面的按鈕：點擊時依 data-* 屬性分派（新增時加進 TAC_CLICK）
-const TAC_CLICK=['tpow','tdcm','tdcs','tdw','tsop','tsug','tsugall','tidle','tbmin','tfin','tsys','troe','tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
+const TAC_CLICK=['tdec','tall','tpow','tdcm','tdcs','tdw','tsop','tsug','tsugall','tidle','tbmin','tfin','tsys','troe','tfl','ttab','tsq','tord','tpause','texit','thand','tamb','tstn','trole','task','treq','telev','tspd','tap','tepa','tma'];
 const TAC_CLICK_SEL=TAC_CLICK.map(k=>'[data-'+k+']').join(',');
 document.getElementById('tac').addEventListener('click',e=>{
  const b=e.target.closest(TAC_CLICK_SEL);if(!b)return;
@@ -206,7 +206,7 @@ document.getElementById('tac').addEventListener('click',e=>{
  if(ic&&ic.tac){const B=ic.tac;
   if(D.tstn){if(B.st[D.tstn]){tacStnClose(ic,B,D.tstn);if(D.tstn==='air')B.airOff=1}else tacStnOpen(ic,B,D.tstn)}
   if(D.trole)tacRoleSet(ic,B,D.trole,!B.role[D.trole]);
-  if(D.tsop){B.sop=B.sop?0:1;if(!B.sop)for(const q of B.sq)q.pc=1;radio(ic,'指揮官',B.sop?'各組依到場標準作業（SOP）行動，另有指示再下令。':'取消 SOP，各組待命，等指揮官下令。')}
+  if(D.tsop){B.sop=B.sop===1?2:B.sop===2?0:1;if(!B.sop)for(const q of B.sq)q.pc=1;radio(ic,'指揮官',B.sop===1?'各組依到場標準作業（SOP）行動，另有指示再下令。':B.sop===2?'SOP 只管安全與後勤（佔水、救護、RIT），攻擊與搜索由指揮官下令。':'取消 SOP，各組待命，等指揮官下令。')}
   if(D.tsug){const q=B.sq.find(x=>x.u===TAC.sq);if(q&&!tacDoSuggest(ic,B,q))msg=q.cs+'：目前沒有合適的建議任務'}
   if(D.tsugall){let n=0;for(const q of tacIdleQ(ic,B))if(tacDoSuggest(ic,B,q))n++;msg=n?'已套用 '+n+' 組建議任務':'目前沒有合適的建議任務'}
   if(D.tidle){const l=tacIdleQ(ic,B);if(l.length){const i=l.findIndex(q=>q.u===TAC.sq);tacSel(B,l[(i+1)%l.length].u)}}
@@ -214,6 +214,8 @@ document.getElementById('tac').addEventListener('click',e=>{
   if(D.tdcm){const d=tacDcn(B);d.mode=d.mode==='dry'?'wet':'dry';radio(ic,'除污站','除污方式改為'+(d.mode==='dry'?'乾除污（脫除外層防護衣、刷除、吸附）':'濕除污（沖淋、中和）')+'。')}
   if(D.tdcs){const d=tacDcn(B),ss=['n','e','s','w'];if(ss.length){d.side=ss[(ss.indexOf(d.side)+1)%ss.length];if(B.st.decon)B.st.decon.side=d.side;radio(ic,'除污站','除污站移到'+TAC_SDN[d.side]+'側'+(tacDownSide(B,d.side)?'（下風處！）':'')+'。')}}
   if(D.tdw)tacDwSet(ic,B,D.tdw);
+  if(D.tdec!==undefined)tacDecPick(ic,B,+D.tdec);
+  if(D.tall){TAC.allCmd=!TAC.allCmd;tBotH=''}
   if(D.tpow)tacPowReq(ic,B)}
  if(D.ttab){TAC.tab=D.ttab;tacUI();return}
  if(D.tfl){const ic=S.inc.find(i=>i.id===TAC.id);if(ic&&ic.tac){tacFloor(ic.tac,+D.tfl);tacUI()}return}
