@@ -30,7 +30,8 @@ const TAC_GRP=[
   ['roof','屋頂出入口','O','各組（機器人除外）｜立即執行（再下一次就關閉）｜開啟或關閉頂樓樓梯間通往屋頂的出入口：開啟時樓梯間的煙往上排出（也加強煙囪效應）；關閉可保護屋頂避難者、避免拉動整座樓梯間的煙｜開啟前最好已有水線壓制起火層']]],
  ['野火',[['beat','撲打','','各組（雲梯組、機器人除外）｜點草地火線｜以打火拍、背負式水袋撲打低矮火線，撲滅後自動往附近火線｜火勢猛烈時無法靠近'],
   ['brk','防火線','','各組（雲梯組、機器人除外）｜點還沒燒到的草地｜清除可燃物開設防火線，阻斷延燒（救助組較快）｜要在火頭前方預先開設']]],
- ['化災',[['zone','劃設管制區','','各組（人員在屋外）｜立即執行（化災組、化災應變隊較快）｜依危害範圍、隔離距離與風向劃出熱區（警戒帶）、暖區（除污走廊）、冷區（指揮站、集結區，設在上風處）｜化物辨識後 60 秒內沒劃設記缺失'],
+ ['化災',[['snatch','快速救援','','背空氣呼吸器的小組（C 級、雲梯組、機器人、一般義消除外）｜點已知位置受困者所在的危害區｜Snatch and Grab：直接衝進去，抓了人就撤出（不做搜索），可進入比本身防護高一級的危害區（消防衣到 2 級、B 級到 3 級）｜重度污染、會受傷，出來要除污；被夾住的受困者帶不走'],
+  ['zone','劃設管制區','','各組（人員在屋外）｜立即執行（化災組、化災應變隊較快）｜依危害範圍、隔離距離與風向劃出熱區（警戒帶）、暖區（除污走廊）、冷區（指揮站、集結區，設在上風處）｜化物辨識後 60 秒內沒劃設記缺失'],
   ['dike','圍堵','','各組（雲梯組、機器人除外）｜點外洩液體所在的區域或洩漏處｜沙包、吸附棉、導水板圍住外洩液體與射水的廢水：本區往外擴散減少，廢水不會流進排水溝｜氣體無法圍堵；進熱區要穿足夠的防護衣'],
   ['neut','中和／覆蓋','','各組（化災組、化災應變隊較快；可燃液體要泡沫車、特殊化學車、CAFS 或化災組）｜點外洩處｜依化學品：酸鹼中和、可燃液體泡沫覆蓋、遇水反應的乾砂覆蓋，止漏後濃度快速下降｜氣體不能中和（可溶於水的用水霧稀釋）'],
   ['ident','化物辨識','I','化災組、化災應變隊｜點洩漏處｜偵檢辨識化學品並劃設危害區｜辨識前請著適當防護'],
@@ -47,7 +48,7 @@ const TAC_GRP=[
   ['hyd','佔據水源','','幫浦組（人員須在車邊）｜立即執行｜移車到消防栓那一側接栓佔水，水線改由消防栓持續供水｜沒有佔水只能用車上水箱'],
   ['stand','送水口加壓','C','幫浦組（人員須在車邊）｜立即執行｜移車到送水口那一側，接連結送水管，約 8 秒後各樓層出水口可接線｜七層以上，或五層以上的大型場所（百貨、醫院、機構）才有']]]];
 // 指令的 Emoji
-const TAC_EMO={stab:'🪵',extr:'✂️',zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
+const TAC_EMO={snatch:'🏃',stab:'🪵',extr:'✂️',zone:'🚧',dike:'🧱',neut:'⚗️',dcool:'🚪',veis:'🪟',relay:'🔗',shore:'🧱',hyd:'🚰',cover:'🛡️',attack:'🔥',sky:'⛲',trans:'💦',guard:'🛡️',confine:'💧',overhaul:'🧯',force:'🪓',dctrl:'🚪',search:'🔦',search2:'🔍',gas:'📟',
  vent:'🪟',hydro:'🌫️',ppv:'🌀',npv:'💨',vvent:'⬆️',roof:'🏠',beat:'🧹',brk:'⛏️',ident:'🧪',plug:'🔩',ppeF:'🧥',ppeC:'😷',ppeB:'🥽',ppeA:'🦺',
  ladder:'🪜',master:'🚿',move:'➡️',rit:'🆘',exit:'↩️',truck:'🚒',stand:'🔌',roofres:'🚁',decon:'🚿'};
 const TAC_ORD=TAC_GRP.flatMap(g=>g[1]);
@@ -63,7 +64,7 @@ function tacFlameGlow(g,fx,fy,rad,alpha){
  if(alpha!==undefined&&alpha<1){g.save();g.globalAlpha=alpha;g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2);g.restore()}
  else g.drawImage(_tacGlow,fx-rad,fy-rad,rad*2,rad*2)}
 // 需要再點選目標的指令
-const TAC_NEEDT={stab:1,extr:1,dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
+const TAC_NEEDT={snatch:1,stab:1,extr:1,dike:1,neut:1,dcool:1,veis:1,shore:1,cover:1,sky:1,beat:1,brk:1,ident:1,plug:1,gas:1,attack:1,trans:1,guard:1,confine:1,overhaul:1,force:1,dctrl:1,search:1,search2:1,vent:1,hydro:1,npv:1,vvent:1,ladder:1,master:1,move:1,truck:1};
 let TAC_UIS=1; // 戰術畫面的縮放倍率（寬螢幕放大）
 function sizeTac(){
  const mid=tcv.parentElement,r=mid.getBoundingClientRect(),sd=document.getElementById('tacSide');

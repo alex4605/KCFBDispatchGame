@@ -31,8 +31,9 @@ const TAC_CP={
 const tacCP=c=>c?Object.assign({},TAC_CPD,TAC_CP[c.n]||{}):TAC_CPD;
 // 化工廠、槽車等可能出現的化學品（新增）
 TAC_CHEM.push({n:'硫酸',lv:2},{n:'氫氟酸',lv:3,tox:1.6},{n:'氫氧化鈉（液鹼）',lv:2},{n:'甲醇',lv:2,fl:1,lelk:70},{n:'金屬鈉',lv:2,fl:1,lelk:40});
-// 快速救援例外：著消防衣與空氣呼吸器（F）可短時間進入中等危害（2 級）的區域搶救受困者（會重度污染、受傷）；3 級（需 A 級）不行
-const tacPPEx=(q,k)=>{const lv=q.ppe||'F',p=TAC_PPE[lv].p;return lv==='F'&&(k==='search'||k==='search2'||q.carry)?Math.max(p,2):p};
+// 快速救援（Snatch and Grab）：背空氣呼吸器的小組可短時間進入比本身防護高一級的危害區，抓了人就出來（重度污染、會受傷）
+// 消防衣＋空氣呼吸器可到 2 級、B 級可到 3 級；C 級沒有空氣呼吸器不能做
+const tacPPEx=(q,k)=>{const lv=q.ppe||'F',p=TAC_PPE[lv].p;return lv!=='C'&&(k==='snatch'||q.task==='snatch'||(q.carry&&q.snG))?Math.min(3,p+1):p};
 const TAC_PHN={g:'氣體',l:'液體',s:'固體／粉末'};
 const tacCbOn=B=>!!(B.chem&&!B.chem.fuel&&!B.chem.nochem&&B.chem.lv>0);
 // ===== 物理：蒸氣沉降或上升、水霧稀釋、遇水反應、廢水 =====
@@ -121,6 +122,9 @@ function tacDwSet(inc,B,mode){
  else{D.mode='shelter';radio(inc,'指揮官','廣播下風處民眾就地避難：關閉門窗與空調，待在室內。')}}
 // ===== 新任務：劃設管制區、圍堵、中和／覆蓋 =====
 function tacCbCan(B,q,k,f,c){
+ if(k==='snatch'){if(q.ty==='robot'||q.ty==='ladder'||q.ty==='med')return'此組無法執行';if(q.sk==='vol')return'拒絕：義消（一般）不執行快速救援';if((q.ppe||'F')==='C')return'C 級沒有空氣呼吸器，不能進入危害區快速救援';
+  if(f===undefined||f<0)return'請點選有受困者的位置';const x=tacCel(B,f,c);if(!(tacPinFree(x)>0))return'這裡沒有可以直接帶走的受困者';if(!(x.rep||x.srch>=1||B.out))return'只對已知位置的受困者快速救援（不知道人在哪就做搜索）';
+  if((x.hz||0)>tacPPEx(q,'snatch'))return'危害等級 '+x.hz+' 超過快速救援的上限（'+(q.ppe||'F')+' 只能進入 '+tacPPEx(q,'snatch')+' 級），需要更高的防護';return''}
  if(k==='zone'){if(!tacCbOn(B))return'沒有化學品危害，不需劃設管制區';if(B.zone)return'管制區已劃設';if(tacIn(q))return'人員在室內';if(q.ty==='robot')return'機器人無法執行';return''}
  if(k!=='dike'&&k!=='neut')return null;
  if(!B.chem||B.chem.util)return'沒有化學品外洩';
@@ -134,6 +138,9 @@ function tacCbCan(B,q,k,f,c){
  if(x.neu||x.foam||x.cover)return'已處理';
  return''}
 function tacCbTask(inc,B,q,k,cl,dt){
+ if(k==='snatch'){const n=tacPinFree(cl);if(!n){q.task='idle';radio(inc,q.cs,tacNm(B,q.f,q.c)+'沒有可以帶走的受困者。');return true}
+  const take=Math.min(n,q.n>=4?2:1);cl.vic-=take;q.carry=take;q.cvh=cl.vh;q.cvc=cl.vcz||cl.hz||0;q.cbed=0;q.snG=1;q.task='carry';q.tf=-1;q.tc=0;q.sayT=0;tacSay(q,'found');
+  radio(inc,q.cs,'快速救援：抓到受困者 '+take+' 名，立即撤出熱區！');tacEvt(inc,B,'victim','快速救援 '+take+' 名（'+tacNm(B,q.f,q.c)+'）');return true}
  const P=tacCP(B.chem);q.wk+=dt;
  if(k==='dike'){if(q.wk<(q.ty==='hazmat'||q.epa?12:20))return true;q.wk=0;cl.dike=1;q.task='idle';
   radio(inc,q.cs,tacNm(B,q.f,q.c)+'圍堵完成（沙包、吸附棉、導水板），外洩液體與廢水不再往外流。');tacEvt(inc,B,'milestone','圍堵：'+tacNm(B,q.f,q.c));return true}
@@ -196,8 +203,13 @@ function tacCbRep(B,sc,notes){
  if(B.ctx){sc.safe-=6*B.ctx;notes.push('受污染傷患未除污即送醫 '+B.ctx+' 名，救護車與急診受污染')}
  if(B.dwn&&B.dwn.exp>25)notes.push('下風處民眾暴露偏高（累積 '+Math.round(B.dwn.exp)+'），應及早疏散或就地避難');
  sc.safe=Math.max(0,sc.safe);sc.loss=Math.max(0,sc.loss)}
-// ===== 戰術 AI：管制區、除污站方式與位置、大量除污、圍堵、中和覆蓋、下風處民眾 =====
+// ===== 戰術 AI：管制區、除污站方式與位置、大量除污、圍堵、中和覆蓋、下風處民眾、快速救援 =====
 function tacCbAI(inc,B,free,take){
+ if(!B.chem)return;
+ // 快速救援：已知位置的受困者在危害區，現場沒有足夠防護能搜救時，派背空氣呼吸器的小組進去抓人
+ for(const x of B.cells){if(!(x.hz>0)||!(tacPinFree(x)>0)||!(x.rep||x.srch>=1||B.out)||B.sq.some(q=>(q.task==='snatch'||q.task==='search')&&q.tf===x.f&&q.tc===x.c))continue;
+  const r=free.find(q=>!tacCbCan(B,q,'snatch',x.f,x.c)&&!tacIn(q)&&!q.cont&&q.air>.7&&TAC_PPE[q.ppe||'F'].p<x.hz);
+  if(r&&tacOrder(inc,r,'snatch',x.f,x.c,1)){take(r);radio(inc,r.cs,'快速救援：衝進'+tacNm(B,x.f,x.c)+'把人帶出來！')}}
  if(!tacCbOn(B))return;const P=tacCP(B.chem),rk={F:0,C:1,B:2,A:3},need=B.chemK?['','C','B','A'][B.chem.lv]:'A';
  const out=q=>!tacIn(q)&&q.ty!=='robot'&&q.ty!=='ladder'&&!q.sdb&&!q.vol&&!q.cont;
  if(!B.zone&&(B.chemK||B.cells.some(x=>x.hz>0))){const r=free.find(q=>out(q)&&(q.ty==='hazmat'||q.epa))||free.find(out);if(r&&tacOrder(inc,r,'zone',-1,0,1))take(r)}

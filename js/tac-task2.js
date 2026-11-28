@@ -127,6 +127,7 @@ function tacTgtOK(B,q,k,f,c){
   case'dctrl':return n.nb.some(o=>!tacOpn(B,c,o)&&(B.lk.has(tacDK(B,f,c,o))||tacCel(B,f,o).h>.05||tacCel(B,f,o).s>.4));
   case'dcool':return!tacDcoolCan(B,q,f,c);
   case'veis':return!tacVeisCan(B,q,f,c);
+  case'snatch':return tacPinFree(x)>0&&(x.hz||0)>0&&!!(x.rep||x.srch>=1||B.out);
   case'stab':return x.pin>0&&!x.rub&&!x.stab;
   case'extr':return x.pin>0&&(!x.rub||!!x.shore);
   case'dike':case'neut':return(x.cz||0)>.03||!!(B.leak&&B.leak.f===f&&B.leak.c===c);

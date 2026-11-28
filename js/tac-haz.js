@@ -111,7 +111,7 @@ function tacEpaSync(inc,B){
 function tacHazCan(B,q,k){
  if(q.cont&&!tacIn(q)&&k!=='exit'&&k!=='move'&&!/^ppe/.test(k))return'人員受化學污染，需先到除污站除污';
  if(q.task==='dress'&&!/^ppe/.test(k))return'換裝中';
- if(q.epa&&!['ident','plug','gas','move','exit','search','search2','zone','dike','neut'].includes(k)&&!/^ppe/.test(k))return'化災應變隊只執行化物辨識、止漏、氣體偵測與搜索';
+ if(q.epa&&!['ident','plug','gas','move','exit','search','search2','zone','dike','neut','snatch'].includes(k)&&!/^ppe/.test(k))return'化災應變隊只執行化物辨識、止漏、氣體偵測與搜索';
  if(k==='ident'&&q.ty!=='hazmat'&&!q.epa)return'需要化災車的偵檢器材（化災組）或化災應變隊';
  if(k==='plug'&&!(B.leak&&B.leak.on))return'目前沒有洩漏需要止漏';
  if(k==='plug'&&B.leak.np)return'管道內持續產生的硫化氫無法止漏，請往人孔送風（正壓排煙）';
